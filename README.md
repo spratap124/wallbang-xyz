@@ -30,6 +30,28 @@ NEXT_PUBLIC_SITE_URL=https://wallbang.xyz
 NEXT_PUBLIC_DISCORD_URL=https://discord.gg/zE2Xvhgyq5
 ```
 
+## Deploy (Vercel — free)
+
+Repo: https://github.com/spratap124/wallbang-xyz
+
+1. Open [vercel.com/new](https://vercel.com/new) and import `spratap124/wallbang-xyz`.
+2. Framework preset: **Next.js** (auto-detected).
+3. Add environment variables:
+   - `NEXT_PUBLIC_SITE_URL` = your Vercel URL first (e.g. `https://wallbang-xyz.vercel.app`), then switch to `https://wallbang.xyz` after the domain is connected
+   - `NEXT_PUBLIC_DISCORD_URL` = `https://discord.gg/zE2Xvhgyq5`
+4. Deploy.
+
+### Custom domain later
+
+Vercel project → **Settings → Domains** → add `wallbang.xyz` (and `www` if you want). Point DNS as Vercel instructs.
+
+### CLI alternative
+
+```bash
+npx vercel login
+npx vercel --prod
+```
+
 ## Deployment (Oracle Ubuntu + Nginx)
 
 1. Build on CI or the VPS: `npm ci && npm run build`
