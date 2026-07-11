@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WallBang.xyz
 
-## Getting Started
+Production marketing foundation for the WallBang Counter-Strike 2 competitive platform.
 
-First, run the development server:
+## Stack
+
+- Next.js 15 (App Router) · React 19 · TypeScript (strict)
+- Tailwind CSS · shadcn/ui · Framer Motion (minimal)
+- React Hook Form · Zod · Lucide
+- MDX blog via `content/blog`
+- `output: "standalone"` for VPS / Docker portability
+
+## Scripts
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run start
+npm run lint
+npm run typecheck
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copy `.env.example` to `.env.local`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+NEXT_PUBLIC_SITE_URL=https://wallbang.xyz
+NEXT_PUBLIC_DISCORD_URL=https://discord.gg/zE2Xvhgyq5
+```
 
-## Learn More
+## Deployment (Oracle Ubuntu + Nginx)
 
-To learn more about Next.js, take a look at the following resources:
+1. Build on CI or the VPS: `npm ci && npm run build`
+2. Run the standalone server from `.next/standalone` (or Docker later)
+3. Reverse-proxy with Nginx to `127.0.0.1:3000`
+4. Point `wallbang.xyz` DNS at the VPS
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See `nginx/wallbang.xyz.conf.example` for a starting proxy config.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture notes
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Marketing routes live under `app/(marketing)`
+- API abstractions in `lib/api` (waitlist is mocked)
+- Feature flags in `config/features.flags.ts` for future auth/dashboard modules
+- SEO helpers in `seo/`

@@ -1,0 +1,19 @@
+/**
+ * Feature flags for future platform modules.
+ * Keep marketing nav free of unfinished product surfaces.
+ */
+export const featureFlags = {
+  steamAuth: false,
+  discordAuth: false,
+  playerDashboard: false,
+  leaderboards: false,
+  playerProfiles: false,
+  vipDashboard: false,
+  inventory: false,
+  statistics: false,
+  adminPanel: false,
+  tournaments: false,
+  matchmaking: false,
+} as const;
+
+export type FeatureFlags = typeof featureFlags;
