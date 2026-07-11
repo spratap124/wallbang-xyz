@@ -1,3 +1,4 @@
+import { ServerLatency } from "@/components/servers/server-latency";
 import { Container, SectionHeading } from "@/components/shared/primitives";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -43,14 +44,22 @@ export function ServersSection({
                     variant="secondary"
                     className={cn(
                       server.status === "live" &&
-                        "bg-primary/15 text-primary hover:bg-primary/15",
+                        "border-transparent bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/15",
+                      server.status === "offline" &&
+                        "bg-muted text-muted-foreground",
+                      server.status === "maintenance" &&
+                        "bg-amber-500/15 text-amber-400 hover:bg-amber-500/15",
                     )}
                   >
                     {statusLabel[server.status]}
                   </Badge>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {server.mode} · {server.region}
+                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                  <span>
+                    {server.mode} · {server.region}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <ServerLatency host={server.host} port={server.port} />
                 </p>
                 <a
                   href={getSteamConnectUrl(server)}
