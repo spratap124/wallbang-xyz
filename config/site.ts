@@ -5,6 +5,7 @@ export const siteConfig = {
   discordUrl:
     process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/zE2Xvhgyq5",
   tagline: "The Next Generation Counter-Strike 2 Competitive Platform.",
+  heroSubtitle: "CS2 Retake Server",
   description:
     "WallBang is a long-term CS2 competitive platform starting with India-first retake servers — VIP, Steam login, statistics, leaderboards, and tournaments ahead.",
   keywords: [

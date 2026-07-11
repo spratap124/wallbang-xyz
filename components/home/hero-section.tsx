@@ -29,13 +29,13 @@ export function HeroSection() {
             as="h1"
             className="animate-rise text-5xl [animation-delay:80ms] sm:text-6xl lg:text-7xl"
           />
-          <p className="animate-rise mt-6 max-w-2xl text-xl text-balance text-foreground/90 [animation-delay:140ms] sm:text-2xl">
-            {siteConfig.tagline}
+          <p className="animate-rise mt-5 max-w-2xl text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl [animation-delay:140ms]">
+            {siteConfig.heroSubtitle}
           </p>
-          <p className="animate-rise mt-5 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty [animation-delay:200ms]">
-            Low latency retake servers. Powerful player statistics. Competitive matchmaking.
-            Community-driven development. Built for serious Counter-Strike 2 players —{" "}
-            {primaryServer.name} is live.
+          <p className="animate-rise mt-3 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty [animation-delay:200ms]">
+            India-first public retakes — {primaryServer.name} is live now. Built for serious
+            Counter-Strike 2 players, with VIP, statistics, and a full competitive platform on the
+            roadmap.
           </p>
 
           <div className="animate-rise mt-9 flex flex-col gap-3 [animation-delay:260ms] sm:flex-row sm:items-center">
