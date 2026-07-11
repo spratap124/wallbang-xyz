@@ -5,14 +5,13 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type ServerLatencyProps = {
-  host: string;
-  port: number;
+  probeUrl?: string;
 };
 
 type LatencyState =
   | { status: "loading" }
   | { status: "ready"; latencyMs: number }
-  | { status: "error" };
+  | { status: "error"; message: string };
 
 function latencyTone(latencyMs: number): string {
   if (latencyMs < 60) return "text-emerald-400";
@@ -20,38 +19,74 @@ function latencyTone(latencyMs: number): string {
   return "text-red-400";
 }
 
-export function ServerLatency({ host, port }: ServerLatencyProps) {
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)] ?? 0;
+}
+
+/**
+ * Measures RTT from the visitor's browser to a probe on the game VPS.
+ * This is the only accurate "ping from my location" approach on the web.
+ */
+async function measureClientLatency(probeUrl: string): Promise<number> {
+  const samples: number[] = [];
+
+  for (let i = 0; i < 3; i += 1) {
+    const url = new URL(probeUrl);
+    url.searchParams.set("t", `${Date.now()}-${i}`);
+
+    const start = performance.now();
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      cache: "no-store",
+      mode: "cors",
+      credentials: "omit",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Probe HTTP ${response.status}`);
+    }
+
+    await response.arrayBuffer();
+    samples.push(performance.now() - start);
+  }
+
+  return Math.max(1, Math.round(median(samples)));
+}
+
+export function ServerLatency({ probeUrl }: ServerLatencyProps) {
   const [state, setState] = useState<LatencyState>({ status: "loading" });
 
   useEffect(() => {
+    if (!probeUrl) {
+      setState({
+        status: "error",
+        message: "Probe not configured",
+      });
+      return;
+    }
+
     const controller = new AbortController();
 
     async function run() {
       try {
-        const response = await fetch(
-          `/api/servers/latency?host=${encodeURIComponent(host)}&port=${port}`,
-          { signal: controller.signal, cache: "no-store" },
-        );
-        const payload = (await response.json()) as
-          | { ok: true; latencyMs: number }
-          | { ok: false; error: string };
-
-        if (!response.ok || !payload.ok) {
-          setState({ status: "error" });
-          return;
+        const latencyMs = await measureClientLatency(probeUrl!);
+        if (!controller.signal.aborted) {
+          setState({ status: "ready", latencyMs });
         }
-
-        setState({ status: "ready", latencyMs: payload.latencyMs });
       } catch {
         if (!controller.signal.aborted) {
-          setState({ status: "error" });
+          setState({
+            status: "error",
+            message: "Ping unavailable",
+          });
         }
       }
     }
 
     void run();
     return () => controller.abort();
-  }, [host, port]);
+  }, [probeUrl]);
 
   if (state.status === "loading") {
     return (
@@ -63,8 +98,11 @@ export function ServerLatency({ host, port }: ServerLatencyProps) {
 
   if (state.status === "error") {
     return (
-      <span className="text-sm text-muted-foreground" title="Could not measure latency">
-        Ping unavailable
+      <span
+        className="text-sm text-muted-foreground"
+        title="Run the VPS latency probe and set NEXT_PUBLIC_LATENCY_PROBE_URL"
+      >
+        {state.message}
       </span>
     );
   }
@@ -72,7 +110,7 @@ export function ServerLatency({ host, port }: ServerLatencyProps) {
   return (
     <span
       className={cn("text-sm font-medium tabular-nums", latencyTone(state.latencyMs))}
-      title="Approximate ping measured from the nearest India edge to the game server"
+      title="Round-trip from your device to the Hyderabad game server"
       aria-label={`Latency ${state.latencyMs} milliseconds`}
     >
       {state.latencyMs} ms

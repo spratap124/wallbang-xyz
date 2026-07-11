@@ -59,7 +59,7 @@ export function ServersSection({
                     {server.mode} · {server.region}
                   </span>
                   <span aria-hidden="true">·</span>
-                  <ServerLatency host={server.host} port={server.port} />
+                  <ServerLatency probeUrl={server.latencyProbeUrl} />
                 </p>
                 <a
                   href={getSteamConnectUrl(server)}
