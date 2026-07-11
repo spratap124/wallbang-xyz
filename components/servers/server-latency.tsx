@@ -72,6 +72,7 @@ export function ServerLatency({ host, port }: ServerLatencyProps) {
   return (
     <span
       className={cn("text-sm font-medium tabular-nums", latencyTone(state.latencyMs))}
+      title="Approximate ping measured from the nearest India edge to the game server"
       aria-label={`Latency ${state.latencyMs} milliseconds`}
     >
       {state.latencyMs} ms
