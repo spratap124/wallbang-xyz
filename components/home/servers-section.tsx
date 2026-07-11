@@ -1,4 +1,3 @@
-import { ServerLatency } from "@/components/servers/server-latency";
 import { Container, SectionHeading } from "@/components/shared/primitives";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -54,12 +53,8 @@ export function ServersSection({
                     {statusLabel[server.status]}
                   </Badge>
                 </div>
-                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                  <span>
-                    {server.mode} · {server.region}
-                  </span>
-                  <span aria-hidden="true">·</span>
-                  <ServerLatency probeUrl={server.latencyProbeUrl} />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {server.mode} · {server.region}
                 </p>
                 <a
                   href={getSteamConnectUrl(server)}

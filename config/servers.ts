@@ -6,11 +6,6 @@ export type GameServer = {
   host: string;
   port: number;
   status: "live" | "offline" | "maintenance";
-  /**
-   * HTTPS URL of the colocated latency probe (same VPS as the game server).
-   * Measured directly from the visitor's browser → true user-to-server RTT.
-   */
-  latencyProbeUrl?: string;
 };
 
 export const servers: GameServer[] = [
@@ -22,7 +17,6 @@ export const servers: GameServer[] = [
     host: "129.159.232.212",
     port: 27015,
     status: "live",
-    latencyProbeUrl: process.env.NEXT_PUBLIC_LATENCY_PROBE_URL || undefined,
   },
 ];
 
