@@ -1,32 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Sora, Syne } from "next/font/google";
 
 import { JsonLd } from "@/components/shared/json-ld";
 import { siteConfig } from "@/config/site";
+import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
 import { organizationJsonLd, websiteJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
+import { cn } from "@/lib/utils";
 
 import "./globals.css";
-
-const sora = Sora({
-  subsets: ["latin"],
-  variable: "--font-sora",
-  display: "swap",
-});
-
-const display = Syne({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-  weight: ["600", "700", "800"],
-  adjustFontFallback: false,
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   ...createPageMetadata({
@@ -54,10 +35,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body
-        className={`${sora.variable} ${display.variable} ${geistMono.variable} min-h-svh font-sans antialiased`}
-      >
+    <html
+      lang="en"
+      className={cn(
+        "dark",
+        fontSans.variable,
+        fontDisplay.variable,
+        fontMono.variable,
+      )}
+      suppressHydrationWarning
+    >
+      <body className={cn(fontSans.className, "min-h-svh antialiased")}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground"

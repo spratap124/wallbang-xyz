@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
-import { Logo } from "@/components/shared/primitives";
+import { BrandMark, Logo } from "@/components/shared/primitives";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
@@ -71,7 +71,9 @@ export function SiteHeader() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[min(100%,20rem)]">
               <SheetHeader>
-                <SheetTitle className="brand-mark text-left text-lg">WallBang</SheetTitle>
+                <SheetTitle className="text-left">
+                  <BrandMark className="text-lg" />
+                </SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-1" aria-label="Mobile">
                 {mainNav.map((item) => (

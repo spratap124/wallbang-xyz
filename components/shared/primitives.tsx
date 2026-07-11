@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { fontDisplay } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
 type ContainerProps = {
@@ -56,11 +57,31 @@ export function SectionHeading({
   );
 }
 
+type BrandMarkProps = {
+  className?: string;
+  as?: "span" | "p" | "h1" | "h2";
+  children?: React.ReactNode;
+};
+
+/** Syne wordmark — applies next/font className so production can't fall back. */
+export function BrandMark({
+  className,
+  as: Comp = "span",
+  children = "WallBang",
+}: BrandMarkProps) {
+  return (
+    <Comp className={cn(fontDisplay.className, "brand-mark", className)}>
+      {children}
+    </Comp>
+  );
+}
+
 export function Logo({ className }: { className?: string }) {
   return (
     <Link
       href="/"
       className={cn(
+        fontDisplay.className,
         "brand-mark inline-block text-xl text-foreground transition-colors hover:text-primary",
         className,
       )}

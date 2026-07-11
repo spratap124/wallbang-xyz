@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandMark } from "@/components/shared/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import {
   getConnectCommand,
@@ -14,7 +15,6 @@ const primaryServer = servers[0];
 export function HeroSection() {
   return (
     <section className="relative border-b border-border">
-      {/* Clip decorative layers only — never the brand wordmark descenders */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_70%_-10%,rgba(232,36,42,0.18),transparent_55%),linear-gradient(180deg,#0b0d10_0%,#12151a_100%)]" />
         <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:72px_72px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_30%,#000,transparent)]" />
@@ -25,9 +25,10 @@ export function HeroSection() {
           <p className="animate-rise mb-5 text-xs font-medium tracking-[0.22em] text-primary uppercase [animation-delay:40ms]">
             CS2 · India first · Live now
           </p>
-          <h1 className="brand-mark animate-rise text-5xl [animation-delay:80ms] sm:text-6xl lg:text-7xl">
-            WallBang
-          </h1>
+          <BrandMark
+            as="h1"
+            className="animate-rise text-5xl [animation-delay:80ms] sm:text-6xl lg:text-7xl"
+          />
           <p className="animate-rise mt-6 max-w-2xl text-xl text-balance text-foreground/90 [animation-delay:140ms] sm:text-2xl">
             {siteConfig.tagline}
           </p>
