@@ -1,20 +1,14 @@
-import { Geist_Mono, Sora, Syne } from "next/font/google";
+import { Geist_Mono, Sora } from "next/font/google";
 
 /**
- * next/font self-hosts these at build time (works the same on localhost and Vercel).
- * Apply `.variable` on <html> and prefer `.className` where a face must be guaranteed.
+ * next/font self-hosts at build time (identical on localhost and Vercel).
+ * Syne was dropped for the wordmark — its lowercase "g" descender clips at display sizes.
  */
 export const fontSans = Sora({
   subsets: ["latin"],
   variable: "--font-sora",
   display: "swap",
-});
-
-export const fontDisplay = Syne({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-  weight: ["600", "700", "800"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const fontMono = Geist_Mono({

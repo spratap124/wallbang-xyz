@@ -2,10 +2,10 @@ import type { Metadata, Viewport } from "next";
 
 import { JsonLd } from "@/components/shared/json-ld";
 import { siteConfig } from "@/config/site";
-import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
+import { fontMono, fontSans } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 import { organizationJsonLd, websiteJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
-import { cn } from "@/lib/utils";
 
 import "./globals.css";
 
@@ -37,12 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(
-        "dark",
-        fontSans.variable,
-        fontDisplay.variable,
-        fontMono.variable,
-      )}
+      className={cn("dark", fontSans.variable, fontMono.variable)}
       suppressHydrationWarning
     >
       <body className={cn(fontSans.className, "min-h-svh antialiased")}>
