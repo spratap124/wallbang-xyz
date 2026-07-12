@@ -27,7 +27,7 @@ Copy `.env.example` to `.env.local`:
 
 ```bash
 NEXT_PUBLIC_SITE_URL=https://wallbang.xyz
-NEXT_PUBLIC_DISCORD_URL=https://discord.gg/zE2Xvhgyq5
+NEXT_PUBLIC_DISCORD_URL=https://discord.gg/KY2dRw8Yh4
 ```
 
 ## Deploy (Vercel — free)
@@ -38,7 +38,7 @@ Repo: https://github.com/spratap124/wallbang-xyz
 2. Framework preset: **Next.js** (auto-detected).
 3. Add environment variables:
    - `NEXT_PUBLIC_SITE_URL` = your Vercel URL first (e.g. `https://wallbang-xyz.vercel.app`), then switch to `https://wallbang.xyz` after the domain is connected
-   - `NEXT_PUBLIC_DISCORD_URL` = `https://discord.gg/zE2Xvhgyq5`
+   - `NEXT_PUBLIC_DISCORD_URL` = `https://discord.gg/KY2dRw8Yh4`
 4. Deploy.
 
 ### Custom domain later

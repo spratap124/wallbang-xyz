@@ -3,7 +3,7 @@ export const siteConfig = {
   shortName: "WallBang",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://wallbang.xyz",
   discordUrl:
-    process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/zE2Xvhgyq5",
+    process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/KY2dRw8Yh4",
   tagline: "The Next Generation Counter-Strike 2 Competitive Platform.",
   heroSubtitle: "CS2 Retake Server",
   description:
@@ -23,7 +23,7 @@ export const siteConfig = {
   locale: "en_IN",
   regionFocus: "India",
   social: {
-    discord: process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/zE2Xvhgyq5",
+    discord: process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/KY2dRw8Yh4",
   },
   supportingPoints: [
     "Low latency servers.",

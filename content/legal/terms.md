@@ -38,4 +38,4 @@ We may update these terms as the platform expands. Continued use after changes c
 
 ## Contact
 
-For terms questions, reach us on [Discord](https://discord.gg/zE2Xvhgyq5).
+For terms questions, reach us on [Discord](https://discord.gg/KY2dRw8Yh4).

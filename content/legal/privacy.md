@@ -34,4 +34,4 @@ We may update this policy as the platform grows (VIP, Steam login, statistics). 
 
 ## Contact
 
-Questions about privacy: join [Discord](https://discord.gg/zE2Xvhgyq5) and open a ticket with the moderation team.
+Questions about privacy: join [Discord](https://discord.gg/KY2dRw8Yh4) and open a ticket with the moderation team.
