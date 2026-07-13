@@ -11,7 +11,7 @@ export type GameServer = {
 export const servers: GameServer[] = [
   {
     id: "retake-1",
-    name: "[WallBang] Retake #1 !ws !knife !gloves | [Mumbai]",
+    name: "[WallBang] Retake #1 | [Mumbai]",
     mode: "Retakes",
     region: "Mumbai, India",
     host: "200.97.169.27",

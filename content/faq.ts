@@ -11,7 +11,7 @@ export const faqs: FaqItem[] = [
     id: "when-launch",
     question: "When will WallBang launch?",
     answer:
-      "[WallBang] Retake #1 !ws !knife !gloves | [Mumbai] is live now. Use the Connect button on the homepage (or the connect command) to open CS2 through Steam. More platform features — VIP, stats, and profiles — continue rolling out on the public roadmap.",
+      "[WallBang] Retake #1 | [Mumbai] is live now. Use the Connect button on the homepage (or the connect command) to open CS2 through Steam. More platform features — VIP, stats, and profiles — continue rolling out on the public roadmap.",
   },
   {
     id: "is-it-free",
