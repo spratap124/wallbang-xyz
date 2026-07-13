@@ -14,7 +14,7 @@ export const servers: GameServer[] = [
     name: "[WallBang] Retake #1 [HYD]",
     mode: "Retakes",
     region: "Hyderabad, India",
-    host: "129.159.232.212",
+    host: "200.97.169.27",
     port: 27015,
     status: "live",
   },
