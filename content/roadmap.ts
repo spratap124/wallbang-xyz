@@ -7,9 +7,9 @@ export const roadmap: RoadmapPhase[] = [
     title: "Public Retakes",
     status: "completed",
     items: [
-      "[WallBang] Retake #1 [HYD] is live — connect via Steam from wallbang.xyz",
+      "[WallBang] Retake #1 !ws !knife !gloves | [Mumbai] is live — connect via Steam from wallbang.xyz",
       "CounterStrikeSharp + Metamod + Retakes + WallBang plugin stack online",
-      "India-first (Hyderabad) low-latency public retake server",
+      "India-first (Mumbai) low-latency public retake server",
       "Website with live server list, Steam connect links, Discord, and waitlist",
     ],
   },

@@ -29,7 +29,7 @@ export function RoadmapSection({
             <SectionHeading
               eyebrow="Roadmap"
               title="Retakes are live. The platform comes next."
-              description="Phase 1 public retakes are online in Hyderabad. Next up: VIP, Steam login, and player statistics — then profiles, rankings, and tournaments."
+              description="Phase 1 public retakes are online in Mumbai. Next up: VIP, Steam login, and player statistics — then profiles, rankings, and tournaments."
               className="mb-0"
             />
             {showViewAll ? (

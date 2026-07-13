@@ -7,7 +7,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Roadmap",
   description:
-    "WallBang CS2 roadmap: live Hyderabad retakes, VIP and Steam login next, then player profiles, leaderboards, and tournaments.",
+    "WallBang CS2 roadmap: live Mumbai retakes, VIP and Steam login next, then player profiles, leaderboards, and tournaments.",
   path: "/roadmap",
 });
 
@@ -25,7 +25,7 @@ export default function RoadmapPage() {
         <SectionHeading
           eyebrow="Roadmap"
           title="Where WallBang is headed"
-          description="Retake #1 is live in Hyderabad. Here’s what we’ve shipped and what’s coming next for the competitive platform."
+          description="Retake #1 is live in Mumbai. Here’s what we’ve shipped and what’s coming next for the competitive platform."
         />
       </Container>
       <RoadmapSection showViewAll={false} showHeading={false} />
