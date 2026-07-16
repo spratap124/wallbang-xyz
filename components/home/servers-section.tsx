@@ -1,3 +1,4 @@
+import { CopyIpButton } from "@/components/servers/copy-ip-button";
 import { Container, SectionHeading } from "@/components/shared/primitives";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -56,12 +57,15 @@ export function ServersSection({
                 <p className="mt-2 text-sm text-muted-foreground">
                   {server.mode} · {server.region}
                 </p>
-                <a
-                  href={getSteamConnectUrl(server)}
-                  className="mt-3 inline-block font-mono text-sm text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {getConnectCommand(server)}
-                </a>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <a
+                    href={getSteamConnectUrl(server)}
+                    className="font-mono text-sm text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {getConnectCommand(server)}
+                  </a>
+                  <CopyIpButton server={server} />
+                </div>
               </div>
 
               <a
