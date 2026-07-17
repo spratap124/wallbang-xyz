@@ -1,16 +1,15 @@
 import Image from "next/image";
 import {
-  Gauge,
   MapPin,
   MessageCircle,
   Play,
   ShieldCheck,
   Sparkles,
   Sword,
-  Users,
 } from "lucide-react";
 
 import { CopyIpButton } from "@/components/servers/copy-ip-button";
+import { LiveServerCard } from "@/components/home/live-server-card";
 import { BrandMark } from "@/components/shared/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -156,103 +155,5 @@ export function HeroSection() {
         </div>
       </div>
     </section>
-  );
-}
-
-function LiveServerCard() {
-  const server = primaryServer;
-  const isLive = server.status === "live";
-
-  return (
-    <div className="animate-float relative w-full max-w-sm">
-      {/* Glow behind card */}
-      <div
-        className="pointer-events-none absolute -inset-4 rounded-3xl bg-primary/20 blur-3xl"
-        aria-hidden="true"
-      />
-
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card/80 shadow-2xl backdrop-blur-xl">
-        {/* Map banner */}
-        <div className="relative h-32 overflow-hidden">
-          <Image
-            src={getMapImage(server.map)}
-            alt={`${server.map} preview`}
-            fill
-            sizes="384px"
-            className="object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
-          <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-black/50 px-2.5 py-1 text-[0.7rem] font-semibold tracking-wide text-emerald-400 uppercase backdrop-blur-sm">
-            <span className="relative flex size-2 text-emerald-400">
-              {isLive ? (
-                <span className="animate-ping-pulse absolute inline-flex size-full rounded-full" />
-              ) : null}
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
-            </span>
-            Live
-          </div>
-          <p className="absolute bottom-3 left-4 font-mono text-sm text-foreground/90">
-            {server.map}
-          </p>
-        </div>
-
-        {/* Body */}
-        <div className="p-5">
-          <h3 className="text-lg font-semibold text-foreground">{server.shortName}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {server.mode} · {server.city}, India
-          </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <ServerStat
-              icon={Users}
-              value={`${server.players}/${server.maxPlayers}`}
-              label="Players"
-            />
-            <ServerStat icon={Gauge} value={`${server.pingMs} ms`} label="Ping" />
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {["!skins", "!knife", "!gloves"].map((cmd) => (
-              <span
-                key={cmd}
-                className="rounded-md bg-secondary px-2 py-1 font-mono text-[0.7rem] text-muted-foreground"
-              >
-                {cmd}
-              </span>
-            ))}
-          </div>
-
-          <a
-            href={getSteamConnectUrl(server)}
-            className={cn(
-              buttonVariants({ size: "lg" }),
-              "btn-glow mt-5 h-11 w-full gap-2 text-sm",
-            )}
-          >
-            <Play className="size-4 fill-current" aria-hidden="true" />
-            Connect
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ServerStat({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: typeof Users;
-  value: string;
-  label: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border/60 bg-background/40 p-2.5 text-center">
-      <Icon className="mx-auto size-4 text-primary" aria-hidden="true" />
-      <p className="mt-1.5 text-sm font-semibold text-foreground">{value}</p>
-      <p className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">{label}</p>
-    </div>
   );
 }
