@@ -8,7 +8,6 @@ import {
   Sparkles,
   Sword,
   Users,
-  Zap,
 } from "lucide-react";
 
 import { CopyIpButton } from "@/components/servers/copy-ip-button";
@@ -114,8 +113,8 @@ export function HeroSection() {
               href={siteConfig.discordUrl}
               rel="noopener noreferrer"
               className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "h-11 gap-2 px-6 text-sm",
+                buttonVariants({ size: "lg" }),
+                "h-11 gap-2 border-transparent bg-[#5865F2] px-6 text-sm text-white transition-colors hover:bg-[#4752c4]",
               )}
             >
               <MessageCircle className="size-4" aria-hidden="true" />
@@ -204,14 +203,13 @@ function LiveServerCard() {
             {server.mode} · {server.city}, India
           </p>
 
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <ServerStat
               icon={Users}
               value={`${server.players}/${server.maxPlayers}`}
               label="Players"
             />
             <ServerStat icon={Gauge} value={`${server.pingMs} ms`} label="Ping" />
-            <ServerStat icon={Zap} value={`${server.tickRate}`} label="Tick" />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-1.5">
