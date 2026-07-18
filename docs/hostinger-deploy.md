@@ -53,15 +53,21 @@ docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 
 ## CI/CD
 
-GitHub Actions [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) deploys on push to `main`.
+GitHub Actions:
+
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint, typecheck, and `next build` on PRs / pushes
+- [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) — SSH deploy to Hostinger on push to `main` or `hostinger-docker-plan` (also manual `workflow_dispatch`)
 
 Required repo secrets:
 
 | Secret | Value |
 |---|---|
-| `VPS_HOST` | VPS public IP / hostname |
-| `VPS_USER` | SSH user (e.g. `wallbang` or `ubuntu`) |
-| `VPS_SSH_KEY` | Private key with deploy access |
+| `VPS_HOST` | `200.97.169.27` |
+| `VPS_USER` | `ubuntu` |
+| `VPS_SSH_KEY` | Private key whose public half is in `~/.ssh/authorized_keys` on the VPS |
+
+Deploy path on the VPS: `/home/ubuntu/wallbang-xyz` (uses `github.com-xyz` remote + `docker compose -f docker-compose.prod.yml`).
+
 
 ## Backups
 

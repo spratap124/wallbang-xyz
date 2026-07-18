@@ -123,7 +123,10 @@ docker compose -f docker-compose.prod.yml --profile watchtower --env-file .env u
 - Non-root Next.js container user `wallbang`  
 - Never commit `.env`
 
-## Legacy
+## CI/CD
 
-- Vercel is optional/legacy — A2S UDP needs a real VPS Node runtime.  
-- Older Oracle-oriented notes remain in [docs/oracle-cutover.md](docs/oracle-cutover.md); prefer Hostinger docs for the executive-summary stack.
+- **CI** (`.github/workflows/ci.yml`): lint, typecheck, and production build on PRs / pushes
+- **Deploy** (`.github/workflows/deploy.yml`): SSH to Hostinger and `docker compose up -d --build` on push to `main` or `hostinger-docker-plan`
+
+Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (see [docs/hostinger-deploy.md](docs/hostinger-deploy.md)).
+
