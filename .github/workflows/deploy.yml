@@ -46,9 +46,11 @@ jobs:
             echo "Deploying branch: $BRANCH in $APP_DIR"
 
             git fetch origin "$BRANCH"
+            # Discard any local VPS edits before switching branches (e.g. nginx TLS).
+            git reset --hard HEAD
+            git clean -fd
             git checkout -B "$BRANCH" "origin/$BRANCH"
             git reset --hard "origin/$BRANCH"
-            git clean -fd
 
             sudo docker compose -f docker-compose.prod.yml --env-file .env up -d --build
             sudo docker image prune -f
