@@ -41,7 +41,7 @@ export const faqs: FaqItem[] = [
     id: "steam-login",
     question: "Will WallBang use Steam login?",
     answer:
-      "Steam authentication is planned so your profile, inventory, and progress stay tied to a trusted identity across WallBang services.",
+      "Yes. Use Sign in with Steam in the site header to link your account. Your profile, inventory, and progress stay tied to your Steam identity across WallBang services.",
   },
   {
     id: "pay-to-win",

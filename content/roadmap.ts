@@ -20,7 +20,7 @@ export const roadmap: RoadmapPhase[] = [
     status: "in-progress",
     items: [
       "VIP membership with cosmetic-focused rewards (no pay-to-win)",
-      "Steam login and secure account linking",
+      "Steam login and secure account linking (site auth live)",
       "Core player statistics pipeline from live retake servers",
       "Early inventory foundations for knives, weapons, and gloves",
       "Additional retake capacity as player demand grows",

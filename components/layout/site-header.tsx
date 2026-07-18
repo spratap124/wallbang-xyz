@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
+import {
+  SteamAuthControls,
+  SteamAuthControlsMobile,
+} from "@/components/auth/steam-auth-controls";
 import { BrandMark, Logo } from "@/components/shared/primitives";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -16,8 +20,14 @@ import {
 import { mainNav } from "@/config/navigation";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
+import type { AuthUser } from "@/types/auth";
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  user: AuthUser | null;
+  steamAuthEnabled: boolean;
+};
+
+export function SiteHeader({ user, steamAuthEnabled }: SiteHeaderProps) {
   const pathname = usePathname();
 
   return (
@@ -45,6 +55,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <SteamAuthControls user={user} enabled={steamAuthEnabled} />
           <a
             href={siteConfig.discordUrl}
             rel="noopener noreferrer"
@@ -85,6 +96,10 @@ export function SiteHeader() {
                     {item.title}
                   </Link>
                 ))}
+                <SteamAuthControlsMobile
+                  user={user}
+                  enabled={steamAuthEnabled}
+                />
                 <a
                   href={siteConfig.discordUrl}
                   rel="noopener noreferrer"
