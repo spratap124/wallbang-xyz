@@ -126,7 +126,7 @@ docker compose -f docker-compose.prod.yml --profile watchtower --env-file .env u
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`): lint, typecheck, and production build on PRs / pushes
-- **Deploy** (`.github/workflows/deploy.yml`): SSH to Hostinger and `docker compose up -d --build` on push to `main` or `hostinger-docker-plan`
+- **Deploy** (`.github/workflows/deploy.yml`): SSH to Hostinger and `docker compose up -d --build` on push/merge to `main`
 
 Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (see [docs/hostinger-deploy.md](docs/hostinger-deploy.md)).
 

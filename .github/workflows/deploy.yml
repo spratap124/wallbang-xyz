@@ -2,13 +2,13 @@ name: Deploy
 
 on:
   push:
-    branches: [main, hostinger-docker-plan]
+    branches: [main]
   workflow_dispatch:
     inputs:
       branch:
         description: "Branch to deploy on the VPS"
         required: true
-        default: hostinger-docker-plan
+        default: main
 
 concurrency:
   group: deploy-production

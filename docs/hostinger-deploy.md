@@ -56,7 +56,7 @@ docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 GitHub Actions:
 
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint, typecheck, and `next build` on PRs / pushes
-- [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) — SSH deploy to Hostinger on push to `main` or `hostinger-docker-plan` (also manual `workflow_dispatch`)
+- [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) — SSH deploy to Hostinger on push/merge to `main` (also manual `workflow_dispatch`)
 
 Required repo secrets:
 
