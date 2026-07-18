@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, LogOut, User } from "lucide-react";
+import { ChevronDown, LogOut, Shield, User } from "lucide-react";
+import Link from "next/link";
 
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import type { AuthUser } from "@/types/auth";
 type SteamAuthControlsProps = {
   user: AuthUser | null;
   enabled: boolean;
+  showAdmin?: boolean;
 };
 
 function SteamMark({ className }: { className?: string }) {
@@ -67,7 +69,11 @@ async function signOut() {
   window.location.href = "/";
 }
 
-export function SteamAuthControls({ user, enabled }: SteamAuthControlsProps) {
+export function SteamAuthControls({
+  user,
+  enabled,
+  showAdmin = false,
+}: SteamAuthControlsProps) {
   if (!enabled) return null;
 
   if (user) {
@@ -101,6 +107,12 @@ export function SteamAuthControls({ user, enabled }: SteamAuthControlsProps) {
               <User />
               Profile
             </DropdownMenuItem>
+            {showAdmin ? (
+              <DropdownMenuItem render={<Link href="/admin" />}>
+                <Shield />
+                Admin
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
@@ -129,6 +141,7 @@ export function SteamAuthControls({ user, enabled }: SteamAuthControlsProps) {
 export function SteamAuthControlsMobile({
   user,
   enabled,
+  showAdmin = false,
 }: SteamAuthControlsProps) {
   if (!enabled) return null;
 
@@ -148,6 +161,15 @@ export function SteamAuthControlsMobile({
           <User className="size-4" />
           Profile
         </a>
+        {showAdmin ? (
+          <Link
+            href="/admin"
+            className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <Shield className="size-4" />
+            Admin
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={() => void signOut()}
