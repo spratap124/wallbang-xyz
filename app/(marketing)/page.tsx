@@ -6,6 +6,7 @@ import { RoadmapSection } from "@/components/home/roadmap-section";
 import { ServersSection } from "@/components/home/servers-section";
 import { WaitlistSection } from "@/components/home/waitlist-section";
 import { WhySection } from "@/components/home/why-section";
+import { LiveServersProvider } from "@/components/servers/live-servers-provider";
 import { JsonLd } from "@/components/shared/json-ld";
 import { homeFaqs } from "@/content/faq";
 import { siteConfig } from "@/config/site";
@@ -22,8 +23,10 @@ export default function HomePage() {
   return (
     <>
       <JsonLd id="ld-home-faq" data={faqJsonLd(homeFaqs)} />
-      <HeroSection />
-      <ServersSection />
+      <LiveServersProvider>
+        <HeroSection />
+        <ServersSection />
+      </LiveServersProvider>
       <FeaturesSection limit={6} />
       <WhySection />
       <RoadmapSection />
