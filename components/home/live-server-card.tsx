@@ -2,66 +2,37 @@
 
 import Image from "next/image";
 import { MapPin, Play, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 
 import { CopyIpButton } from "@/components/servers/copy-ip-button";
+import { useLiveServers } from "@/components/servers/live-servers-provider";
 import { buttonVariants } from "@/components/ui/button";
 import {
   getMapImage,
   prettyMapName,
   servers as serverDefs,
 } from "@/config/servers";
-import { fetchServers } from "@/lib/api/servers";
-import type { ServerSummary } from "@/lib/servers/types";
 import { cn } from "@/lib/utils";
 
-const POLL_MS = 10_000;
-
 // Static presentation bits (name, city, mode) come from config; live counts,
-// map, and online state come from the /api/servers poll.
+// map, and online state come from the shared /api/servers poll.
 const def = serverDefs[0];
 
-const initial: ServerSummary = {
-  id: def.id,
-  name: def.name,
-  ip: `${def.host}:${def.port}`,
-  region: def.region,
-  mode: def.mode,
-  online: false,
-  map: def.map,
-  players: null,
-  maxPlayers: def.maxPlayersOverride ?? def.maxPlayers,
-  pingUrl: def.pingUrl ?? null,
-  lastSeen: null,
-};
-
 export function LiveServerCard() {
-  const [server, setServer] = useState<ServerSummary>(initial);
-  const mounted = useRef(true);
-
-  useEffect(() => {
-    mounted.current = true;
-    const controller = new AbortController();
-
-    async function load() {
-      try {
-        const data = await fetchServers(controller.signal);
-        const match =
-          data.servers.find((s) => s.id === def.id) ?? data.servers[0];
-        if (match && mounted.current) setServer(match);
-      } catch {
-        // Keep the last-known values on a transient failure.
-      }
-    }
-
-    load();
-    const poll = window.setInterval(load, POLL_MS);
-    return () => {
-      mounted.current = false;
-      controller.abort();
-      window.clearInterval(poll);
+  const { servers } = useLiveServers();
+  const server =
+    servers.find((s) => s.id === def.id) ?? servers[0] ?? {
+      id: def.id,
+      name: def.name,
+      ip: `${def.host}:${def.port}`,
+      region: def.region,
+      mode: def.mode,
+      online: false,
+      map: def.map,
+      players: null,
+      maxPlayers: def.maxPlayersOverride ?? def.maxPlayers,
+      pingUrl: def.pingUrl ?? null,
+      lastSeen: null,
     };
-  }, []);
 
   const mapName = server.map ?? def.map;
   const players = server.players ?? 0;

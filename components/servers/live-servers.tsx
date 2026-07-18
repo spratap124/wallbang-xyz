@@ -2,36 +2,18 @@
 
 import Image from "next/image";
 import { RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CopyIpButton } from "@/components/servers/copy-ip-button";
+import { useLiveServers } from "@/components/servers/live-servers-provider";
 import { Container, SectionHeading } from "@/components/shared/primitives";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  getMapImage,
-  prettyMapName,
-  servers as serverDefs,
-} from "@/config/servers";
-import { fetchServers } from "@/lib/api/servers";
+import { getMapImage, prettyMapName } from "@/config/servers";
 import type { ServerSummary } from "@/lib/servers/types";
 import { cn } from "@/lib/utils";
 
-const POLL_MS = 10_000;
-
-const initialServers: ServerSummary[] = serverDefs.map((def) => ({
-  id: def.id,
-  name: def.name,
-  ip: `${def.host}:${def.port}`,
-  region: def.region,
-  mode: def.mode,
-  online: false,
-  map: def.map,
-  players: null,
-  maxPlayers: def.maxPlayersOverride ?? def.maxPlayers,
-  pingUrl: def.pingUrl ?? null,
-  lastSeen: null,
-}));
+const PING_POLL_MS = 10_000;
 
 function pingTone(pingMs: number | null): string {
   if (pingMs === null) return "text-muted-foreground";
@@ -45,38 +27,7 @@ export function LiveServers({
 }: {
   showHeading?: boolean;
 }) {
-  const [servers, setServers] = useState<ServerSummary[]>(initialServers);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const mounted = useRef(true);
-
-  useEffect(() => {
-    mounted.current = true;
-    const controller = new AbortController();
-
-    async function load() {
-      setRefreshing(true);
-      try {
-        const data = await fetchServers(controller.signal);
-        if (!mounted.current) return;
-        setServers(data.servers);
-        setHasLoaded(true);
-      } catch {
-        // Keep the last-known list on a transient failure.
-      } finally {
-        if (mounted.current) setRefreshing(false);
-      }
-    }
-
-    load();
-    const poll = window.setInterval(load, POLL_MS);
-
-    return () => {
-      mounted.current = false;
-      controller.abort();
-      window.clearInterval(poll);
-    };
-  }, []);
+  const { servers, hasLoaded, refreshing } = useLiveServers();
 
   return (
     <section id="servers" className="border-t border-border py-20 sm:py-24">
@@ -225,7 +176,7 @@ function PingCell({ url }: { url: string }) {
     }
 
     probe();
-    const id = window.setInterval(probe, POLL_MS);
+    const id = window.setInterval(probe, PING_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(id);
