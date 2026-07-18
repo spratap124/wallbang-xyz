@@ -11,7 +11,7 @@ export const featureFlags = {
   vipDashboard: false,
   inventory: false,
   statistics: false,
-  adminPanel: false,
+  adminPanel: true,
   tournaments: false,
   matchmaking: false,
 } as const;

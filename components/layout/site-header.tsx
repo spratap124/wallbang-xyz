@@ -24,9 +24,14 @@ import type { AuthUser } from "@/types/auth";
 type SiteHeaderProps = {
   user: AuthUser | null;
   steamAuthEnabled: boolean;
+  showAdmin?: boolean;
 };
 
-export function SiteHeader({ user, steamAuthEnabled }: SiteHeaderProps) {
+export function SiteHeader({
+  user,
+  steamAuthEnabled,
+  showAdmin = false,
+}: SiteHeaderProps) {
   const pathname = usePathname();
 
   return (
@@ -54,7 +59,11 @@ export function SiteHeader({ user, steamAuthEnabled }: SiteHeaderProps) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <SteamAuthControls user={user} enabled={steamAuthEnabled} />
+          <SteamAuthControls
+            user={user}
+            enabled={steamAuthEnabled}
+            showAdmin={showAdmin}
+          />
 
           <Sheet>
             <SheetTrigger
@@ -88,6 +97,7 @@ export function SiteHeader({ user, steamAuthEnabled }: SiteHeaderProps) {
                 <SteamAuthControlsMobile
                   user={user}
                   enabled={steamAuthEnabled}
+                  showAdmin={showAdmin}
                 />
               </nav>
             </SheetContent>

@@ -17,6 +17,7 @@ import {
 } from "@/lib/auth/steam-openid";
 import { upsertSteamUser } from "@/lib/auth/users";
 import { isMongoConfigured } from "@/lib/mongo";
+import { onUserAuthenticated } from "@/lib/permissions/service";
 import { rateLimit } from "@/lib/rate-limit";
 
 function redirectWithError(code: string): NextResponse {
@@ -50,6 +51,7 @@ export async function GET(request: Request): Promise<Response> {
     const steamId = await verifySteamOpenIdAssertion(searchParams);
     const profile = await fetchSteamPlayerSummary(steamId);
     const user = await upsertSteamUser(profile);
+    await onUserAuthenticated(user);
     const token = await createSessionToken(user);
 
     const response = NextResponse.redirect(new URL(returnTo, getSiteUrl()));
