@@ -1,0 +1,55 @@
+name: Deploy WallBang
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install, lint, typecheck
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            set -euo pipefail
+            APP_DIR="/home/wallbang/wallbang-xyz"
+            cd "$APP_DIR"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+            docker image prune -f
+            for i in 1 2 3 4 5; do
+              if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+                echo "Health check OK"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "Health check failed"
+            exit 1

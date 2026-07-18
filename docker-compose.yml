@@ -1,30 +1,9 @@
-# WallBang.xyz — full Next.js app (SSR + API) for Oracle Always Free.
-# nginx on the host terminates TLS and proxies to 127.0.0.1:3000.
+# Convenience alias — production stack lives in docker-compose.prod.yml.
+# Prefer:
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 #
-# Setup:
-#   cp .env.production.example .env.production   # fill secrets
-#   docker compose up -d --build
-#
-# Update:
-#   git pull && docker compose up -d --build
+# This file keeps the earlier single-service host-nginx layout for simple
+# VPS deploys that do not want the full mongo/redis/nginx stack.
 
-services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://wallbang.xyz}
-        NEXT_PUBLIC_DISCORD_URL: ${NEXT_PUBLIC_DISCORD_URL:-https://discord.gg/KY2dRw8Yh4}
-        NEXT_PUBLIC_RETAKE_HOST: ${NEXT_PUBLIC_RETAKE_HOST:-}
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3000:3000"
-    env_file:
-      - .env.production
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/servers"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
+include:
+  - path: docker-compose.prod.yml

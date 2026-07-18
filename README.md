@@ -4,165 +4,126 @@ Marketing site + live CS2 server status for the WallBang Counter-Strike 2 platfo
 
 ## Stack
 
-- Next.js 15 (App Router) · React 19 · TypeScript (strict)
-- Tailwind CSS · shadcn/ui · Framer Motion (minimal)
-- MongoDB Atlas (optional cache for live A2S server status)
-- `output: "standalone"` for Docker / Oracle Always Free
+- Next.js 15 (App Router) · React 19 · TypeScript
+- Docker Compose production stack: **Next.js · MongoDB · Redis · nginx** (+ optional Discord bot / Watchtower)
+- Live server status via A2S UDP (`/api/servers`) with Mongo snapshot cache
+- Host target: **Hostinger KVM2** alongside native `wallbang-cs2-server`
 
 ## Scripts
 
 ```bash
 npm install
-npm run dev
+npm run dev          # staging retake 129.159.232.212
 npm run build
 npm run start
 npm run lint
 npm run typecheck
 ```
 
+## Repository layout (production)
+
+```text
+wallbang-xyz/
+├── app/                      # Next.js App Router (frontend + API)
+├── Dockerfile                # multi-stage standalone build
+├── docker-compose.prod.yml   # nextjs, db, redis, nginx, optional bot/watchtower
+├── .env.production.example   # copy to .env on the VPS
+├── nginx/conf.d/             # reverse-proxy vhosts
+├── scripts/                  # bootstrap, backup, restore
+├── backups/                  # DB dumps (gitignored contents)
+├── discord-bot/              # optional (Compose profile)
+└── .github/workflows/deploy.yml
+```
+
+On the VPS keep CS2 **outside** Compose:
+
+```text
+/home/wallbang/wallbang-cs2-server/   # native
+/home/wallbang/wallbang-xyz/          # this repo
+```
+
 ## Environment
 
-### Local development
-
-Copy `.env.example` to `.env.local`:
+### Local
 
 ```bash
 cp .env.example .env.local
 ```
 
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_SITE_URL` | Canonical site URL |
-| `NEXT_PUBLIC_DISCORD_URL` | Discord invite |
-| `NEXT_PUBLIC_RETAKE_HOST` | Optional host override |
-| `MONGODB_URI` | Atlas URI (optional locally — falls back to direct A2S) |
-| `MONGODB_DB` | Defaults to `wallbang` |
-| `SERVER_STATUS_TTL_SECONDS` | Snapshot freshness (default `15`) |
-| `SERVER_STATUS_DOC_TTL_SECONDS` | Atlas TTL expiry (default `120`) |
+- Dev host for Retake #1 → staging `129.159.232.212:27015`
+- Production builds → `200.97.169.27:27015`
+- Override with `NEXT_PUBLIC_RETAKE_HOST`
 
-**Retake #1 host (env-driven):**
-
-- `npm run dev` → staging `129.159.232.212:27015`
-- production build / Docker (`NODE_ENV=production`) → `200.97.169.27:27015`
-- override either with `NEXT_PUBLIC_RETAKE_HOST`
-
-### Production (Oracle VM)
-
-Copy `.env.production.example` → `.env.production` on the app VM and fill secrets (see Deploy below). Never commit `.env.production`.
-
-## Live server status
-
-`GET /api/servers` A2S-queries configured CS2 servers over UDP, caches snapshots in MongoDB Atlas, and returns:
-
-`id`, `name`, `ip`, `region`, `mode`, `online`, `map`, `players`, `maxPlayers`, `pingUrl`, `lastSeen`, `backendPingMs` (diagnostic only).
-
-The home hero card and `/servers` list poll this endpoint every 10 seconds.
-
-## Deploy (primary) — Oracle Always Free + Docker + nginx
-
-Full Next.js app (SSR + API) runs in Docker on a dedicated Oracle Always Free VM. nginx on the host terminates TLS and proxies to `127.0.0.1:3000`. **Vercel is not required** after DNS cutover.
-
-### 1. Provision the app VM
-
-- Ubuntu 22.04/24.04 Always Free (`VM.Standard.A1.Flex` preferred)
-- Public IP = `APP_VM_IP`
-- Ingress: TCP **22** (admin), **80**, **443**
-- Install: Docker Engine + Compose plugin, nginx, certbot, git
-
-### 2. Open UDP on the game server(s)
-
-On prod retake `200.97.169.27` (and any additional servers): allow **inbound UDP 27015** from `APP_VM_IP` (preferred) or `0.0.0.0/0`, including the OS firewall. Without this, `/api/servers` reports `online: false`.
-
-### 3. MongoDB Atlas
-
-- Database `wallbang`, least-privilege `readWrite` user
-- Network Access: allow `APP_VM_IP`
-- Put the URI in `.env.production` on the app VM
-
-### 4. Run the app
-
-One-shot bootstrap (installs Docker/nginx/certbot, clones/pulls, compose up, nginx site):
+### Production VPS
 
 ```bash
-git clone git@github.com:spratap124/wallbang-xyz.git
-cd wallbang-xyz
-bash scripts/oracle-bootstrap.sh
-# then edit .env.production with MONGODB_URI and rebuild:
-# docker compose --env-file .env.production up -d --build
+cp .env.production.example .env
+# set MONGO_PASSWORD and matching password inside MONGODB_URI
 ```
 
-Manual equivalent:
+## Deploy on Hostinger KVM2
+
+Full guide: [docs/hostinger-deploy.md](docs/hostinger-deploy.md)
 
 ```bash
-git clone git@github.com:spratap124/wallbang-xyz.git
-cd wallbang-xyz
-cp .env.production.example .env.production
-# edit .env.production — set MONGODB_URI and confirm NEXT_PUBLIC_* values
-
-docker compose --env-file .env.production up -d --build
+bash scripts/hostinger-bootstrap.sh
+# or:
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+curl -fsS http://127.0.0.1:3000/api/health
 ```
 
-Smoke test on the VM (before DNS cutover):
-
-```bash
-curl -s http://127.0.0.1:3000/api/servers | jq
-# expect ip "200.97.169.27:27015", maxPlayers 10
-```
-
-### 5. nginx + TLS
-
-```bash
-sudo cp nginx/wallbang.xyz.conf.example /etc/nginx/sites-available/wallbang.xyz
-sudo ln -sf /etc/nginx/sites-available/wallbang.xyz /etc/nginx/sites-enabled/
-sudo mkdir -p /var/www/certbot
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-Point DNS A records for `wallbang.xyz` and `www` at `APP_VM_IP`, then:
-
-```bash
-sudo certbot --nginx -d wallbang.xyz -d www.wallbang.xyz
-```
-
-### 6. DNS cutover
-
-1. A `wallbang.xyz` (+ `www`) → `APP_VM_IP`
-2. Remove previous Vercel DNS records
-3. Verify HTTPS, `/api/servers`, and the live UI
-4. Pause or delete the Vercel project when stable
-
-### Update loop
+Update loop:
 
 ```bash
 git pull
-docker compose --env-file .env.production up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 ```
 
-### Verification checklist
+### TLS
 
-- [ ] `https://wallbang.xyz` and `/servers` load
-- [ ] `/api/servers` → `online: true`, prod IP, `maxPlayers: 10`
-- [ ] Hero card + list show live map/players
-- [ ] `steam://connect/200.97.169.27:27015` works
-- [ ] Atlas `serverStatus` collection + TTL index on `lastPolled`
-- [ ] Container restarts after reboot (`restart: unless-stopped`)
-- [ ] Local `npm run dev` still targets staging
+1. DNS A → VPS IP  
+2. Place certs in `nginx/certs/wallbang.xyz/{fullchain.pem,privkey.pem}`  
+3. `cp nginx/conf.d/wallbang.ssl.conf.example nginx/conf.d/wallbang.conf`  
+4. Reload nginx container  
 
-## Legacy — Vercel (optional)
+### CI/CD
 
-Previously used for hosting. Prefer Oracle Docker for this project so A2S UDP works on a real Node runtime next to the game servers.
+Push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) over SSH.  
+Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
+
+### Backups
 
 ```bash
-npx vercel login
-npx vercel --prod
+./scripts/backup_db.sh
+./scripts/restore_db.sh backups/db/mongo_YYYYMMDD_HHMMSS.archive.gz
 ```
 
-If you still use Vercel temporarily, set `MONGODB_URI` and the `NEXT_PUBLIC_*` vars in the Vercel project settings. Pinning to `bom1` via `vercel.json` only applies on Vercel.
+## Live server status
 
-## Architecture notes
+- `GET /api/health` — liveness for Docker / uptime checks  
+- `GET /api/servers` — A2S name/map/players + Mongo cache  
 
-- Marketing routes live under `app/(marketing)`
-- Live status: `lib/a2s.ts`, `lib/mongo.ts`, `lib/servers/status.ts`, `app/api/servers/route.ts`
-- Static server definitions: `config/servers.ts`
-- Feature flags in `config/features.flags.ts` for future auth/dashboard modules
-- SEO helpers in `seo/`
+Hero card and `/servers` poll every 10s.
+
+## Optional Compose profiles
+
+| Profile | Purpose |
+|---|---|
+| `discord` | Discord bot container (`./discord-bot` + token) |
+| `watchtower` | Auto-pull newer images |
+
+```bash
+docker compose -f docker-compose.prod.yml --profile watchtower --env-file .env up -d
+```
+
+## Security (host)
+
+- UFW: 22, 80, 443, CS2 UDP 27015–27020  
+- SSH keys only + Fail2Ban  
+- Non-root Next.js container user `wallbang`  
+- Never commit `.env`
+
+## Legacy
+
+- Vercel is optional/legacy — A2S UDP needs a real VPS Node runtime.  
+- Older Oracle-oriented notes remain in [docs/oracle-cutover.md](docs/oracle-cutover.md); prefer Hostinger docs for the executive-summary stack.

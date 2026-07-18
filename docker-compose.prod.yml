@@ -1,0 +1,146 @@
+# Production stack for Hostinger KVM2 (alongside native wallbang-cs2-server).
+#
+# Layout on VPS:
+#   /home/wallbang/wallbang-cs2-server/   (native CS2 — not managed here)
+#   /home/wallbang/wallbang-xyz/          (this repo)
+#
+# Quick start:
+#   cp .env.production.example .env
+#   # edit secrets in .env
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#
+# Optional Discord bot (when ./discord-bot exists + token set):
+#   docker compose -f docker-compose.prod.yml --profile discord up -d
+
+name: wallbang-xyz
+
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://wallbang.xyz}
+        NEXT_PUBLIC_DISCORD_URL: ${NEXT_PUBLIC_DISCORD_URL:-https://discord.gg/KY2dRw8Yh4}
+        NEXT_PUBLIC_RETAKE_HOST: ${NEXT_PUBLIC_RETAKE_HOST:-}
+    container_name: wallbang-next
+    restart: always
+    networks:
+      - wallbang-net
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: ${MONGODB_URI:-mongodb://wallbang:${MONGO_PASSWORD:-wallbang}@db:27017/wallbang?authSource=admin}
+      MONGODB_DB: ${MONGODB_DB:-wallbang}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    # Bound to localhost so only nginx (or host tools) reach the app directly.
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3000/api/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: mongo:7
+    container_name: wallbang-db
+    restart: always
+    networks:
+      - wallbang-net
+    volumes:
+      - mongodata:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: wallbang
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-wallbang}
+      MONGO_INITDB_DATABASE: wallbang
+    # Not published to the host by default — app reaches db:27017 on wallbang-net.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh -u wallbang -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --quiet --eval \"db.adminCommand('ping')\"",
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: wallbang-redis
+    restart: always
+    networks:
+      - wallbang-net
+    volumes:
+      - redisdata:/data
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: wallbang-nginx
+    restart: always
+    networks:
+      - wallbang-net
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./logs/nginx:/var/log/nginx
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      nextjs:
+        condition: service_healthy
+
+  # Optional: auto-update images. Enable with --profile watchtower.
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    container_name: wallbang-watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup wallbang-next wallbang-redis wallbang-db wallbang-nginx
+    profiles: ["watchtower"]
+
+  # Enable with --profile discord once ./discord-bot is present and DISCORD_BOT_TOKEN is set.
+  discord-bot:
+    image: node:20-alpine
+    container_name: wallbang-discord
+    restart: always
+    networks:
+      - wallbang-net
+    working_dir: /bot
+    volumes:
+      - ./discord-bot:/bot
+    command: ["sh", "-c", "npm ci --omit=dev && npm start"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    profiles: ["discord"]
+
+volumes:
+  mongodata:
+  redisdata:
+
+networks:
+  wallbang-net:
+    driver: bridge
