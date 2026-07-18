@@ -1,0 +1,9 @@
+# Convenience alias — production stack lives in docker-compose.prod.yml.
+# Prefer:
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#
+# This file keeps the earlier single-service host-nginx layout for simple
+# VPS deploys that do not want the full mongo/redis/nginx stack.
+
+include:
+  - path: docker-compose.prod.yml

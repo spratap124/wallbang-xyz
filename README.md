@@ -1,69 +1,132 @@
 # WallBang.xyz
 
-Production marketing foundation for the WallBang Counter-Strike 2 competitive platform.
+Marketing site + live CS2 server status for the WallBang Counter-Strike 2 platform.
 
 ## Stack
 
-- Next.js 15 (App Router) · React 19 · TypeScript (strict)
-- Tailwind CSS · shadcn/ui · Framer Motion (minimal)
-- React Hook Form · Zod · Lucide
-- MDX blog via `content/blog`
-- `output: "standalone"` for VPS / Docker portability
+- Next.js 15 (App Router) · React 19 · TypeScript
+- Docker Compose production stack: **Next.js · MongoDB · Redis · nginx** (+ optional Discord bot / Watchtower)
+- Live server status via A2S UDP (`/api/servers`) with Mongo snapshot cache
+- Host target: **Hostinger KVM2** alongside native `wallbang-cs2-server`
 
 ## Scripts
 
 ```bash
 npm install
-npm run dev
+npm run dev          # staging retake 129.159.232.212
 npm run build
 npm run start
 npm run lint
 npm run typecheck
 ```
 
+## Repository layout (production)
+
+```text
+wallbang-xyz/
+├── app/                      # Next.js App Router (frontend + API)
+├── Dockerfile                # multi-stage standalone build
+├── docker-compose.prod.yml   # nextjs, db, redis, nginx, optional bot/watchtower
+├── .env.production.example   # copy to .env on the VPS
+├── nginx/conf.d/             # reverse-proxy vhosts
+├── scripts/                  # bootstrap, backup, restore
+├── backups/                  # DB dumps (gitignored contents)
+├── discord-bot/              # optional (Compose profile)
+└── .github/workflows/deploy.yml
+```
+
+On the VPS keep CS2 **outside** Compose:
+
+```text
+/home/wallbang/wallbang-cs2-server/   # native
+/home/wallbang/wallbang-xyz/          # this repo
+```
+
 ## Environment
 
-Copy `.env.example` to `.env.local`:
+### Local
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://wallbang.xyz
-NEXT_PUBLIC_DISCORD_URL=https://discord.gg/KY2dRw8Yh4
+cp .env.example .env.local
 ```
 
-## Deploy (Vercel — free)
+- Dev host for Retake #1 → staging `129.159.232.212:27015`
+- Production builds → `200.97.169.27:27015`
+- Override with `NEXT_PUBLIC_RETAKE_HOST`
 
-Repo: https://github.com/spratap124/wallbang-xyz
-
-1. Open [vercel.com/new](https://vercel.com/new) and import `spratap124/wallbang-xyz`.
-2. Framework preset: **Next.js** (auto-detected).
-3. Add environment variables:
-   - `NEXT_PUBLIC_SITE_URL` = your Vercel URL first (e.g. `https://wallbang-xyz.vercel.app`), then switch to `https://wallbang.xyz` after the domain is connected
-   - `NEXT_PUBLIC_DISCORD_URL` = `https://discord.gg/KY2dRw8Yh4`
-4. Deploy.
-
-### Custom domain later
-
-Vercel project → **Settings → Domains** → add `wallbang.xyz` (and `www` if you want). Point DNS as Vercel instructs.
-
-### CLI alternative
+### Production VPS
 
 ```bash
-npx vercel login
-npx vercel --prod
+cp .env.production.example .env
+# set MONGO_PASSWORD and matching password inside MONGODB_URI
 ```
 
-## Deployment (Oracle Ubuntu + Nginx)
+## Deploy on Hostinger KVM2
 
-1. Build on CI or the VPS: `npm ci && npm run build`
-2. Run the standalone server from `.next/standalone` (or Docker later)
-3. Reverse-proxy with Nginx to `127.0.0.1:3000`
-4. Point `wallbang.xyz` DNS at the VPS
+Full guide: [docs/hostinger-deploy.md](docs/hostinger-deploy.md)
 
-See `nginx/wallbang.xyz.conf.example` for a starting proxy config.
+```bash
+bash scripts/hostinger-bootstrap.sh
+# or:
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+curl -fsS http://127.0.0.1:3000/api/health
+```
 
-## Architecture notes
+Update loop:
 
-- Marketing routes live under `app/(marketing)`
-- API abstractions in `lib/api` (waitlist is mocked)
-- Feature flags in `config/features.flags.ts` for future auth/dashboard modules
-- SEO helpers in `seo/`
+```bash
+git pull
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
+### TLS
+
+1. DNS A → VPS IP  
+2. Place certs in `nginx/certs/wallbang.xyz/{fullchain.pem,privkey.pem}`  
+3. `cp nginx/conf.d/wallbang.ssl.conf.example nginx/conf.d/wallbang.conf`  
+4. Reload nginx container  
+
+### CI/CD
+
+Push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) over SSH.  
+Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
+
+### Backups
+
+```bash
+./scripts/backup_db.sh
+./scripts/restore_db.sh backups/db/mongo_YYYYMMDD_HHMMSS.archive.gz
+```
+
+## Live server status
+
+- `GET /api/health` — liveness for Docker / uptime checks  
+- `GET /api/servers` — A2S name/map/players + Mongo cache  
+
+Hero card and `/servers` poll every 10s.
+
+## Optional Compose profiles
+
+| Profile | Purpose |
+|---|---|
+| `discord` | Discord bot container (`./discord-bot` + token) |
+| `watchtower` | Auto-pull newer images |
+
+```bash
+docker compose -f docker-compose.prod.yml --profile watchtower --env-file .env up -d
+```
+
+## Security (host)
+
+- UFW: 22, 80, 443, CS2 UDP 27015–27020  
+- SSH keys only + Fail2Ban  
+- Non-root Next.js container user `wallbang`  
+- Never commit `.env`
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): lint, typecheck, and production build on PRs / pushes
+- **Deploy** (`.github/workflows/deploy.yml`): SSH to Hostinger and `docker compose up -d --build` on push/merge to `main`
+
+Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (see [docs/hostinger-deploy.md](docs/hostinger-deploy.md)).
+

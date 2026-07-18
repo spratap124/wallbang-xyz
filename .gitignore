@@ -24,6 +24,9 @@ dist
 # Env
 .env
 .env*.local
+.env.production
+!.env.production.example
+!.env.example
 
 # Debug / OS
 npm-debug.log*
@@ -44,3 +47,15 @@ next-env.d.ts
 # Docker
 docker-compose.override.yml
 .vercel
+
+# Runtime data on the VPS (keep directory placeholders)
+backups/**
+!backups/.gitkeep
+logs/**
+!logs/**/.gitkeep
+certbot/www/**
+!certbot/www/.gitkeep
+nginx/certs/**
+!nginx/certs/.gitkeep
+secrets/
+*.archive.gz
