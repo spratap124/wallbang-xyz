@@ -9,7 +9,7 @@ import {
   SteamAuthControlsMobile,
 } from "@/components/auth/steam-auth-controls";
 import { BrandMark, Logo } from "@/components/shared/primitives";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -18,7 +18,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { mainNav } from "@/config/navigation";
-import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
 
@@ -56,16 +55,6 @@ export function SiteHeader({ user, steamAuthEnabled }: SiteHeaderProps) {
 
         <div className="flex items-center gap-2">
           <SteamAuthControls user={user} enabled={steamAuthEnabled} />
-          <a
-            href={siteConfig.discordUrl}
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ size: "sm" }),
-              "hidden sm:inline-flex",
-            )}
-          >
-            Join Discord
-          </a>
 
           <Sheet>
             <SheetTrigger
@@ -100,13 +89,6 @@ export function SiteHeader({ user, steamAuthEnabled }: SiteHeaderProps) {
                   user={user}
                   enabled={steamAuthEnabled}
                 />
-                <a
-                  href={siteConfig.discordUrl}
-                  rel="noopener noreferrer"
-                  className="mt-4 rounded-md bg-primary px-3 py-3 text-center text-sm font-medium text-primary-foreground"
-                >
-                  Join Discord
-                </a>
               </nav>
             </SheetContent>
           </Sheet>
