@@ -29,10 +29,12 @@ export type GameServer = {
  * It must be NEXT_PUBLIC_ so the client seed and server API resolve the same
  * host; the IP is public anyway (it's in the CS2 server browser).
  */
+// Treat empty string as unset — Compose often passes NEXT_PUBLIC_RETAKE_HOST=
+// which would otherwise win over ?? and bake an empty host into the build.
 const RETAKE_HOST =
-  process.env.NEXT_PUBLIC_RETAKE_HOST ??
+  process.env.NEXT_PUBLIC_RETAKE_HOST?.trim() ||
   (process.env.NODE_ENV === "production"
-    ? "200.97.169.27" // prod game server
+    ? "200.97.169.27" // prod game server (Hostinger)
     : "129.159.232.212"); // staging server
 
 export const servers: GameServer[] = [

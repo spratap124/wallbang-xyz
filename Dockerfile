@@ -17,7 +17,9 @@ COPY . .
 # NEXT_PUBLIC_* are inlined at build time — pass via Compose build.args.
 ARG NEXT_PUBLIC_SITE_URL=https://wallbang.xyz
 ARG NEXT_PUBLIC_DISCORD_URL=https://discord.gg/KY2dRw8Yh4
-ARG NEXT_PUBLIC_RETAKE_HOST=
+# Leave unset by default so config/servers.ts can apply prod/staging defaults.
+# Pass a non-empty value only when you intentionally override the retake host.
+ARG NEXT_PUBLIC_RETAKE_HOST
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_DISCORD_URL=$NEXT_PUBLIC_DISCORD_URL
 ENV NEXT_PUBLIC_RETAKE_HOST=$NEXT_PUBLIC_RETAKE_HOST
