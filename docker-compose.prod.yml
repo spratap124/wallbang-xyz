@@ -6,7 +6,7 @@
 #
 # Quick start:
 #   cp .env.production.example .env
-#   # edit secrets in .env
+#   # set MONGO_PASSWORD (required — no default)
 #   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 #
 # Optional Discord bot (when ./discord-bot exists + token set):
@@ -32,14 +32,11 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      MONGODB_URI: ${MONGODB_URI:-mongodb://wallbang:${MONGO_PASSWORD:-wallbang}@db:27017/wallbang?authSource=admin}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://wallbang:${MONGO_PASSWORD}@db:27017/wallbang?authSource=admin}
       MONGODB_DB: ${MONGODB_DB:-wallbang}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
     # Bound to localhost so only nginx (or host tools) reach the app directly.
     ports:
       - "127.0.0.1:3000:3000"
@@ -68,7 +65,8 @@ services:
       - mongodata:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: wallbang
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-wallbang}
+      # Fail closed: Compose refuses to start if MONGO_PASSWORD is unset.
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}
       MONGO_INITDB_DATABASE: wallbang
     # Not published to the host by default — app reaches db:27017 on wallbang-net.
     healthcheck:
@@ -82,6 +80,8 @@ services:
       retries: 5
       start_period: 20s
 
+  # Unused by the Next.js app today. Enable with --profile redis or --profile discord.
+  # Stays on the internal network only (no host ports). Set REDIS_PASSWORD before enabling.
   redis:
     image: redis:7-alpine
     container_name: wallbang-redis
@@ -90,7 +90,18 @@ services:
       - wallbang-net
     volumes:
       - redisdata:/data
-    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    command:
+      [
+        "redis-server",
+        "--save",
+        "60",
+        "1",
+        "--loglevel",
+        "warning",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+      ]
+    profiles: ["redis", "discord"]
 
   nginx:
     image: nginx:1.27-alpine
@@ -103,6 +114,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/includes:/etc/nginx/includes:ro
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./logs/nginx:/var/log/nginx
       - ./certbot/www:/var/www/certbot:ro
@@ -117,7 +129,7 @@ services:
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 --cleanup wallbang-next wallbang-redis wallbang-db wallbang-nginx
+    command: --interval 300 --cleanup wallbang-next wallbang-db wallbang-nginx
     profiles: ["watchtower"]
 
   # Enable with --profile discord once ./discord-bot is present and DISCORD_BOT_TOKEN is set.
@@ -133,6 +145,8 @@ services:
     command: ["sh", "-c", "npm ci --omit=dev && npm start"]
     env_file:
       - .env
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379}
     depends_on:
       - redis
     profiles: ["discord"]

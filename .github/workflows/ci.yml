@@ -5,11 +5,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      branch:
-        description: "Branch to deploy on the VPS"
-        required: true
-        default: main
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -48,19 +46,10 @@ jobs:
     name: Deploy to Hostinger
     needs: build
     if: >
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve deploy branch
-        id: meta
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "branch=${{ inputs.branch }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "branch=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -72,7 +61,7 @@ jobs:
           command_timeout: 20m
           script: |
             set -euo pipefail
-            BRANCH="${{ steps.meta.outputs.branch }}"
+            BRANCH="main"
             APP_DIR="/home/ubuntu/wallbang-xyz"
 
             cd "$APP_DIR"
@@ -85,7 +74,7 @@ jobs:
             git checkout -B "$BRANCH" "origin/$BRANCH"
             git reset --hard "origin/$BRANCH"
 
-            sudo docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+            sudo docker compose -f docker-compose.prod.yml --env-file .env up -d --build --remove-orphans
             sudo docker image prune -f
 
             for i in 1 2 3 4 5 6 7 8 9 10; do
