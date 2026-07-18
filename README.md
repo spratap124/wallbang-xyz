@@ -32,7 +32,7 @@ wallbang-xyz/
 ├── scripts/                  # bootstrap, backup, restore
 ├── backups/                  # DB dumps (gitignored contents)
 ├── discord-bot/              # optional (Compose profile)
-└── .github/workflows/deploy.yml
+└── .github/workflows/ci.yml
 ```
 
 On the VPS keep CS2 **outside** Compose:
@@ -88,7 +88,7 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 
 ### CI/CD
 
-Push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) over SSH.  
+Push/merge to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml): build first, then SSH deploy only if build passes.  
 Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
 
 ### Backups
@@ -126,7 +126,7 @@ docker compose -f docker-compose.prod.yml --profile watchtower --env-file .env u
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`): lint, typecheck, and production build on PRs / pushes
-- **Deploy** (`.github/workflows/deploy.yml`): SSH to Hostinger and `docker compose up -d --build` on push/merge to `main`
+- **Deploy** (same workflow): SSH to Hostinger only after a green build on `main` (or manual `workflow_dispatch`)
 
 Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (see [docs/hostinger-deploy.md](docs/hostinger-deploy.md)).
 

@@ -57,8 +57,7 @@ First-boot HTTP-only config lives at `nginx/conf.d/wallbang.http.conf.example`.
 
 GitHub Actions:
 
-- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint, typecheck, and `next build` on PRs / pushes
-- [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) — SSH deploy to Hostinger on push/merge to `main` (also manual `workflow_dispatch`)
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint/typecheck/`next build` on PRs and pushes; SSH deploy to Hostinger only after a green build on `main` (also manual `workflow_dispatch`)
 
 Required repo secrets:
 
