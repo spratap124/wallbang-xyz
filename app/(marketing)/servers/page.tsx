@@ -1,4 +1,5 @@
 import { ServersSection } from "@/components/home/servers-section";
+import { LiveServersProvider } from "@/components/servers/live-servers-provider";
 import { Container, SectionHeading } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
@@ -28,7 +29,9 @@ export default function ServersPage() {
           description="India-first retake servers with one-click Steam connect. More regions and modes will appear here as WallBang expands."
         />
       </Container>
-      <ServersSection showHeading={false} />
+      <LiveServersProvider>
+        <ServersSection showHeading={false} />
+      </LiveServersProvider>
     </div>
   );
 }
