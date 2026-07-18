@@ -44,12 +44,14 @@ curl -fsS http://127.0.0.1:3000/api/servers | jq
 1. Point DNS A records for `wallbang.xyz` / `www` at the VPS IP.
 2. Issue certs (host certbot webroot into `certbot/www`, or Cloudflare DNS-01).
 3. Place `fullchain.pem` + `privkey.pem` in `nginx/certs/wallbang.xyz/`.
-4. Enable SSL vhost:
+4. Ensure the TLS vhost is active (`nginx/conf.d/wallbang.conf` in git is TLS by default):
 
 ```bash
-cp nginx/conf.d/wallbang.ssl.conf.example nginx/conf.d/wallbang.conf
+git checkout -- nginx/conf.d/wallbang.conf
 docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
+
+First-boot HTTP-only config lives at `nginx/conf.d/wallbang.http.conf.example`.
 
 ## CI/CD
 

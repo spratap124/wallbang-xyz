@@ -83,7 +83,7 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 
 1. DNS A → VPS IP  
 2. Place certs in `nginx/certs/wallbang.xyz/{fullchain.pem,privkey.pem}`  
-3. `cp nginx/conf.d/wallbang.ssl.conf.example nginx/conf.d/wallbang.conf`  
+3. `git checkout -- nginx/conf.d/wallbang.conf` (TLS vhost is the repo default)  
 4. Reload nginx container  
 
 ### CI/CD

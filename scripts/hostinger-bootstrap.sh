@@ -43,6 +43,11 @@ fi
 cd "${APP_DIR}"
 mkdir -p backups/db logs nginx/certs
 
+# First boot without certs: use HTTP-only nginx so ACME + health checks work.
+if [[ ! -f nginx/certs/wallbang.xyz/fullchain.pem ]]; then
+  cp nginx/conf.d/wallbang.http.conf.example nginx/conf.d/wallbang.conf
+fi
+
 if [[ ! -f .env ]]; then
   cp .env.production.example .env
   # Generate a mongo password if still placeholder
@@ -74,7 +79,7 @@ Next:
   1. Review ${APP_DIR}/.env (MONGO_PASSWORD, NEXT_PUBLIC_*, Discord token if using bot)
   2. Point DNS A records for wallbang.xyz (+ www) at this VPS public IP
   3. Issue TLS certs into nginx/certs/wallbang.xyz/ then:
-       cp nginx/conf.d/wallbang.ssl.conf.example nginx/conf.d/wallbang.conf
+       git checkout -- nginx/conf.d/wallbang.conf   # restore TLS vhost from repo
        docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
   4. Optional daily DB backup:
        sudo ln -sf ${APP_DIR}/scripts/backup_db.sh /etc/cron.daily/wallbang-db-backup
