@@ -1,5 +1,15 @@
-# Example Nginx reverse proxy for WallBang on an Ubuntu VPS.
-# Replace TLS paths and enable after certbot (or your preferred TLS flow).
+# Nginx reverse proxy for WallBang on the Oracle Always Free app VM.
+# Docker Compose binds the Next.js app to 127.0.0.1:3000; nginx terminates TLS.
+#
+# Install:
+#   sudo cp nginx/wallbang.xyz.conf.example /etc/nginx/sites-available/wallbang.xyz
+#   sudo ln -sf /etc/nginx/sites-available/wallbang.xyz /etc/nginx/sites-enabled/
+#   sudo mkdir -p /var/www/certbot
+#   sudo nginx -t && sudo systemctl reload nginx
+#   # after DNS A records point here:
+#   sudo certbot --nginx -d wallbang.xyz -d www.wallbang.xyz
+#
+# Certbot will uncomment/fill the ssl_certificate lines automatically when using --nginx.
 
 server {
     listen 80;
