@@ -1,4 +1,4 @@
-import type { RoleCode, RoleSource } from "../types/permissions";
+import type { RoleCode, RoleSource } from "../../types/permissions";
 
 /** Marker written on seeded docs so cleanup can find them safely. */
 export const DUMMY_SEED_TAG = "wb-dummy-rbac";

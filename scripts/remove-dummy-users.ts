@@ -26,7 +26,11 @@ async function main() {
   await client.connect();
   const db = client.db(dbName);
 
-  const users = db.collection("users");
+  const users = db.collection<{
+    _id: string;
+    steamId: string;
+    seedTag?: string;
+  }>("users");
   const userRoles = db.collection("user_roles");
   const audit = db.collection("audit_logs");
 
@@ -36,7 +40,7 @@ async function main() {
     })
     .toArray();
 
-  const userIds = dummyUsers.map((u) => u._id as string);
+  const userIds = dummyUsers.map((u) => u._id);
 
   const rolesDeleted = await userRoles.deleteMany({
     $or: [

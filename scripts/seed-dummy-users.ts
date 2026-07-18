@@ -39,10 +39,38 @@ async function main() {
   const db = client.db(dbName);
   const now = new Date();
 
-  const users = db.collection("users");
+  const users = db.collection<{
+    _id: string;
+    steamId: string;
+    personaName?: string;
+    seedTag?: string;
+  }>("users");
   const rolesCol = db.collection<{ _id: string; code: RoleCode }>("roles");
-  const userRoles = db.collection("user_roles");
-  const audit = db.collection("audit_logs");
+  const userRoles = db.collection<{
+    _id: string;
+    userId: string;
+    roleId: string;
+    roleCode: RoleCode;
+    source: string;
+    grantedBy: string | null;
+    grantedAt: Date;
+    expiresAt: Date | null;
+    active: boolean;
+    seedTag?: string;
+  }>("user_roles");
+  const audit = db.collection<{
+    _id: string;
+    adminId: string | null;
+    adminSteamId: string | null;
+    action: string;
+    targetUserId: string;
+    targetSteamId: string;
+    targetPersonaName: string | null;
+    oldValue: Record<string, unknown> | null;
+    newValue: Record<string, unknown> | null;
+    timestamp: Date;
+    seedTag?: string;
+  }>("audit_logs");
 
   // Ensure role catalog exists (run seed:permissions first if empty).
   const roleDocs = await rolesCol.find({}).toArray();
