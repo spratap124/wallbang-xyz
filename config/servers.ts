@@ -66,6 +66,7 @@ export const mapImages: Record<string, string> = {
   de_nuke: "/maps/de_nuke.png",
   de_anubis: "/maps/de_anubis.png",
   de_ancient: "/maps/de_ancient.png",
+  de_vertigo: "/maps/de_vertigo.png",
 };
 
 export function getMapImage(map: string): string {
