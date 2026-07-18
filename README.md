@@ -26,7 +26,7 @@ npm run typecheck
 wallbang-xyz/
 ├── app/                      # Next.js App Router (frontend + API)
 ├── Dockerfile                # multi-stage standalone build
-├── docker-compose.prod.yml   # nextjs, db, redis, nginx, optional bot/watchtower
+├── docker-compose.prod.yml   # nextjs, db, nginx; optional redis/bot/watchtower profiles
 ├── .env.production.example   # copy to .env on the VPS
 ├── nginx/conf.d/             # reverse-proxy vhosts
 ├── scripts/                  # bootstrap, backup, restore

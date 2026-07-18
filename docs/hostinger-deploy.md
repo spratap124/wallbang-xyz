@@ -5,7 +5,7 @@ Target host: Hostinger KVM2 (2 vCPU / 8 GB) running native CS2 beside the Docker
 ```text
 /home/wallbang/
 ├── wallbang-cs2-server/     # native CS2 — not managed by Compose
-└── wallbang-xyz/            # this repo (Next.js + mongo + redis + nginx)
+└── wallbang-xyz/            # this repo (Next.js + mongo + nginx; redis optional)
 ```
 
 ## Architecture
@@ -15,10 +15,9 @@ flowchart LR
   Browser[Browser] --> Nginx[nginx container]
   Nginx --> Next[nextjs container]
   Next --> Mongo[mongo container]
-  Next --> Redis[redis container]
   Next -->|A2S UDP| CS2[CS2 native process]
   Discord[Discord] -.->|optional profile| Bot[discord-bot]
-  Bot -.-> Redis
+  Bot -.-> Redis[redis optional]
 ```
 
 ## One-shot bootstrap
@@ -51,20 +50,27 @@ git checkout -- nginx/conf.d/wallbang.conf
 docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
 
+5. Auto-renew: point certbot’s deploy hook at [`scripts/renew-certs.sh`](../scripts/renew-certs.sh):
+
+```bash
+sudo ln -sf "$(pwd)/scripts/renew-certs.sh" /etc/letsencrypt/renewal-hooks/deploy/wallbang-nginx
+sudo certbot renew --dry-run
+```
+
 First-boot HTTP-only config lives at `nginx/conf.d/wallbang.http.conf.example`.
 
 ## CI/CD
 
 GitHub Actions:
 
-- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint/typecheck/`next build` on PRs and pushes; SSH deploy to Hostinger only after a green build on `main` (also manual `workflow_dispatch`)
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint/typecheck/`next build` on PRs and pushes; SSH deploy to Hostinger only after a green build on `main` (manual `workflow_dispatch` also deploys `main` only)
 
-Required repo secrets:
+Required repo secrets (set in GitHub; do not commit values):
 
-| Secret | Value |
+| Secret | Description |
 |---|---|
-| `VPS_HOST` | `200.97.169.27` |
-| `VPS_USER` | `ubuntu` |
+| `VPS_HOST` | Hostinger VPS public IP |
+| `VPS_USER` | SSH user (e.g. `ubuntu`) |
 | `VPS_SSH_KEY` | Private key whose public half is in `~/.ssh/authorized_keys` on the VPS |
 
 Deploy path on the VPS: `/home/ubuntu/wallbang-xyz` (uses `github.com-xyz` remote + `docker compose -f docker-compose.prod.yml`).

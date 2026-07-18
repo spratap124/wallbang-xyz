@@ -50,12 +50,18 @@ fi
 
 if [[ ! -f .env ]]; then
   cp .env.production.example .env
-  # Generate a mongo password if still placeholder
+  # Generate a mongo password if still placeholder and sync MONGODB_URI
   if grep -q 'CHANGE_ME_MONGO' .env 2>/dev/null || grep -q 'MONGO_PASSWORD=$' .env; then
     PW="$(openssl rand -base64 24 | tr -d '\n=/+' | cut -c1-24)"
     sed -i "s|^MONGO_PASSWORD=.*|MONGO_PASSWORD=${PW}|" .env || true
+    sed -i "s|^MONGODB_URI=mongodb://wallbang:CHANGE_ME_MONGO@|MONGODB_URI=mongodb://wallbang:${PW}@|" .env || true
   fi
   echo "!! Created .env — review secrets before going public."
+fi
+
+if ! grep -qE '^MONGO_PASSWORD=.+' .env || grep -q 'CHANGE_ME_MONGO' .env; then
+  echo "ERROR: Set a real MONGO_PASSWORD in ${APP_DIR}/.env before starting."
+  exit 1
 fi
 
 echo "==> Starting production compose stack…"
@@ -81,6 +87,7 @@ Next:
   3. Issue TLS certs into nginx/certs/wallbang.xyz/ then:
        git checkout -- nginx/conf.d/wallbang.conf   # restore TLS vhost from repo
        docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
+       # Optional renew hook: sudo ln -sf ${APP_DIR}/scripts/renew-certs.sh /etc/letsencrypt/renewal-hooks/deploy/wallbang-nginx
   4. Optional daily DB backup:
        sudo ln -sf ${APP_DIR}/scripts/backup_db.sh /etc/cron.daily/wallbang-db-backup
   5. Keep wallbang-cs2-server/ running natively (not managed by this Compose file)
