@@ -1,5 +1,16 @@
 "use client";
 
+import { ChevronDown, LogOut, User } from "lucide-react";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { AuthUser } from "@/types/auth";
 
 type SteamAuthControlsProps = {
@@ -20,6 +31,37 @@ function SteamMark({ className }: { className?: string }) {
   );
 }
 
+function UserAvatar({
+  user,
+  size = 24,
+}: {
+  user: AuthUser;
+  size?: number;
+}) {
+  if (user.avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- Steam CDN avatars; domains vary
+      <img
+        src={user.avatarUrl}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="flex items-center justify-center rounded-full bg-secondary text-[0.65rem]"
+      style={{ width: size, height: size }}
+    >
+      {user.personaName.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
 async function signOut() {
   await fetch("/api/auth/logout", { method: "POST" });
   window.location.href = "/";
@@ -30,36 +72,45 @@ export function SteamAuthControls({ user, enabled }: SteamAuthControlsProps) {
 
   if (user) {
     return (
-      <div className="hidden items-center gap-2 sm:flex">
-        <a
-          href={user.profileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex max-w-[10rem] items-center gap-2 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {user.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- Steam CDN avatars; domains vary
-            <img
-              src={user.avatarUrl}
-              alt=""
-              width={24}
-              height={24}
-              className="size-6 rounded-full"
-            />
-          ) : (
-            <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-[0.65rem]">
-              {user.personaName.slice(0, 1).toUpperCase()}
-            </span>
-          )}
-          <span className="truncate">{user.personaName}</span>
-        </a>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="rounded-md px-2 py-1.5 text-[0.8rem] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          Sign out
-        </button>
+      <div className="hidden sm:block">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className="flex max-w-[12rem] items-center gap-2 rounded-md px-1.5 py-1 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:bg-muted data-popup-open:text-foreground"
+            aria-label="Account menu"
+          >
+            <UserAvatar user={user} />
+            <span className="truncate">{user.personaName}</span>
+            <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52 min-w-52">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="truncate font-normal">
+                {user.personaName}
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              render={
+                <a
+                  href={user.profileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              }
+            >
+              <User />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => void signOut()}
+            >
+              <LogOut />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   }
@@ -83,31 +134,27 @@ export function SteamAuthControlsMobile({
 
   if (user) {
     return (
-      <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+      <div className="mt-4 flex flex-col gap-1 border-t border-border pt-4">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <UserAvatar user={user} size={32} />
+          <span className="truncate text-sm font-medium">{user.personaName}</span>
+        </div>
         <a
           href={user.profileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-secondary"
+          className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
         >
-          {user.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.avatarUrl}
-              alt=""
-              width={32}
-              height={32}
-              className="size-8 rounded-full"
-            />
-          ) : null}
-          <span className="truncate font-medium">{user.personaName}</span>
+          <User className="size-4" />
+          Profile
         </a>
         <button
           type="button"
           onClick={() => void signOut()}
-          className="rounded-md px-3 py-3 text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+          className="flex items-center gap-2 rounded-md px-3 py-3 text-left text-sm text-destructive hover:bg-secondary"
         >
-          Sign out
+          <LogOut className="size-4" />
+          Logout
         </button>
       </div>
     );
