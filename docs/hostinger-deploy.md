@@ -113,4 +113,6 @@ docker compose -f docker-compose.prod.yml --profile discord --env-file .env up -
 
 ## MongoDB Atlas alternative
 
-Compose defaults to the in-stack `db` service. To use Atlas instead, set `MONGODB_URI` in `.env` to your Atlas SRV string (and you may stop the local `db` service later if unused).
+Compose defaults to the in-stack `db` service. To use Atlas instead, set `MONGODB_URI` / `MONGODB_DB` in `.env` to your Atlas SRV string (and you may stop the local `db` service later if unused).
+
+**Dev vs prod:** use two Atlas databases (same cluster is fine) — `wallbang_dev` in local `.env.local`, `wallbang` on the VPS `.env`. Never point local at the prod DB.
