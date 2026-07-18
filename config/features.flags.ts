@@ -3,7 +3,7 @@
  * Keep marketing nav free of unfinished product surfaces.
  */
 export const featureFlags = {
-  steamAuth: false,
+  steamAuth: true,
   discordAuth: false,
   playerDashboard: false,
   leaderboards: false,

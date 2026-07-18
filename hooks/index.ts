@@ -1,2 +1,3 @@
-/** Reserved for future client hooks (auth session, player stats, VIP status). */
+/** Client hooks for auth session and future player stats / VIP status. */
+
 export {};
