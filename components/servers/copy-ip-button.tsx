@@ -9,13 +9,15 @@ import { cn } from "@/lib/utils";
 
 export function CopyIpButton({
   server,
+  address: addressProp,
   className,
 }: {
-  server: GameServer;
+  server?: GameServer;
+  address?: string;
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const address = `${server.host}:${server.port}`;
+  const address = addressProp ?? (server ? `${server.host}:${server.port}` : "");
 
   async function copyIp() {
     try {

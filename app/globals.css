@@ -159,6 +159,39 @@
   .animate-rise {
     animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  /* Slow drifting gradient wash for the hero backdrop */
+  .animate-gradient-pan {
+    background-size: 200% 200%;
+    animation: gradient-pan 18s ease-in-out infinite;
+  }
+
+  /* Live status pulse ring */
+  .animate-ping-pulse::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: ping-pulse 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  /* Soft glow on primary CTA hover */
+  .btn-glow {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
+    transition:
+      box-shadow 0.35s ease,
+      transform 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 0 28px -2px color-mix(in oklab, var(--primary) 65%, transparent);
+  }
+
+  .animate-float {
+    animation: float 7s ease-in-out infinite;
+  }
 }
 
 @keyframes rise {
@@ -169,6 +202,40 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes gradient-pan {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+@keyframes ping-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  75%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
   }
 }
 

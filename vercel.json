@@ -1,3 +1,8 @@
 {
-  "regions": ["bom1"]
+  "regions": ["bom1"],
+  "functions": {
+    "app/api/servers/route.ts": {
+      "maxDuration": 10
+    }
+  }
 }
