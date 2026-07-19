@@ -1,9 +1,4 @@
-import type {
-  LoadoutCategory,
-  SkinRarity,
-  WearName,
-  WeaponGroup,
-} from "@/types/loadout";
+import type { LoadoutCategory, SkinRarity, WearName, WeaponGroup } from "@/types/loadout";
 
 export const WEAR_RANGES: { name: WearName; min: number; max: number }[] = [
   { name: "Factory New", min: 0, max: 0.07 },
@@ -35,6 +30,7 @@ export const RARITY_COLORS: Record<SkinRarity, string> = {
   Covert: "#eb4b4b",
   Contraband: "#e4ae39",
   Extraordinary: "#e4ae39",
+  Unknown: "#9ca3af",
 };
 
 export const WEAPON_GROUPS: WeaponGroup[] = [
