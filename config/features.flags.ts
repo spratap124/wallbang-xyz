@@ -7,7 +7,7 @@ export const featureFlags = {
   discordAuth: false,
   playerDashboard: false,
   leaderboards: false,
-  playerProfiles: false,
+  playerProfiles: true,
   vipDashboard: false,
   inventory: false,
   statistics: false,

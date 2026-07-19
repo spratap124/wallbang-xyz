@@ -1,0 +1,16 @@
+export { ProfileBanner } from "@/components/profile/profile-banner";
+export { ProfileHeader } from "@/components/profile/profile-header";
+export { ProfileStats } from "@/components/profile/profile-stats";
+export { ProfileTabs } from "@/components/profile/profile-tabs";
+export { PlayerSummary } from "@/components/profile/player-summary";
+export { BadgeList } from "@/components/profile/badge-list";
+export { VipBadge, ProfileBadgeChip } from "@/components/profile/vip-badge";
+export { ActivityCard } from "@/components/profile/activity-card";
+export { WeaponCard } from "@/components/profile/weapon-card";
+export { MapCard } from "@/components/profile/map-card";
+export { CurrentServerCard } from "@/components/profile/current-server-card";
+export { Achievements } from "@/components/profile/achievements";
+export { SettingsSidebar } from "@/components/profile/settings-sidebar";
+export { ProfilePageView } from "@/components/profile/profile-page-view";
+export { EmptyStateCard } from "@/components/profile/empty-state-card";
+export { RecentMatches } from "@/components/profile/recent-matches";
