@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LogOut, Shield, User } from "lucide-react";
+import { ChevronDown, LogOut, Settings, Shield, User } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { featureFlags } from "@/config/features.flags";
 import type { AuthUser } from "@/types/auth";
 
 type SteamAuthControlsProps = {
@@ -95,18 +96,31 @@ export function SteamAuthControls({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              render={
-                <a
-                  href={user.profileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-            >
-              <User />
-              Profile
-            </DropdownMenuItem>
+            {featureFlags.playerProfiles ? (
+              <DropdownMenuItem render={<Link href="/profile" />}>
+                <User />
+                Profile
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                render={
+                  <a
+                    href={user.profileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                <User />
+                Profile
+              </DropdownMenuItem>
+            )}
+            {featureFlags.playerProfiles ? (
+              <DropdownMenuItem render={<Link href="/settings" />}>
+                <Settings />
+                Settings
+              </DropdownMenuItem>
+            ) : null}
             {showAdmin ? (
               <DropdownMenuItem render={<Link href="/admin" />}>
                 <Shield />
@@ -152,15 +166,34 @@ export function SteamAuthControlsMobile({
           <UserAvatar user={user} size={32} />
           <span className="truncate text-sm font-medium">{user.personaName}</span>
         </div>
-        <a
-          href={user.profileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
-        >
-          <User className="size-4" />
-          Profile
-        </a>
+        {featureFlags.playerProfiles ? (
+          <Link
+            href="/profile"
+            className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <User className="size-4" />
+            Profile
+          </Link>
+        ) : (
+          <a
+            href={user.profileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <User className="size-4" />
+            Profile
+          </a>
+        )}
+        {featureFlags.playerProfiles ? (
+          <Link
+            href="/settings"
+            className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <Settings className="size-4" />
+            Settings
+          </Link>
+        ) : null}
         {showAdmin ? (
           <Link
             href="/admin"

@@ -18,6 +18,7 @@ import {
 import { upsertSteamUser } from "@/lib/auth/users";
 import { isMongoConfigured } from "@/lib/mongo";
 import { onUserAuthenticated } from "@/lib/permissions/service";
+import { ensurePlayerDomain } from "@/lib/profile";
 import { rateLimit } from "@/lib/rate-limit";
 
 function redirectWithError(code: string): NextResponse {
@@ -52,6 +53,7 @@ export async function GET(request: Request): Promise<Response> {
     const profile = await fetchSteamPlayerSummary(steamId);
     const user = await upsertSteamUser(profile);
     await onUserAuthenticated(user);
+    await ensurePlayerDomain(user);
     const token = await createSessionToken(user);
 
     const response = NextResponse.redirect(new URL(returnTo, getSiteUrl()));
