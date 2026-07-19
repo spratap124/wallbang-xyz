@@ -14,3 +14,7 @@ export { SettingsSidebar } from "@/components/profile/settings-sidebar";
 export { ProfilePageView } from "@/components/profile/profile-page-view";
 export { EmptyStateCard } from "@/components/profile/empty-state-card";
 export { RecentMatches } from "@/components/profile/recent-matches";
+export { ActivityTimeline } from "@/components/profile/activity-timeline";
+export { ProfileCompletionBar } from "@/components/profile/profile-completion";
+export { PrivacySettingsForm } from "@/components/profile/privacy-settings-form";
+export { ProfilePrefsForm } from "@/components/profile/profile-prefs-form";

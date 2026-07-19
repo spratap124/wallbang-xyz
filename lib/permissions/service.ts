@@ -331,6 +331,19 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
 
   const resolved = await resolveFromUser(user);
   await syncDisplayRole(user._id, resolved.roles);
+
+  // Best-effort Player-domain badge + activity sync (non-blocking for RBAC).
+  try {
+    const { syncBadgeFromRole } = await import("@/lib/profile/activity");
+    await syncBadgeFromRole({
+      steamId: user.steamId,
+      roleCode: input.roleCode,
+      grantedBy: input.grantedBy?.id ?? null,
+    });
+  } catch (err) {
+    console.error("[grantRole] badge sync failed", err);
+  }
+
   return resolved;
 }
 

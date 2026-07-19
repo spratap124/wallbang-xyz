@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { PrivacySettingsForm } from "@/components/profile/privacy-settings-form";
 import { SettingsSidebar } from "@/components/profile/settings-sidebar";
 import { Container } from "@/components/shared/primitives";
 import {
@@ -14,7 +15,6 @@ import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { ensurePlayerDomain, getMyProfile } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
-import type { PrivacyLevel } from "@/types/profile";
 
 export const metadata = createPageMetadata({
   title: "Privacy Settings",
@@ -22,39 +22,6 @@ export const metadata = createPageMetadata({
   path: "/settings/privacy",
   noIndex: true,
 });
-
-const SECTIONS: Array<{
-  key: "stats" | "matchHistory" | "steamInventory" | "activity";
-  label: string;
-  description: string;
-}> = [
-  {
-    key: "stats",
-    label: "Stats",
-    description: "Quick stats and detailed performance numbers",
-  },
-  {
-    key: "matchHistory",
-    label: "Match History",
-    description: "Recent match results and scores",
-  },
-  {
-    key: "steamInventory",
-    label: "Steam Inventory",
-    description: "Inventory showcase on your profile",
-  },
-  {
-    key: "activity",
-    label: "Activity",
-    description: "Timeline of profile events",
-  },
-];
-
-function levelLabel(level: PrivacyLevel): string {
-  if (level === "friends") return "Friends Only";
-  if (level === "private") return "Private";
-  return "Public";
-}
 
 export default async function PrivacySettingsPage() {
   if (!featureFlags.playerProfiles) {
@@ -92,27 +59,11 @@ export default async function PrivacySettingsPage() {
             <CardHeader>
               <CardTitle>Visibility</CardTitle>
               <CardDescription>
-                Editing controls ship in Sprint 2. Current defaults are shown
-                below.
+                Changes apply immediately to your public profile.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {SECTIONS.map((section) => (
-                <div
-                  key={section.key}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{section.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {section.description}
-                    </p>
-                  </div>
-                  <span className="rounded-md border border-border px-2.5 py-1 font-mono text-xs">
-                    {levelLabel(profile.privacy[section.key])}
-                  </span>
-                </div>
-              ))}
+            <CardContent>
+              <PrivacySettingsForm initial={profile.privacy} />
             </CardContent>
           </Card>
         </div>

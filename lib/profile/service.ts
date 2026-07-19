@@ -26,10 +26,13 @@ import {
   playerStatsCollection,
 } from "@/lib/profile/collections";
 import {
-  computeProfileCompletion,
+  buildProfileCompletion,
   emptyStats,
   toQuickStats,
 } from "@/lib/profile/stats";
+import { resolveCurrentServer } from "@/lib/profile/presence";
+import { grantPlayerBadge as grantBadgeInternal } from "@/lib/profile/activity";
+import { canViewerAccess } from "@/lib/profile/privacy";
 
 const STEAM_ID64_RE = /^\d{17}$/;
 
@@ -183,7 +186,7 @@ function redactStatsForPrivacy(
   privacy: PrivacySettings,
   isOwner: boolean,
 ): QuickStats {
-  if (isOwner || privacy.stats === "public") return stats;
+  if (canViewerAccess(privacy.stats, isOwner)) return stats;
   return {
     matchesPlayed: 0,
     wins: 0,
@@ -258,7 +261,7 @@ export async function getPlayerProfile(
   );
 
   const displayName = profile.displayName?.trim() || user.personaName;
-  const profileCompletion = computeProfileCompletion({
+  const completion = buildProfileCompletion({
     hasAvatar: Boolean(user.avatarUrl),
     hasCountry: Boolean(profile.countryCode),
     hasBio: Boolean(profile.bio),
@@ -267,6 +270,7 @@ export async function getPlayerProfile(
     hasPreferredSide: Boolean(profile.preferredSide),
     hasMatches: statsDoc.matchesPlayed > 0,
   });
+  const currentServer = await resolveCurrentServer(steamId);
 
   return {
     steamId: user.steamId,
@@ -290,8 +294,9 @@ export async function getPlayerProfile(
       memberSince: user.createdAt.toISOString(),
       lastLoginAt: user.lastLoginAt.toISOString(),
       role,
-      profileCompletion,
-      currentServer: null,
+      profileCompletion: completion.percent,
+      completion,
+      currentServer,
       favoriteWeapon: profile.favoriteWeapon,
       favoriteMap: profile.favoriteMap,
       preferredSide: profile.preferredSide,
@@ -409,26 +414,7 @@ export async function grantPlayerBadge(input: {
   grantedBy: string | null;
   metadata?: Record<string, unknown> | null;
 }): Promise<PlayerBadgeDoc> {
-  await ensureProfileIndexes();
-  const col = await playerBadgesCollection();
-  const now = new Date();
-  const doc: PlayerBadgeDoc = {
-    _id: crypto.randomUUID(),
-    steamId: input.steamId,
-    badgeType: input.badgeType,
-    grantedAt: now,
-    grantedBy: input.grantedBy,
-    metadata: input.metadata ?? null,
-  };
-  await col.updateOne(
-    { steamId: input.steamId, badgeType: input.badgeType },
-    { $setOnInsert: doc },
-    { upsert: true },
-  );
-  const stored = await col.findOne({
-    steamId: input.steamId,
-    badgeType: input.badgeType,
-  });
-  return stored ?? doc;
+  const { badge } = await grantBadgeInternal(input);
+  return badge;
 }
 

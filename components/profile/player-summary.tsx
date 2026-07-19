@@ -4,7 +4,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatMonthYear, formatRelativeTime, formatStatValue } from "@/lib/profile/format";
+import { ProfileCompletionBar } from "@/components/profile/profile-completion";
+import {
+  formatMonthYear,
+  formatRelativeTime,
+  formatStatValue,
+} from "@/lib/profile/format";
 import { roleDisplayName } from "@/lib/profile/badges";
 import type { PlayerProfileView } from "@/types/profile";
 
@@ -37,7 +42,15 @@ export function PlayerSummary({ profile }: PlayerSummaryCardProps) {
       <CardHeader>
         <CardTitle>Player Summary</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {profile.isOwner ? (
+          <ProfileCompletionBar completion={summary.completion} />
+        ) : (
+          <SummaryRow
+            label="Profile Completion"
+            value={`${summary.profileCompletion}%`}
+          />
+        )}
         <dl>
           <SummaryRow label="SteamID64" value={summary.steamId} />
           <SummaryRow
@@ -50,12 +63,8 @@ export function PlayerSummary({ profile }: PlayerSummaryCardProps) {
           />
           <SummaryRow label="Role" value={roleDisplayName(summary.role)} />
           <SummaryRow
-            label="Profile Completion"
-            value={`${summary.profileCompletion}%`}
-          />
-          <SummaryRow
             label="Current Server"
-            value={summary.currentServer ?? "Offline"}
+            value={summary.currentServer?.serverName ?? "Offline"}
           />
           <SummaryRow
             label="Favorite Weapon"

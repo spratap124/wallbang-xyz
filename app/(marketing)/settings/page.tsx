@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProfilePrefsForm } from "@/components/profile/profile-prefs-form";
 import { SettingsSidebar } from "@/components/profile/settings-sidebar";
 import { Container } from "@/components/shared/primitives";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,9 @@ export default async function SettingsPage() {
 
   await ensurePlayerDomain(user);
   const profile = await getMyProfile(user);
+  if (!profile) {
+    redirect("/");
+  }
 
   return (
     <div className="py-10 sm:py-14">
@@ -56,9 +60,21 @@ export default async function SettingsPage() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Preferences</CardTitle>
+                <CardTitle>Profile preferences</CardTitle>
                 <CardDescription>
-                  Core account options for your profile.
+                  Favorite weapon, map, side, and display details.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProfilePrefsForm profile={profile} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Account</CardTitle>
+                <CardDescription>
+                  Steam-linked identity and shortcuts.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -78,40 +94,11 @@ export default async function SettingsPage() {
                   </Button>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Theme</p>
-                    <p className="text-xs text-muted-foreground">
-                      WallBang uses dark theme by default
-                    </p>
-                  </div>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    Dark
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Notifications</p>
-                    <p className="text-xs text-muted-foreground">
-                      Coming in a later sprint
-                    </p>
-                  </div>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    Soon
-                  </span>
-                </div>
-
                 <div className="rounded-lg border border-border/70 px-4 py-3">
                   <p className="text-xs tracking-wide text-muted-foreground uppercase">
                     SteamID64
                   </p>
                   <p className="mt-1 font-mono text-sm">{user.steamId}</p>
-                  {profile ? (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Display name: {profile.displayName}
-                    </p>
-                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -121,7 +108,7 @@ export default async function SettingsPage() {
                 <CardTitle>Delete Account</CardTitle>
                 <CardDescription>
                   Account deletion will be available after privacy controls
-                  ship.
+                  mature.
                 </CardDescription>
               </CardHeader>
               <CardContent>

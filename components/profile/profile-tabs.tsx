@@ -9,10 +9,10 @@ export const PROFILE_TABS = [
   { id: "overview", label: "Overview", comingSoon: false },
   { id: "stats", label: "Stats", comingSoon: true },
   { id: "matches", label: "Match History", comingSoon: true },
-  { id: "achievements", label: "Achievements", comingSoon: true },
+  { id: "achievements", label: "Achievements", comingSoon: false },
   { id: "servers", label: "Servers", comingSoon: true },
   { id: "friends", label: "Friends", comingSoon: true },
-  { id: "activity", label: "Activity", comingSoon: true },
+  { id: "activity", label: "Activity", comingSoon: false },
 ] as const;
 
 export type ProfileTabId = (typeof PROFILE_TABS)[number]["id"];

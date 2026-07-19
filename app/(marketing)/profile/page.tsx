@@ -38,13 +38,20 @@ export default async function MyProfilePage() {
     redirect("/");
   }
 
-  const activityDocs = await getPlayerActivity(user.steamId, 8);
+  const activityDocs = await getPlayerActivity(user.steamId, 40);
   const activity = activityDocs.map((item) => ({
     id: item._id,
+    type: item.type,
     title: item.title,
     description: item.description,
     createdAt: item.createdAt.toISOString(),
   }));
 
-  return <ProfilePageView profile={profile} activity={activity} />;
+  return (
+    <ProfilePageView
+      profile={profile}
+      activity={activity}
+      activityPrivate={false}
+    />
+  );
 }

@@ -16,10 +16,25 @@ export {
   ROLE_TO_BADGE,
   roleDisplayName,
 } from "@/lib/profile/badges";
-export { toQuickStats, emptyStats, computeProfileCompletion } from "@/lib/profile/stats";
+export {
+  toQuickStats,
+  emptyStats,
+  computeProfileCompletion,
+  buildProfileCompletion,
+} from "@/lib/profile/stats";
 export {
   formatRelativeTime,
   formatMonthYear,
   formatStatValue,
   countryFlagEmoji,
 } from "@/lib/profile/format";
+export {
+  upsertPlayerPresence,
+  clearPlayerPresence,
+  resolveCurrentServer,
+  getPlayerPresence,
+} from "@/lib/profile/presence";
+export {
+  recordPlayerActivity,
+  syncBadgeFromRole,
+} from "@/lib/profile/activity";
