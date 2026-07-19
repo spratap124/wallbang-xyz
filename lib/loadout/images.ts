@@ -1,16 +1,39 @@
 /**
- * Optional skin preview URLs.
- * Valve extract has no images — resolve via paintKit when a CDN map is available.
+ * Skin preview helpers for the cosmetics catalog.
+ *
+ * Existing `skin-images.json` is name-keyed (`"AK-47|Asiimov"`), not paintKit-keyed.
+ * Cast via `unknown` so it typechecks against that shape.
  */
 
 import skinImages from "@/lib/loadout/skin-images.json";
 
-type SkinImageMap = Record<string, string>;
+type SkinImageFile = {
+  generatedAt?: string;
+  source?: string;
+  images?: Record<string, string>;
+  agents?: Record<string, string>;
+};
 
-const byPaintKit = skinImages as SkinImageMap;
+const data = skinImages as unknown as SkinImageFile;
 
-/** Look up a CDN preview by paint kit id. Returns undefined when unknown. */
+/** Name-based CDN lookup (`"AK-47|Asiimov"`). */
+export function resolveSkinImageByName(name: string): string | undefined {
+  if (!name) return undefined;
+  return data.images?.[name] ?? data.images?.[name.trim()];
+}
+
+/**
+ * Catalog path (paintKit only). Returns a URL only if the JSON map has a
+ * numeric key; otherwise undefined (UI still works without previews).
+ */
 export function resolveSkinImage(paintKit: number): string | undefined {
   if (!Number.isFinite(paintKit) || paintKit <= 0) return undefined;
-  return byPaintKit[String(paintKit)] ?? byPaintKit[paintKit];
+  const images = data.images;
+  if (!images) return undefined;
+  return images[String(paintKit)];
+}
+
+export function resolveAgentImage(name: string): string | undefined {
+  if (!name) return undefined;
+  return data.agents?.[name];
 }

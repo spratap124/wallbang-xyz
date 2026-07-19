@@ -21,7 +21,7 @@ import type {
   CosmeticsCatalogMetaDoc,
   KnifeFinish,
 } from "@/types/catalog";
-import type { Skin, WeaponDef } from "@/types/loadout";
+import type { Skin, WeaponDef, WeaponGroup } from "@/types/loadout";
 
 export type IngestResult =
   | {
@@ -317,7 +317,7 @@ export function toWeaponDefs(weapons: CatalogWeapon[]): WeaponDef[] {
   return weapons.map((w) => ({
     id: w.id,
     name: w.displayName,
-    group: w.category,
+    group: w.category as WeaponGroup,
     category: "weapons" as const,
     weapon: w.weapon,
     defIndex: w.defIndex,

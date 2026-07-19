@@ -1,3 +1,8 @@
+/**
+ * Loadout / skin-changer UI types.
+ * Weapon ids match the CS2 catalog (e.g. usp_silencer, m4a1_silencer).
+ */
+
 export type LoadoutCategory =
   | "weapons"
   | "knives"
@@ -14,7 +19,10 @@ export type WeaponGroup =
   | "SMGs"
   | "Rifles"
   | "Snipers"
-  | "Grenades";
+  | "Equipment"
+  | "Grenades"
+  | "Knives"
+  | "Gloves";
 
 export type SkinRarity =
   | "Consumer Grade"
@@ -24,7 +32,8 @@ export type SkinRarity =
   | "Classified"
   | "Covert"
   | "Contraband"
-  | "Extraordinary";
+  | "Extraordinary"
+  | "Unknown";
 
 export type WearName =
   | "Factory New"
@@ -44,6 +53,8 @@ export type Skin = {
   image?: string;
   collection: string;
   wearSupported: boolean;
+  wearRemapMin?: number;
+  wearRemapMax?: number;
   stattrakSupported: boolean;
   souvenirSupported?: boolean;
 };
@@ -53,6 +64,10 @@ export type WeaponDef = {
   name: string;
   group: WeaponGroup;
   category: "weapons" | "knives" | "gloves";
+  weapon?: string;
+  defIndex?: number;
+  skinCount?: number;
+  finishSet?: string | null;
 };
 
 export type AgentDef = {
