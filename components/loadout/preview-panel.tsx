@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { FavoriteButton, SkinImage } from "@/components/loadout/skin-image";
 import { StatTrakToggle } from "@/components/loadout/stattrak-toggle";
 import { WearSlider } from "@/components/loadout/wear-slider";
+import { resolveAnySkinImage } from "@/lib/loadout/images";
 import { cn } from "@/lib/utils";
 import type { EquippedItem, Skin } from "@/types/loadout";
 
 type PreviewPanelProps = {
   weaponName: string | null;
+  weaponId?: string | null;
+  weaponDefIndex?: number;
   preview: EquippedItem | null;
   draftSkin: Skin | null;
   wear: number;
@@ -28,6 +31,8 @@ type PreviewPanelProps = {
 
 export function PreviewPanel({
   weaponName,
+  weaponId,
+  weaponDefIndex,
   preview,
   draftSkin,
   wear,
@@ -46,6 +51,16 @@ export function PreviewPanel({
   const wearSupported = draftSkin?.wearSupported ?? preview != null;
   const stSupported =
     draftSkin?.stattrakSupported ?? preview?.stattrak ?? false;
+  const previewImage =
+    draftSkin?.image ??
+    preview?.image ??
+    (weaponName || weaponId
+      ? resolveAnySkinImage({
+          id: weaponId,
+          defIndex: weaponDefIndex,
+          name: weaponName,
+        })
+      : undefined);
 
   if (!weaponName) {
     return (
@@ -87,9 +102,9 @@ export function PreviewPanel({
       </div>
 
       <SkinImage
-        name={skinName ?? "Default"}
+        name={skinName ?? weaponName ?? "Default"}
         rarity={rarity}
-        image={draftSkin?.image ?? preview?.image}
+        image={previewImage}
         size="xl"
         alt={
           skinName && weaponName

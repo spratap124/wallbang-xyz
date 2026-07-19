@@ -115,6 +115,47 @@ export function fetchGloveDetail(
   return getJson<GloveDetailResponse>(`${baseUrl}/api/skins?${q}`);
 }
 
+/** Map knife finishes → loadout Skin rows for the browser UI. */
+export function knifeFinishesToSkins(
+  knifeId: string,
+  finishes: KnifeFinish[],
+): Skin[] {
+  return finishes.map((f) => ({
+    id: `${knifeId}:${f.id}`,
+    weapon: knifeId,
+    paintKit: f.paintKit,
+    skinName: f.displayName,
+    rarity: "Covert",
+    collection: "",
+    wearSupported: !f.skipWear,
+    stattrakSupported: true,
+    image: f.image,
+  }));
+}
+
+export type LoadoutSkinCategory = "weapons" | "knives" | "gloves";
+
+/**
+ * Load skins for a weapon / knife / glove slot from `/api/skins`.
+ * Knife detail returns finishes; mapped to Skin[] here.
+ */
+export async function loadSkinsForSlot(
+  category: LoadoutSkinCategory,
+  id: string,
+  baseUrl = "",
+): Promise<Skin[]> {
+  if (category === "knives") {
+    const detail = await fetchKnifeDetail(id, baseUrl);
+    return knifeFinishesToSkins(detail.knife.id, detail.finishes);
+  }
+  if (category === "gloves") {
+    const detail = await fetchGloveDetail(id, baseUrl);
+    return detail.skins;
+  }
+  const detail = await fetchSkinsForWeapon(id, baseUrl);
+  return detail.skins;
+}
+
 /** Re-export raw catalog shapes for advanced UI. */
 export type {
   CatalogSkin,

@@ -7,16 +7,23 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/loadout/search-bar";
 import { SkinGrid } from "@/components/loadout/skin-grid";
 import { SkinImage } from "@/components/loadout/skin-image";
+import {
+  loadSkinsForSlot,
+  type LoadoutSkinCategory,
+} from "@/lib/loadout/api-client";
 import { DEFAULT_SKIN_FILTERS } from "@/lib/loadout/constants";
 import {
-  fetchSkinsForWeapon,
-  getCollectionsForWeapon,
-} from "@/lib/loadout/mock-data";
+  resolveAnySkinImage,
+  resolveSkinImage,
+  resolveSkinImageByName,
+} from "@/lib/loadout/images";
 import { cn } from "@/lib/utils";
 import type { EquippedItem, Skin, SkinFilters, SkinRarity } from "@/types/loadout";
 
 type SkinBrowserProps = {
-  weaponName: string;
+  weaponId: string;
+  weaponDisplayName: string;
+  category: LoadoutSkinCategory;
   equipped: EquippedItem | null;
   favorites: string[];
   selectedSkinId: string | null;
@@ -36,10 +43,32 @@ const RARITIES: Array<SkinRarity | "all"> = [
   "Mil-Spec",
   "Industrial Grade",
   "Consumer Grade",
+  "Unknown",
 ];
 
+function enrichSkinImages(
+  skins: Skin[],
+  weaponId: string,
+  displayName: string,
+): Skin[] {
+  const fallback = resolveAnySkinImage({
+    id: weaponId,
+    name: displayName,
+  });
+  return skins.map((skin) => {
+    if (skin.image) return skin;
+    const image =
+      resolveSkinImage({ id: weaponId }, skin.paintKit) ??
+      resolveSkinImageByName(`${displayName}|${skin.skinName}`) ??
+      fallback;
+    return image ? { ...skin, image } : skin;
+  });
+}
+
 export function SkinBrowser({
-  weaponName,
+  weaponId,
+  weaponDisplayName,
+  category,
   equipped,
   favorites,
   selectedSkinId,
@@ -50,26 +79,38 @@ export function SkinBrowser({
 }: SkinBrowserProps) {
   const [skins, setSkins] = useState<Skin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<SkinFilters>(DEFAULT_SKIN_FILTERS);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     setFilters(DEFAULT_SKIN_FILTERS);
-    fetchSkinsForWeapon(weaponName).then((data) => {
-      if (cancelled) return;
-      setSkins(data);
-      setLoading(false);
-    });
+    loadSkinsForSlot(category, weaponId)
+      .then((data) => {
+        if (cancelled) return;
+        setSkins(enrichSkinImages(data, weaponId, weaponDisplayName));
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setSkins([]);
+        setError(err instanceof Error ? err.message : "Failed to load skins");
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [weaponName]);
+  }, [weaponId, category, weaponDisplayName]);
 
-  const collections = useMemo(
-    () => getCollectionsForWeapon(weaponName),
-    [weaponName],
-  );
+  const collections = useMemo(() => {
+    const set = new Set<string>();
+    for (const skin of skins) {
+      if (skin.collection) set.add(skin.collection);
+    }
+    return [...set].sort();
+  }, [skins]);
 
   const filtered = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
@@ -110,12 +151,14 @@ export function SkinBrowser({
               Choose skin
             </p>
             <h2 className="mt-1 font-heading text-2xl font-semibold tracking-tight">
-              {weaponName}
+              {weaponDisplayName}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {loading
                 ? "Loading skins…"
-                : `${filtered.length} skin${filtered.length === 1 ? "" : "s"}`}
+                : error
+                  ? error
+                  : `${filtered.length} skin${filtered.length === 1 ? "" : "s"}`}
             </p>
           </div>
         </div>
@@ -125,10 +168,16 @@ export function SkinBrowser({
             <SkinImage
               name={equipped.skinName}
               rarity={equipped.rarity}
-              image={equipped.image}
+              image={
+                equipped.image ??
+                resolveSkinImage({ id: weaponId }, equipped.paintKit) ??
+                resolveSkinImageByName(
+                  `${weaponDisplayName}|${equipped.skinName}`,
+                )
+              }
               size="sm"
               className="w-20 shrink-0 rounded-lg"
-              alt={`${weaponName} | ${equipped.skinName}`}
+              alt={`${weaponDisplayName} | ${equipped.skinName}`}
             />
             <div className="min-w-0">
               <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
@@ -165,17 +214,19 @@ export function SkinBrowser({
               }))
             }
           />
-          <FilterSelect
-            label="Collection"
-            value={filters.collection}
-            options={[
-              { value: "all", label: "All collections" },
-              ...collections.map((c) => ({ value: c, label: c })),
-            ]}
-            onChange={(collection) =>
-              setFilters((f) => ({ ...f, collection }))
-            }
-          />
+          {collections.length > 0 ? (
+            <FilterSelect
+              label="Collection"
+              value={filters.collection}
+              options={[
+                { value: "all", label: "All collections" },
+                ...collections.map((c) => ({ value: c, label: c })),
+              ]}
+              onChange={(collection) =>
+                setFilters((f) => ({ ...f, collection }))
+              }
+            />
+          ) : null}
           <FilterSelect
             label="StatTrak"
             value={filters.stattrak}
