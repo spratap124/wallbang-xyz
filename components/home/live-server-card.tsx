@@ -40,10 +40,10 @@ export function LiveServerCard() {
   const steamConnect = `steam://connect/${server.ip}`;
 
   return (
-    <div className="animate-float relative w-full max-w-sm">
-      {/* Glow behind card */}
+    <div className="animate-float relative mx-auto w-full max-w-sm">
+      {/* Glow stays inside the card bounds so it can't force horizontal scroll */}
       <div
-        className="pointer-events-none absolute -inset-4 rounded-3xl bg-primary/20 blur-3xl"
+        className="pointer-events-none absolute inset-0 rounded-3xl bg-primary/20 blur-3xl"
         aria-hidden="true"
       />
 
