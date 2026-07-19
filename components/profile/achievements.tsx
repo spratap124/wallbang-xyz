@@ -15,7 +15,7 @@ export function Achievements({ badges }: AchievementsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Badges</CardTitle>
+        <CardTitle>Achievements</CardTitle>
       </CardHeader>
       <CardContent>
         <BadgeList

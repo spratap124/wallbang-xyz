@@ -77,6 +77,7 @@ export type PlayerSettingsDoc = {
 export type PlayerActivityType =
   | "joined"
   | "got_vip"
+  | "got_badge"
   | "won_giveaway"
   | "reached_matches"
   | "reached_level"
@@ -93,6 +94,16 @@ export type PlayerActivityDoc = {
   description: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: Date;
+};
+
+/** Live presence pushed by the CS2 plugin (SteamID → server). */
+export type PlayerPresenceDoc = {
+  _id: string;
+  steamId: string;
+  serverId: string;
+  serverName: string;
+  map: string | null;
+  updatedAt: Date;
 };
 
 export type QuickStats = {
@@ -115,13 +126,36 @@ export type ProfileBadge = {
   grantedAt: string;
 };
 
+export type CurrentServerInfo = {
+  serverId: string;
+  serverName: string;
+  map: string | null;
+  players: number | null;
+  maxPlayers: number | null;
+  connectUrl: string | null;
+  ip: string | null;
+  updatedAt: string;
+};
+
+export type ProfileCompletionItem = {
+  key: string;
+  label: string;
+  done: boolean;
+};
+
+export type ProfileCompletion = {
+  percent: number;
+  items: ProfileCompletionItem[];
+};
+
 export type PlayerSummary = {
   steamId: string;
   memberSince: string;
   lastLoginAt: string;
   role: RoleCode;
   profileCompletion: number;
-  currentServer: string | null;
+  completion: ProfileCompletion;
+  currentServer: CurrentServerInfo | null;
   favoriteWeapon: string | null;
   favoriteMap: string | null;
   preferredSide: "T" | "CT" | null;

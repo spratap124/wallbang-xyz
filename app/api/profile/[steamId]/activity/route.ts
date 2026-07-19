@@ -6,6 +6,7 @@ import {
   getPlayerProfile,
   isValidSteamId64,
 } from "@/lib/profile";
+import { canViewerAccess } from "@/lib/profile/privacy";
 
 type RouteContext = { params: Promise<{ steamId: string }> };
 
@@ -30,7 +31,7 @@ export async function GET(
     return jsonError("Profile not found.", 404);
   }
 
-  if (!profile.isOwner && profile.privacy.activity !== "public") {
+  if (!canViewerAccess(profile.privacy.activity, profile.isOwner)) {
     return jsonError("Activity is private.", 403);
   }
 
