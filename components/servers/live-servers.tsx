@@ -48,7 +48,7 @@ export function LiveServers({
           </div>
         )}
 
-        <ul className="grid gap-4">
+        <ul className="grid max-w-full gap-4 overflow-x-hidden">
           {servers.map((server) => (
             <ServerRow key={server.id} server={server} />
           ))}
@@ -83,7 +83,7 @@ function ServerRow({ server }: { server: ServerSummary }) {
   const maxPlayers = server.maxPlayers;
 
   return (
-    <li className="flex flex-col gap-5 rounded-xl border border-border bg-card/50 p-6 lg:flex-row lg:items-center lg:justify-between">
+    <li className="flex w-full max-w-full flex-col gap-5 overflow-hidden rounded-xl border border-border bg-card/50 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 flex-1 items-start gap-4">
         <div className="relative hidden aspect-video w-28 shrink-0 overflow-hidden rounded-lg border border-border sm:block">
           <Image
@@ -98,9 +98,11 @@ function ServerRow({ server }: { server: ServerSummary }) {
           </span>
         </div>
 
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <h3 className="truncate text-lg font-semibold">{server.name}</h3>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
+            <h3 className="min-w-0 flex-1 overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap sm:text-lg">
+              {server.name}
+            </h3>
             <StatusBadge online={server.online} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -129,14 +131,14 @@ function ServerRow({ server }: { server: ServerSummary }) {
             {server.pingUrl ? <PingCell url={server.pingUrl} /> : null}
           </div>
 
-          <div className="mt-3 flex items-center gap-1.5">
+          <div className="mt-3 flex min-w-0 items-center gap-1.5">
             <a
               href={steamConnect}
-              className="font-mono text-sm text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-w-0 flex-1 overflow-hidden font-mono text-sm text-ellipsis whitespace-nowrap text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               connect {server.ip}
             </a>
-            <CopyIpButton address={server.ip} />
+            <CopyIpButton address={server.ip} className="shrink-0" />
           </div>
         </div>
       </div>
@@ -145,7 +147,7 @@ function ServerRow({ server }: { server: ServerSummary }) {
         href={steamConnect}
         className={cn(
           buttonVariants({ size: "lg" }),
-          "shrink-0 justify-center",
+          "w-full shrink-0 justify-center sm:w-auto",
         )}
       >
         Connect in CS2
@@ -207,7 +209,7 @@ function StatusBadge({ online }: { online: boolean }) {
     <Badge
       variant="secondary"
       className={cn(
-        "gap-1.5",
+        "shrink-0 gap-1.5",
         online
           ? "border-transparent bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/15"
           : "bg-muted text-muted-foreground",

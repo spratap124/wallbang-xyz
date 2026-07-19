@@ -122,14 +122,14 @@ export function HeroSection() {
           </div>
 
           {/* Console connect line */}
-          <div className="animate-rise mt-5 flex items-center gap-1.5 [animation-delay:340ms]">
+          <div className="animate-rise mt-5 flex min-w-0 max-w-full items-center gap-1.5 [animation-delay:340ms]">
             <a
               href={getSteamConnectUrl(primaryServer)}
-              className="rounded-sm font-mono text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-w-0 flex-1 overflow-hidden rounded-sm font-mono text-sm text-ellipsis whitespace-nowrap text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {getConnectCommand(primaryServer)}
             </a>
-            <CopyIpButton server={primaryServer} />
+            <CopyIpButton server={primaryServer} className="shrink-0" />
           </div>
           <p className="sr-only">
             Opens Counter-Strike 2 through Steam and connects to the WallBang retake server.
@@ -150,7 +150,7 @@ export function HeroSection() {
         </div>
 
         {/* Right — live server card */}
-        <div className="animate-rise justify-self-center lg:justify-self-end [animation-delay:180ms]">
+        <div className="animate-rise max-w-full justify-self-center overflow-x-clip lg:justify-self-end [animation-delay:180ms]">
           <LiveServerCard />
         </div>
       </div>
