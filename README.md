@@ -105,6 +105,16 @@ Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
 
 Hero card and `/servers` poll every 10s.
 
+## Cosmetics catalog (skin changer)
+
+CS2 `GenerateSkinDatabase` POSTs gun/knife/glove catalogs into Mongo:
+
+- Ingest: `POST /api/v1/catalog/cosmetics` (`X-API-Key: PLUGIN_API_KEY`)
+- Public UI: `GET /api/skins?weapon=ak47` (and knife/glove variants)
+
+Details: [docs/cosmetics-catalog.md](docs/cosmetics-catalog.md). nginx allows **5m** request bodies for catalog ingest.
+
+
 ## Optional Compose profiles
 
 | Profile | Purpose |
