@@ -41,6 +41,8 @@ export type KnifeFinish = {
   paintKit: number;
   skipWear?: boolean;
   variants?: KnifeFinishVariant[];
+  /** Optional Steam CDN preview when resolved by /api/skins. */
+  image?: string;
 };
 
 export type CatalogKnife = {

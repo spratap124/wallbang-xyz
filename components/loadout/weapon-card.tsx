@@ -4,12 +4,18 @@ import { ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { SkinImage } from "@/components/loadout/skin-image";
-import { resolveSkinImage } from "@/lib/loadout/skin-images";
+import {
+  resolveAnySkinImage,
+  resolveSkinImage,
+  resolveSkinImageByName,
+} from "@/lib/loadout/images";
 import { cn } from "@/lib/utils";
 import type { EquippedItem } from "@/types/loadout";
 
 type WeaponCardProps = {
   name: string;
+  weaponId: string;
+  defIndex?: number;
   equipped: EquippedItem | null;
   onClick: () => void;
   selected?: boolean;
@@ -18,13 +24,21 @@ type WeaponCardProps = {
 
 export function WeaponCard({
   name,
+  weaponId,
+  defIndex,
   equipped,
   onClick,
   selected = false,
   large = false,
 }: WeaponCardProps) {
+  const weaponRef = { id: weaponId, defIndex, name };
   const image =
-    equipped?.image ?? resolveSkinImage(name, equipped?.skinName ?? null);
+    equipped?.image ??
+    (equipped
+      ? resolveSkinImage(weaponRef, equipped.paintKit) ??
+        resolveSkinImageByName(`${name}|${equipped.skinName}`)
+      : undefined) ??
+    resolveAnySkinImage(weaponRef);
 
   return (
     <button
@@ -54,7 +68,7 @@ export function WeaponCard({
           {equipped?.stattrak ? (
             <Badge
               variant="outline"
-              className="mt-1.5 border-orange-500/40 text-orange-400"
+              className="border-orange-500/40 text-orange-400"
             >
               StatTrak™
             </Badge>

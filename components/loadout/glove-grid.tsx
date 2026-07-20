@@ -1,36 +1,63 @@
 "use client";
 
 import { WeaponCard } from "@/components/loadout/weapon-card";
-import { GLOVES } from "@/lib/loadout/mock-data";
-import type { EquippedItem } from "@/types/loadout";
+import type { EquippedItem, WeaponDef } from "@/types/loadout";
 
 type GloveGridProps = {
+  gloves: WeaponDef[];
   equippedGloves: EquippedItem | null;
   filter: string;
-  onSelectGloves: (gloveName: string) => void;
+  onSelectGloves: (gloveId: string) => void;
   selectedGloves?: string | null;
-  onPreview: (item: EquippedItem | null, gloveName: string) => void;
+  onPreview: (item: EquippedItem | null, gloveId: string) => void;
+  loading?: boolean;
+  error?: string | null;
 };
 
 export function GloveGrid({
+  gloves,
   equippedGloves,
   filter,
   onSelectGloves,
   selectedGloves,
   onPreview,
+  loading = false,
+  error = null,
 }: GloveGridProps) {
+  if (loading) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        Loading gloves…
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="py-12 text-center text-sm text-destructive">{error}</p>
+    );
+  }
+
   const query = filter.trim().toLowerCase();
-  const gloves = GLOVES.filter((g) => {
+  const filtered = gloves.filter((g) => {
     if (!query) return true;
     return (
       g.name.toLowerCase().includes(query) ||
-      (equippedGloves?.weapon === g.name &&
+      (equippedGloves?.weapon === g.id &&
         (equippedGloves.skinName.toLowerCase().includes(query) ||
           equippedGloves.rarity.toLowerCase().includes(query)))
     );
   });
 
   if (gloves.length === 0) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        No gloves in the catalog yet.
+      </p>
+    );
+  }
+
+  if (filtered.length === 0) {
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
         No gloves match your search.
@@ -40,19 +67,21 @@ export function GloveGrid({
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {gloves.map((glove) => {
+      {filtered.map((glove) => {
         const eq =
-          equippedGloves?.weapon === glove.name ? equippedGloves : null;
+          equippedGloves?.weapon === glove.id ? equippedGloves : null;
         return (
           <WeaponCard
             key={glove.id}
             name={glove.name}
+            weaponId={glove.id}
+            defIndex={glove.defIndex}
             equipped={eq}
             large
-            selected={selectedGloves === glove.name}
+            selected={selectedGloves === glove.id}
             onClick={() => {
-              onPreview(eq, glove.name);
-              onSelectGloves(glove.name);
+              onPreview(eq, glove.id);
+              onSelectGloves(glove.id);
             }}
           />
         );

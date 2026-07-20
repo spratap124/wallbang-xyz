@@ -34,9 +34,14 @@ export async function getWeaponDefs(): Promise<WeaponDef[]> {
 
 /** Skins for one weapon id (e.g. "ak47", "usp_silencer"). */
 export async function fetchSkinsForWeapon(weaponId: string): Promise<Skin[]> {
-  const { skins } = await listSkinsForWeapon(weaponId);
+  const [{ skins }, { weapons }] = await Promise.all([
+    listSkinsForWeapon(weaponId),
+    listWeapons(),
+  ]);
+  const weaponDef = weapons.find((w) => w.id === weaponId);
+  const weaponRef = { id: weaponId, defIndex: weaponDef?.defIndex };
   return toLoadoutSkins(weaponId, skins, (paintKit) =>
-    resolveSkinImage(paintKit),
+    resolveSkinImage(weaponRef, paintKit),
   );
 }
 
@@ -72,6 +77,7 @@ export async function getGloveDefs(): Promise<WeaponDef[]> {
 
 export async function fetchSkinsForGlove(gloveId: string): Promise<Skin[]> {
   const { glove } = await getGloveDetail(gloveId);
+  const weaponRef = { id: glove.id, defIndex: glove.defIndex };
   return glove.skins.map((s) => ({
     id: `${glove.id}:${s.id}`,
     weapon: glove.id,
@@ -81,6 +87,6 @@ export async function fetchSkinsForGlove(gloveId: string): Promise<Skin[]> {
     collection: "",
     wearSupported: true,
     stattrakSupported: false,
-    image: resolveSkinImage(s.paintKit),
+    image: resolveSkinImage(weaponRef, s.paintKit),
   }));
 }

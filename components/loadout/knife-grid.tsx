@@ -1,36 +1,63 @@
 "use client";
 
 import { WeaponCard } from "@/components/loadout/weapon-card";
-import { KNIVES } from "@/lib/loadout/mock-data";
-import type { EquippedItem } from "@/types/loadout";
+import type { EquippedItem, WeaponDef } from "@/types/loadout";
 
 type KnifeGridProps = {
+  knives: WeaponDef[];
   equippedKnife: EquippedItem | null;
   filter: string;
-  onSelectKnife: (knifeName: string) => void;
+  onSelectKnife: (knifeId: string) => void;
   selectedKnife?: string | null;
-  onPreview: (item: EquippedItem | null, knifeName: string) => void;
+  onPreview: (item: EquippedItem | null, knifeId: string) => void;
+  loading?: boolean;
+  error?: string | null;
 };
 
 export function KnifeGrid({
+  knives,
   equippedKnife,
   filter,
   onSelectKnife,
   selectedKnife,
   onPreview,
+  loading = false,
+  error = null,
 }: KnifeGridProps) {
+  if (loading) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        Loading knives…
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="py-12 text-center text-sm text-destructive">{error}</p>
+    );
+  }
+
   const query = filter.trim().toLowerCase();
-  const knives = KNIVES.filter((k) => {
+  const filtered = knives.filter((k) => {
     if (!query) return true;
     return (
       k.name.toLowerCase().includes(query) ||
-      (equippedKnife?.weapon === k.name &&
+      (equippedKnife?.weapon === k.id &&
         (equippedKnife.skinName.toLowerCase().includes(query) ||
           equippedKnife.rarity.toLowerCase().includes(query)))
     );
   });
 
   if (knives.length === 0) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        No knives in the catalog yet.
+      </p>
+    );
+  }
+
+  if (filtered.length === 0) {
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
         No knives match your search.
@@ -40,19 +67,21 @@ export function KnifeGrid({
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {knives.map((knife) => {
+      {filtered.map((knife) => {
         const eq =
-          equippedKnife?.weapon === knife.name ? equippedKnife : null;
+          equippedKnife?.weapon === knife.id ? equippedKnife : null;
         return (
           <WeaponCard
             key={knife.id}
             name={knife.name}
+            weaponId={knife.id}
+            defIndex={knife.defIndex}
             equipped={eq}
             large
-            selected={selectedKnife === knife.name}
+            selected={selectedKnife === knife.id}
             onClick={() => {
-              onPreview(eq, knife.name);
-              onSelectKnife(knife.name);
+              onPreview(eq, knife.id);
+              onSelectKnife(knife.id);
             }}
           />
         );

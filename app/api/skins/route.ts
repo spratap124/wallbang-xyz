@@ -10,7 +10,10 @@ import {
   toLoadoutSkins,
   toWeaponDefs,
 } from "@/lib/loadout/catalog";
-import { resolveSkinImage } from "@/lib/loadout/images";
+import {
+  resolveSkinImage,
+  resolveSkinImageByName,
+} from "@/lib/loadout/images";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk } from "@/lib/permissions/authz";
 
@@ -39,22 +42,56 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     if (weapon) {
-      const { skins } = await listSkinsForWeapon(weapon);
+      const [{ skins }, { weapons }] = await Promise.all([
+        listSkinsForWeapon(weapon),
+        listWeapons(),
+      ]);
+      const weaponDef = weapons.find((w) => w.id === weapon);
+      const displayName = weaponDef?.displayName ?? weapon;
+      const weaponRef = {
+        id: weapon,
+        defIndex: weaponDef?.defIndex,
+      };
+      const byId = new Map(skins.map((s) => [s.id, s]));
       return jsonOk({
         weapon,
-        skins: toLoadoutSkins(weapon, skins, (paintKit) =>
-          resolveSkinImage(paintKit),
-        ),
+        skins: toLoadoutSkins(weapon, skins, (paintKit, skinId) => {
+          const skin = byId.get(skinId);
+          return (
+            resolveSkinImage(weaponRef, paintKit) ??
+            (skin
+              ? resolveSkinImageByName(`${displayName}|${skin.name}`)
+              : undefined)
+          );
+        }),
       });
     }
 
     if (knife) {
       const detail = await getKnifeDetail(knife);
-      return jsonOk(detail);
+      const weaponRef = {
+        id: detail.knife.id,
+        defIndex: detail.knife.defIndex,
+      };
+      return jsonOk({
+        ...detail,
+        finishes: detail.finishes.map((f) => ({
+          ...f,
+          image:
+            resolveSkinImage(weaponRef, f.paintKit) ??
+            resolveSkinImageByName(
+              `${detail.knife.displayName}|${f.displayName}`,
+            ),
+        })),
+      });
     }
 
     if (glove) {
       const detail = await getGloveDetail(glove);
+      const weaponRef = {
+        id: detail.glove.id,
+        defIndex: detail.glove.defIndex,
+      };
       return jsonOk({
         glove: detail.glove,
         wearPresets: detail.wearPresets,
@@ -67,7 +104,11 @@ export async function GET(request: Request): Promise<Response> {
           collection: "",
           wearSupported: true,
           stattrakSupported: false,
-          image: resolveSkinImage(s.paintKit),
+          image:
+            resolveSkinImage(weaponRef, s.paintKit) ??
+            resolveSkinImageByName(
+              `${detail.glove.displayName}|${s.displayName}`,
+            ),
         })),
       });
     }
