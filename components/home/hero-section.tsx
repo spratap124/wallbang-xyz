@@ -1,27 +1,14 @@
 import Image from "next/image";
-import {
-  MapPin,
-  MessageCircle,
-  Play,
-  ShieldCheck,
-  Sparkles,
-  Sword,
-} from "lucide-react";
+import { MapPin, ShieldCheck, Sparkles, Sword } from "lucide-react";
 
-import { CopyIpButton } from "@/components/servers/copy-ip-button";
+import { HeroConnectActions } from "@/components/home/hero-connect-actions";
+import { HeroFleetStats } from "@/components/home/hero-fleet-stats";
 import { LiveServerCard } from "@/components/home/live-server-card";
 import { BrandMark } from "@/components/shared/primitives";
-import { buttonVariants } from "@/components/ui/button";
-import {
-  getConnectCommand,
-  getMapImage,
-  getSteamConnectUrl,
-  servers,
-} from "@/config/servers";
-import { siteConfig } from "@/config/site";
-import { cn } from "@/lib/utils";
+import { getFeaturedServer, getMapImage } from "@/config/servers";
 
-const primaryServer = servers[0];
+/** SSR backdrop uses config seed featured map until live poll loads. */
+const featuredSeed = getFeaturedServer();
 
 const featurePills = [
   { icon: Sparkles, label: "Instant Skin Changer" },
@@ -30,20 +17,13 @@ const featurePills = [
   { icon: MapPin, label: "India Hosted" },
 ];
 
-const stats = [
-  { value: "1", label: "Live Server" },
-  { value: `${primaryServer.players}`, label: "Players Online" },
-  { value: `${primaryServer.pingMs} ms`, label: "Average Ping" },
-  { value: "99.9%", label: "Uptime" },
-];
-
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden border-b border-border">
       {/* Cinematic CS2 backdrop */}
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <Image
-          src={getMapImage(primaryServer.map)}
+          src={getMapImage(featuredSeed.map)}
           alt=""
           fill
           priority
@@ -96,62 +76,13 @@ export function HeroSection() {
             ))}
           </ul>
 
-          {/* CTAs */}
-          <div className="animate-rise mt-8 flex flex-col gap-3 [animation-delay:300ms] sm:flex-row sm:items-center">
-            <a
-              href={getSteamConnectUrl(primaryServer)}
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "btn-glow h-11 gap-2 px-6 text-sm",
-              )}
-            >
-              <Play className="size-4 fill-current" aria-hidden="true" />
-              Play Now
-            </a>
-            <a
-              href={siteConfig.discordUrl}
-              rel="noopener noreferrer"
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "h-11 gap-2 border-transparent bg-[#5865F2] px-6 text-sm text-white transition-colors hover:bg-[#4752c4]",
-              )}
-            >
-              <MessageCircle className="size-4" aria-hidden="true" />
-              Discord
-            </a>
-          </div>
-
-          {/* Console connect line */}
-          <div className="animate-rise mt-5 flex min-w-0 max-w-full items-center gap-1.5 [animation-delay:340ms]">
-            <a
-              href={getSteamConnectUrl(primaryServer)}
-              className="min-w-0 flex-1 overflow-hidden rounded-sm font-mono text-sm text-ellipsis whitespace-nowrap text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {getConnectCommand(primaryServer)}
-            </a>
-            <CopyIpButton server={primaryServer} className="shrink-0" />
-          </div>
-          <p className="sr-only">
-            Opens Counter-Strike 2 through Steam and connects to the WallBang retake server.
-          </p>
-
-          {/* Social proof */}
-          <dl className="animate-rise mt-10 grid max-w-xl grid-cols-2 gap-x-6 gap-y-5 border-t border-border/60 pt-8 sm:grid-cols-4 [animation-delay:380ms]">
-            {stats.map((stat) => (
-              <div key={stat.label}>
-                <dt className="sr-only">{stat.label}</dt>
-                <dd className="text-2xl font-semibold tracking-tight text-foreground">
-                  {stat.value}
-                </dd>
-                <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
-              </div>
-            ))}
-          </dl>
+          <HeroConnectActions />
+          <HeroFleetStats />
         </div>
 
         {/* Right — live server card */}
         <div className="animate-rise max-w-full justify-self-center overflow-x-clip lg:justify-self-end [animation-delay:180ms]">
-          <LiveServerCard />
+          <LiveServerCard serverId={featuredSeed.id} />
         </div>
       </div>
     </section>

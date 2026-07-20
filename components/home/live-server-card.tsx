@@ -1,54 +1,61 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { MapPin, Play, Users } from "lucide-react";
 
 import { CopyIpButton } from "@/components/servers/copy-ip-button";
 import { useLiveServers } from "@/components/servers/live-servers-provider";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  getMapImage,
-  prettyMapName,
-  servers as serverDefs,
-} from "@/config/servers";
+import { getMapImage, prettyMapName } from "@/config/servers";
 import { cn } from "@/lib/utils";
+import type { ServerSummary } from "@/lib/servers/types";
 
-// Static presentation bits (name, city, mode) come from config; live counts,
-// map, and online state come from the shared /api/servers poll.
-const def = serverDefs[0];
+function pickPrimary(live: ServerSummary[]): ServerSummary | null {
+  if (live.length === 0) return null;
+  const featured = live.find((s) => s.featured) ?? live[0]!;
+  if (featured.online) return featured;
+  const online = [...live]
+    .filter((s) => s.online)
+    .sort((a, b) => (b.players ?? 0) - (a.players ?? 0));
+  return online[0] ?? featured;
+}
 
-export function LiveServerCard() {
+type LiveServerCardProps = {
+  /** Prefer this registry id when present in the live list. */
+  serverId?: string;
+};
+
+export function LiveServerCard({ serverId }: LiveServerCardProps) {
   const { servers } = useLiveServers();
-  const server =
-    servers.find((s) => s.id === def.id) ?? servers[0] ?? {
-      id: def.id,
-      name: def.name,
-      ip: `${def.host}:${def.port}`,
-      region: def.region,
-      mode: def.mode,
-      online: false,
-      map: def.map,
-      players: null,
-      maxPlayers: def.maxPlayersOverride ?? def.maxPlayers,
-      pingUrl: def.pingUrl ?? null,
-      lastSeen: null,
-    };
+  const preferred =
+    (serverId ? servers.find((s) => s.id === serverId) : null) ??
+    pickPrimary(servers);
 
-  const mapName = server.map ?? def.map;
-  const players = server.players ?? 0;
-  const online = server.online;
-  const steamConnect = `steam://connect/${server.ip}`;
+  if (!preferred) {
+    return (
+      <div className="mx-auto w-full max-w-sm rounded-2xl border border-border/80 bg-card/80 p-8 text-center text-sm text-muted-foreground backdrop-blur-xl">
+        Loading servers…
+      </div>
+    );
+  }
+
+  const mapName = preferred.map ?? "de_mirage";
+  const players = preferred.players ?? 0;
+  const online = preferred.online;
+  const steamConnect = `steam://connect/${preferred.ip}`;
+  const showFleetLink = servers.length > 1;
+  const title = preferred.shortName ?? preferred.name;
+  const city = preferred.city;
 
   return (
     <div className="animate-float relative mx-auto w-full max-w-sm">
-      {/* Glow stays inside the card bounds so it can't force horizontal scroll */}
       <div
         className="pointer-events-none absolute inset-0 rounded-3xl bg-primary/20 blur-3xl"
         aria-hidden="true"
       />
 
       <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card/80 shadow-2xl backdrop-blur-xl">
-        {/* Map banner */}
         <div className="relative h-32 overflow-hidden">
           <Image
             src={getMapImage(mapName)}
@@ -84,19 +91,17 @@ export function LiveServerCard() {
           </p>
         </div>
 
-        {/* Body */}
         <div className="p-5">
-          <h3 className="text-lg font-semibold text-foreground">
-            {def.shortName}
-          </h3>
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {def.mode} · {def.city}, India
+            {preferred.mode}
+            {city ? ` · ${city}, India` : ` · ${preferred.region}`}
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             <ServerStat
               icon={Users}
-              value={`${players}/${server.maxPlayers ?? "—"}`}
+              value={`${players}/${preferred.maxPlayers ?? "—"}`}
               label="Players"
             />
             <ServerStat
@@ -122,9 +127,9 @@ export function LiveServerCard() {
               href={steamConnect}
               className="min-w-0 flex-1 truncate rounded-sm font-mono text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              connect {server.ip}
+              connect {preferred.ip}
             </a>
-            <CopyIpButton address={server.ip} />
+            <CopyIpButton address={preferred.ip} />
           </div>
 
           <a
@@ -137,6 +142,15 @@ export function LiveServerCard() {
             <Play className="size-4 fill-current" aria-hidden="true" />
             Connect
           </a>
+
+          {showFleetLink ? (
+            <Link
+              href="/servers"
+              className="mt-3 block text-center text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              View all servers
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>

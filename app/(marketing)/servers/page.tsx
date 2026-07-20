@@ -8,7 +8,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Servers",
   description:
-    "Connect to live WallBang CS2 retake servers in India. Open Counter-Strike 2 through Steam and join [WallBang] Retake #1 | [Mumbai].",
+    "Connect to live WallBang CS2 community servers in India. Open Counter-Strike 2 through Steam and join any online WallBang server.",
   path: "/servers",
 });
 

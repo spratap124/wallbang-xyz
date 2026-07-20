@@ -52,7 +52,9 @@ cp .env.example .env.local
 
 - Dev host for Retake #1 → staging `129.159.232.212:27015`
 - Production builds → `200.97.169.27:27015`
-- Override with `NEXT_PUBLIC_RETAKE_HOST`
+- Per-server override: `NEXT_PUBLIC_SERVER_HOST_<ID>` (e.g. `NEXT_PUBLIC_SERVER_HOST_RETAKE_1`)
+- Legacy retake-1 alias: `NEXT_PUBLIC_RETAKE_HOST`
+- Add another CS2 box as a new row in `config/servers.ts` with a unique `id` (plugin `ServerId` must match)
 
 ### Production VPS
 

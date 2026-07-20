@@ -9,6 +9,8 @@ export interface ServerSummary {
   id: string;
   /** Live A2S hostname when online, otherwise the static config label. */
   name: string;
+  shortName?: string;
+  city?: string;
   /** Public connect address, `host:port`. */
   ip: string;
   region: string;
@@ -21,6 +23,8 @@ export interface ServerSummary {
   pingUrl: string | null;
   /** ISO timestamp of the last successful poll, or null if never seen. */
   lastSeen: string | null;
+  /** Hero / Play Now preference from the fleet registry. */
+  featured?: boolean;
   /**
    * Diagnostic only: A2S round-trip latency measured from the function region
    * (Vercel → VPS). This is NOT the user's ping — never render it as "ping".
