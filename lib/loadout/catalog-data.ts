@@ -22,6 +22,7 @@ import {
   toWeaponDefs,
 } from "@/lib/loadout/catalog";
 import { resolveSkinImage } from "@/lib/loadout/images";
+import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import type { Skin, WeaponDef } from "@/types/loadout";
 
 export { CatalogNotFoundError };
@@ -40,8 +41,11 @@ export async function fetchSkinsForWeapon(weaponId: string): Promise<Skin[]> {
   ]);
   const weaponDef = weapons.find((w) => w.id === weaponId);
   const weaponRef = { id: weaponId, defIndex: weaponDef?.defIndex };
-  return toLoadoutSkins(weaponId, skins, (paintKit) =>
-    resolveSkinImage(weaponRef, paintKit),
+  return toLoadoutSkins(
+    weaponId,
+    skins,
+    (paintKit) => resolveSkinImage(weaponRef, paintKit),
+    { defIndex: weaponDef?.defIndex, name: weaponDef?.displayName },
   );
 }
 
@@ -78,15 +82,24 @@ export async function getGloveDefs(): Promise<WeaponDef[]> {
 export async function fetchSkinsForGlove(gloveId: string): Promise<Skin[]> {
   const { glove } = await getGloveDetail(gloveId);
   const weaponRef = { id: glove.id, defIndex: glove.defIndex };
-  return glove.skins.map((s) => ({
-    id: `${glove.id}:${s.id}`,
-    weapon: glove.id,
-    paintKit: s.paintKit,
-    skinName: s.displayName,
-    rarity: "Extraordinary" as const,
-    collection: "",
-    wearSupported: true,
-    stattrakSupported: false,
-    image: resolveSkinImage(weaponRef, s.paintKit),
-  }));
+  return glove.skins.map((s) => {
+    const meta = lookupSkinMetadata({
+      weaponId: glove.id,
+      defIndex: glove.defIndex,
+      paintKit: s.paintKit,
+      skinName: s.displayName,
+      weaponDisplayName: glove.displayName,
+    });
+    return {
+      id: `${glove.id}:${s.id}`,
+      weapon: glove.id,
+      paintKit: s.paintKit,
+      skinName: s.displayName,
+      rarity: meta?.rarity ?? "Extraordinary",
+      collection: meta?.collection ?? "",
+      wearSupported: true,
+      stattrakSupported: false,
+      image: resolveSkinImage(weaponRef, s.paintKit),
+    };
+  });
 }

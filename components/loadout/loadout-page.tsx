@@ -17,7 +17,9 @@ import {
   fetchCatalogIndex,
   fetchGlovesIndex,
   fetchKnivesIndex,
+  fetchSavedLoadout,
   loadSkinsForSlot,
+  saveSavedLoadout,
 } from "@/lib/loadout/api-client";
 import { midFloatForWear, wearNameFromFloat } from "@/lib/loadout/constants";
 import {
@@ -25,6 +27,7 @@ import {
   resolveSkinImageByName,
 } from "@/lib/loadout/images";
 import { AGENTS } from "@/lib/loadout/mock-data";
+import { emptyUserLoadout } from "@/types/player-loadout";
 import { cn } from "@/lib/utils";
 import type {
   AgentFaction,
@@ -35,30 +38,20 @@ import type {
   WeaponDef,
 } from "@/types/loadout";
 
-function emptyLoadout(): UserLoadoutState {
-  return {
-    weapons: {},
-    knife: null,
-    gloves: null,
-    agentCT: null,
-    agentT: null,
-    favorites: [],
-    recentlyEquipped: [],
-  };
-}
-
 function pickRandom<T>(items: T[]): T | undefined {
   if (items.length === 0) return undefined;
   return items[Math.floor(Math.random() * items.length)];
 }
 
 export function LoadoutPage() {
-  const [loadout, setLoadout] = useState<UserLoadoutState>(emptyLoadout);
+  const [loadout, setLoadout] = useState<UserLoadoutState>(emptyUserLoadout);
   const [weapons, setWeapons] = useState<WeaponDef[]>([]);
   const [knives, setKnives] = useState<WeaponDef[]>([]);
   const [gloves, setGloves] = useState<WeaponDef[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [category, setCategory] = useState<LoadoutCategory>("weapons");
   const [search, setSearch] = useState("");
@@ -79,12 +72,14 @@ export function LoadoutPage() {
       fetchCatalogIndex(),
       fetchKnivesIndex(),
       fetchGlovesIndex(),
+      fetchSavedLoadout().catch(() => null),
     ])
-      .then(([weaponsIndex, knivesIndex, glovesIndex]) => {
+      .then(([weaponsIndex, knivesIndex, glovesIndex, saved]) => {
         if (cancelled) return;
         setWeapons(weaponsIndex.weapons);
         setKnives(knivesIndex.knives);
         setGloves(glovesIndex.gloves);
+        if (saved?.loadout) setLoadout(saved.loadout);
         setActiveWeaponId((prev) => prev ?? weaponsIndex.weapons[0]?.id ?? null);
         setCatalogLoading(false);
       })
@@ -100,6 +95,29 @@ export function LoadoutPage() {
       cancelled = true;
     };
   }, []);
+
+  function persistLoadout(next: UserLoadoutState) {
+    setSaving(true);
+    setSyncError(null);
+    void saveSavedLoadout(next)
+      .then(() => setSaving(false))
+      .catch((err: unknown) => {
+        setSaving(false);
+        setSyncError(
+          err instanceof Error ? err.message : "Failed to save loadout",
+        );
+      });
+  }
+
+  function updateLoadout(
+    updater: (prev: UserLoadoutState) => UserLoadoutState,
+  ) {
+    setLoadout((prev) => {
+      const next = updater(prev);
+      persistLoadout(next);
+      return next;
+    });
+  }
 
   const activeDef = useMemo(() => {
     if (!activeWeaponId) return null;
@@ -223,7 +241,7 @@ export function LoadoutPage() {
       updatedAt: new Date().toISOString(),
     };
 
-    setLoadout((prev) => {
+    updateLoadout((prev) => {
       const next: UserLoadoutState = { ...prev };
       if (category === "knives") {
         next.knife = item;
@@ -249,7 +267,7 @@ export function LoadoutPage() {
   function toggleFavorite(skinId?: string) {
     const id = skinId || favoriteId;
     if (!id) return;
-    setLoadout((prev) => ({
+    updateLoadout((prev) => ({
       ...prev,
       favorites: prev.favorites.includes(id)
         ? prev.favorites.filter((f) => f !== id)
@@ -259,7 +277,7 @@ export function LoadoutPage() {
 
   function equipAgent(agentId: string, name: string, faction: AgentFaction) {
     const agent = { agentId, name, faction, updatedAt: new Date().toISOString() };
-    setLoadout((prev) => ({
+    updateLoadout((prev) => ({
       ...prev,
       agentCT: faction === "CT" ? agent : prev.agentCT,
       agentT: faction === "T" ? agent : prev.agentT,
@@ -313,7 +331,7 @@ export function LoadoutPage() {
       const knifeItem = make(knifeSkin, randomKnife.id, randomKnife.name);
       const gloveItem = make(gloveSkin, randomGlove.id, randomGlove.name);
 
-      setLoadout((prev) => ({
+      updateLoadout((prev) => ({
         ...prev,
         weapons: { ...prev.weapons, [randomWeapon.id]: weaponItem },
         knife: knifeItem,
@@ -377,8 +395,9 @@ export function LoadoutPage() {
             Your Personal CS2 Inventory
           </h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Equip skins, knives, gloves, and agents. Changes sync to WallBang
-            servers when you join.
+            Equip skins, knives, gloves, and agents. Saved loadouts sync to
+            WallBang servers when you join a match
+            {saving ? " · Saving…" : syncError ? ` · ${syncError}` : ""}.
           </p>
         </div>
         <Button

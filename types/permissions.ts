@@ -110,4 +110,6 @@ export type PlayerPermissionsResponse = {
   };
   roles: RoleCode[];
   permissions: PermissionCode[];
+  /** Game-facing loadout for WallBang.Skins / Knife / Gloves plugins. */
+  loadout: import("@/types/player-loadout").GameLoadout | null;
 };

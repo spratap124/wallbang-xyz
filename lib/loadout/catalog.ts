@@ -10,6 +10,7 @@ import {
   cosmeticsWeaponsCollection,
   ensureCosmeticsIndexes,
 } from "@/lib/loadout/collections";
+import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import type { CosmeticsCatalogIngestInput } from "@/lib/loadout/schema";
 import type {
   CatalogGlove,
@@ -325,25 +326,36 @@ export function toWeaponDefs(weapons: CatalogWeapon[]): WeaponDef[] {
   }));
 }
 
-/** Map gun skins → loadout Skin rows (rarity/collection optional until enriched). */
+/** Map gun skins → loadout Skin rows; rarity/collection enriched from ByMykel metadata. */
 export function toLoadoutSkins(
   weaponId: string,
   skins: CatalogSkin[],
   resolveImage?: (paintKit: number, skinId: string) => string | undefined,
+  weaponRef?: { defIndex?: number; name?: string },
 ): Skin[] {
-  return skins.map((s) => ({
-    id: `${weaponId}:${s.id}`,
-    weapon: weaponId,
-    paintKit: s.paintKit,
-    skinName: s.name,
-    rarity: "Unknown",
-    collection: "",
-    wearSupported: s.wearRemapMax > s.wearRemapMin || s.wearRemapMax > 0,
-    wearRemapMin: s.wearRemapMin,
-    wearRemapMax: s.wearRemapMax,
-    stattrakSupported: true,
-    image: resolveImage?.(s.paintKit, s.id),
-  }));
+  return skins.map((s) => {
+    const meta = lookupSkinMetadata({
+      weaponId,
+      defIndex: weaponRef?.defIndex,
+      paintKit: s.paintKit,
+      skinName: s.name,
+      weaponDisplayName: weaponRef?.name,
+    });
+
+    return {
+      id: `${weaponId}:${s.id}`,
+      weapon: weaponId,
+      paintKit: s.paintKit,
+      skinName: s.name,
+      rarity: meta?.rarity ?? "Unknown",
+      collection: meta?.collection ?? "",
+      wearSupported: s.wearRemapMax > s.wearRemapMin || s.wearRemapMax > 0,
+      wearRemapMin: s.wearRemapMin,
+      wearRemapMax: s.wearRemapMax,
+      stattrakSupported: true,
+      image: resolveImage?.(s.paintKit, s.id),
+    };
+  });
 }
 
 export class CatalogNotFoundError extends Error {

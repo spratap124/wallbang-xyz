@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton, SkinImage } from "@/components/loadout/skin-image";
+import { RARITY_COLORS } from "@/lib/loadout/constants";
 import { cn } from "@/lib/utils";
 import type { Skin } from "@/types/loadout";
 
@@ -27,6 +28,8 @@ export function SkinCard({
   onEquip,
   onToggleFavorite,
 }: SkinCardProps) {
+  const rarityColor = RARITY_COLORS[skin.rarity];
+
   return (
     <div
       role="button"
@@ -70,7 +73,15 @@ export function SkinCard({
           </p>
         </div>
         <div className="flex flex-wrap gap-1">
-          <Badge variant="outline">{skin.rarity}</Badge>
+          <Badge
+            variant="outline"
+            style={{
+              borderColor: `${rarityColor}66`,
+              color: rarityColor,
+            }}
+          >
+            {skin.rarity}
+          </Badge>
           {skin.stattrakSupported ? (
             <Badge variant="outline" className="border-orange-500/40 text-orange-400">
               ST

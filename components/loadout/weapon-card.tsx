@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SkinImage } from "@/components/loadout/skin-image";
 import {
-  resolveAnySkinImage,
+  resolveDefaultWeaponImage,
   resolveSkinImage,
   resolveSkinImageByName,
 } from "@/lib/loadout/images";
@@ -37,8 +37,7 @@ export function WeaponCard({
     (equipped
       ? resolveSkinImage(weaponRef, equipped.paintKit) ??
         resolveSkinImageByName(`${name}|${equipped.skinName}`)
-      : undefined) ??
-    resolveAnySkinImage(weaponRef);
+      : resolveDefaultWeaponImage(weaponRef));
 
   return (
     <button

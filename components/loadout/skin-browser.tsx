@@ -13,10 +13,10 @@ import {
 } from "@/lib/loadout/api-client";
 import { DEFAULT_SKIN_FILTERS } from "@/lib/loadout/constants";
 import {
-  resolveAnySkinImage,
   resolveSkinImage,
   resolveSkinImageByName,
 } from "@/lib/loadout/images";
+import { enrichSkinMeta } from "@/lib/loadout/skin-metadata";
 import { cn } from "@/lib/utils";
 import type { EquippedItem, Skin, SkinFilters, SkinRarity } from "@/types/loadout";
 
@@ -46,22 +46,21 @@ const RARITIES: Array<SkinRarity | "all"> = [
   "Unknown",
 ];
 
-function enrichSkinImages(
+function enrichSkins(
   skins: Skin[],
   weaponId: string,
   displayName: string,
 ): Skin[] {
-  const fallback = resolveAnySkinImage({
-    id: weaponId,
-    name: displayName,
-  });
   return skins.map((skin) => {
-    if (skin.image) return skin;
+    const withMeta = enrichSkinMeta(skin, {
+      id: weaponId,
+      name: displayName,
+    });
+    if (withMeta.image) return withMeta;
     const image =
-      resolveSkinImage({ id: weaponId }, skin.paintKit) ??
-      resolveSkinImageByName(`${displayName}|${skin.skinName}`) ??
-      fallback;
-    return image ? { ...skin, image } : skin;
+      resolveSkinImage({ id: weaponId }, withMeta.paintKit) ??
+      resolveSkinImageByName(`${displayName}|${withMeta.skinName}`);
+    return image ? { ...withMeta, image } : withMeta;
   });
 }
 
@@ -90,7 +89,7 @@ export function SkinBrowser({
     loadSkinsForSlot(category, weaponId)
       .then((data) => {
         if (cancelled) return;
-        setSkins(enrichSkinImages(data, weaponId, weaponDisplayName));
+        setSkins(enrichSkins(data, weaponId, weaponDisplayName));
         setLoading(false);
       })
       .catch((err: unknown) => {
