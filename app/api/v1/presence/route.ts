@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { servers } from "@/config/servers";
 import { isMongoConfigured } from "@/lib/mongo";
 import {
   jsonError,
@@ -12,6 +11,7 @@ import {
   clearServerPresence,
   upsertPlayerPresence,
 } from "@/lib/profile/presence";
+import { getGameServers } from "@/lib/servers/registry";
 
 export const runtime = "nodejs";
 
@@ -58,7 +58,8 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const data = parsed.data;
-  const knownServer = servers.some((s) => s.id === data.serverId);
+  const fleet = await getGameServers();
+  const knownServer = fleet.some((s) => s.id === data.serverId);
   if (!knownServer) {
     return jsonError("Unknown serverId.", 400);
   }
@@ -78,7 +79,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (data.action === "leave") {
-    await Promise.all(ids.map((id) => clearPlayerPresence(id)));
+    await Promise.all(
+      ids.map((id) => clearPlayerPresence(id, data.serverId)),
+    );
     return jsonOk({ left: ids.length });
   }
 
@@ -110,8 +113,9 @@ export async function GET(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {
     return jsonError("Database is not configured.", 503);
   }
+  const fleet = await getGameServers();
   return jsonOk({
     ok: true,
-    servers: servers.map((s) => s.id),
+    servers: fleet.map((s) => s.id),
   });
 }

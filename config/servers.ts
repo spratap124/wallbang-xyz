@@ -17,26 +17,57 @@ export type GameServer = {
   /** Client-side ping probe target (HTTPS). null until the VPS exposes one. */
   pingUrl?: string | null;
   status: "live" | "offline" | "maintenance";
+  /** Hero / Play Now primary when multiple servers exist. */
+  featured?: boolean;
 };
 
-/**
- * Retake #1 host is environment-driven:
- *   - production build (`next build` / Vercel) → prod game server
- *   - local dev (`next dev`) → staging server
- * NODE_ENV is inlined by Next.js in both server and client bundles, so the
- * API response, connect links, and initial seed all stay consistent.
- * Optionally override with NEXT_PUBLIC_RETAKE_HOST (e.g. to point dev at prod).
- * It must be NEXT_PUBLIC_ so the client seed and server API resolve the same
- * host; the IP is public anyway (it's in the CS2 server browser).
- */
-// Treat empty string as unset — Compose often passes NEXT_PUBLIC_RETAKE_HOST=
-// which would otherwise win over ?? and bake an empty host into the build.
-const RETAKE_HOST =
-  process.env.NEXT_PUBLIC_RETAKE_HOST?.trim() ||
-  (process.env.NODE_ENV === "production"
-    ? "200.97.169.27" // prod game server (Hostinger)
-    : "129.159.232.212"); // staging server
+/** Minimal live row used to pick a connect target from fleet status. */
+export type ServerLiveHint = {
+  id: string;
+  online: boolean;
+  players?: number | null;
+};
 
+const RETAKE_1_DEFAULT_HOST =
+  process.env.NODE_ENV === "production"
+    ? "200.97.169.27" // prod game server (Hostinger)
+    : "129.159.232.212"; // staging server
+
+/**
+ * Resolve a public connect host for a configured server id.
+ *
+ * Precedence:
+ *   1. NEXT_PUBLIC_SERVER_HOST_<ID>  (id uppercased, `-` → `_`)
+ *   2. NEXT_PUBLIC_RETAKE_HOST       (legacy alias for `retake-1` only)
+ *   3. Built-in prod/staging default for `retake-1`
+ *   4. empty string (caller must supply a real host for new servers)
+ *
+ * NEXT_PUBLIC_ so client seed and server API bake the same host.
+ * Empty string is treated as unset (Compose often passes KEY=).
+ */
+export function resolveServerHost(
+  serverId: string,
+  fallback = "",
+): string {
+  const envKey = `NEXT_PUBLIC_SERVER_HOST_${serverId
+    .toUpperCase()
+    .replace(/-/g, "_")}`;
+  const perServer = process.env[envKey]?.trim();
+  if (perServer) return perServer;
+
+  if (serverId === "retake-1") {
+    const legacy = process.env.NEXT_PUBLIC_RETAKE_HOST?.trim();
+    if (legacy) return legacy;
+    return RETAKE_1_DEFAULT_HOST;
+  }
+
+  return fallback;
+}
+
+/**
+ * Fleet registry — add a new CS2 box as a new row + matching plugin ServerId.
+ * Hosts are env-driven per id so prod/staging can diverge without code edits.
+ */
 export const servers: GameServer[] = [
   {
     id: "retake-1",
@@ -46,7 +77,7 @@ export const servers: GameServer[] = [
     map: "de_mirage",
     region: "Mumbai, India",
     city: "Mumbai",
-    host: RETAKE_HOST,
+    host: resolveServerHost("retake-1"),
     port: 27015,
     tickRate: 128,
     players: 0,
@@ -55,8 +86,44 @@ export const servers: GameServer[] = [
     pingMs: 12,
     pingUrl: null,
     status: "live",
+    featured: true,
   },
 ];
+
+export function getServerById(id: string): GameServer | undefined {
+  return servers.find((s) => s.id === id);
+}
+
+/** Featured server for hero CTAs; falls back to the first config entry. */
+export function getFeaturedServer(): GameServer {
+  return servers.find((s) => s.featured) ?? servers[0]!;
+}
+
+/**
+ * Best connect target given optional live status:
+ * featured if online → else online with most players → else featured/config.
+ */
+export function getPrimaryConnectServer(
+  live: ServerLiveHint[] = [],
+): GameServer {
+  const featured = getFeaturedServer();
+  if (live.length === 0) return featured;
+
+  const liveById = new Map(live.map((s) => [s.id, s]));
+  const featuredLive = liveById.get(featured.id);
+  if (featuredLive?.online) return featured;
+
+  const online = servers
+    .map((def) => ({ def, live: liveById.get(def.id) }))
+    .filter((row) => row.live?.online);
+
+  if (online.length === 0) return featured;
+
+  online.sort(
+    (a, b) => (b.live?.players ?? 0) - (a.live?.players ?? 0),
+  );
+  return online[0]!.def;
+}
 
 export const mapImages: Record<string, string> = {
   de_mirage: "/maps/de_mirage.png",

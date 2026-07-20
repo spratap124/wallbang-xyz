@@ -3,19 +3,20 @@ import "server-only";
 import {
   getConnectCommand,
   getSteamConnectUrl,
-  servers,
 } from "@/config/servers";
-import { getLiveServers } from "@/lib/servers/status";
 import {
   ensureProfileIndexes,
   playerPresenceCollection,
   presenceStaleMs,
 } from "@/lib/profile/collections";
+import {
+  endPlayerSession,
+  endServerSessions,
+  touchPlayerSession,
+} from "@/lib/profile/sessions";
+import { getGameServerById } from "@/lib/servers/registry";
+import { getLiveServers } from "@/lib/servers/status";
 import type { CurrentServerInfo, PlayerPresenceDoc } from "@/types/profile";
-
-function resolveServerConfig(serverId: string) {
-  return servers.find((s) => s.id === serverId) ?? null;
-}
 
 export async function upsertPlayerPresence(input: {
   steamId: string;
@@ -24,7 +25,9 @@ export async function upsertPlayerPresence(input: {
   map?: string | null;
 }): Promise<PlayerPresenceDoc> {
   await ensureProfileIndexes();
-  const def = resolveServerConfig(input.serverId);
+  const def = await getGameServerById(input.serverId, {
+    includeDisabled: true,
+  });
   const now = new Date();
   const doc: PlayerPresenceDoc = {
     _id: input.steamId,
@@ -37,19 +40,30 @@ export async function upsertPlayerPresence(input: {
 
   const col = await playerPresenceCollection();
   await col.replaceOne({ steamId: input.steamId }, doc, { upsert: true });
+  await touchPlayerSession({
+    steamId: doc.steamId,
+    serverId: doc.serverId,
+    serverName: doc.serverName,
+    map: doc.map,
+  });
   return doc;
 }
 
-export async function clearPlayerPresence(steamId: string): Promise<void> {
+export async function clearPlayerPresence(
+  steamId: string,
+  serverId?: string,
+): Promise<void> {
   await ensureProfileIndexes();
   const col = await playerPresenceCollection();
-  await col.deleteOne({ steamId });
+  await col.deleteOne(serverId ? { steamId, serverId } : { steamId });
+  await endPlayerSession(steamId, serverId);
 }
 
 export async function clearServerPresence(serverId: string): Promise<void> {
   await ensureProfileIndexes();
   const col = await playerPresenceCollection();
   await col.deleteMany({ serverId });
+  await endServerSessions(serverId);
 }
 
 export async function getPlayerPresence(
@@ -72,9 +86,12 @@ export async function resolveCurrentServer(
   const presence = await getPlayerPresence(steamId);
   if (!presence) return null;
 
-  const def = resolveServerConfig(presence.serverId);
+  const def = await getGameServerById(presence.serverId, {
+    includeDisabled: true,
+  });
   let players: number | null = null;
-  let maxPlayers: number | null = def?.maxPlayersOverride ?? def?.maxPlayers ?? null;
+  let maxPlayers: number | null =
+    def?.maxPlayersOverride ?? def?.maxPlayers ?? null;
   let map = presence.map;
   let serverName = presence.serverName;
 

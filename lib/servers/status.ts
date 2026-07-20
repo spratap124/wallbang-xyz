@@ -2,9 +2,11 @@ import "server-only";
 
 import type { AnyBulkWriteOperation } from "mongodb";
 
-import { getServerAddress, servers, type GameServer } from "@/config/servers";
+import { getServerAddress, type GameServer } from "@/config/servers";
 import { queryA2SInfo } from "@/lib/a2s";
 import { getDb, isMongoConfigured } from "@/lib/mongo";
+import { getGameServers } from "@/lib/servers/registry";
+import type { RegisteredServer } from "@/types/servers";
 import type { ServerSummary } from "@/lib/servers/types";
 
 const COLLECTION = "serverStatus";
@@ -74,35 +76,40 @@ async function pollServer(def: GameServer): Promise<StatusDoc> {
   };
 }
 
-function toSummary(def: GameServer, doc: StatusDoc | null): ServerSummary {
+function toSummary(def: RegisteredServer, doc: StatusDoc | null): ServerSummary {
   const online = doc?.online ?? false;
 
   return {
     id: def.id,
     name: online && doc?.name ? doc.name : def.name,
+    shortName: def.shortName,
+    city: def.city,
     ip: getServerAddress(def),
     region: def.region,
     mode: def.mode,
     online,
     map: doc?.map ?? def.map ?? null,
     players: online ? (doc?.players ?? null) : null,
-    // A2S reports the raw slot count (e.g. 64) — the config override wins.
+    // A2S reports the raw slot count (e.g. 64) — the registry override wins.
     maxPlayers: def.maxPlayersOverride ?? doc?.maxPlayers ?? def.maxPlayers ?? null,
     pingUrl: def.pingUrl ?? null,
     lastSeen: doc?.lastPolled ? doc.lastPolled.toISOString() : null,
+    featured: def.featured,
     // Diagnostic only — Vercel→VPS latency, not the user's ping.
     backendPingMs: online ? (doc?.pingMs ?? null) : null,
   };
 }
 
 /**
- * No-cache path for local dev / missing MONGODB_URI: query every configured
+ * No-cache path for local dev / missing MONGODB_URI: query every registered
  * server directly. Keeps the feature usable before Atlas is wired up.
  */
-async function getLiveServersDirect(): Promise<ServerSummary[]> {
-  const docs = await Promise.all(servers.map(pollServer));
+async function getLiveServersDirect(
+  fleet: RegisteredServer[],
+): Promise<ServerSummary[]> {
+  const docs = await Promise.all(fleet.map(pollServer));
   const byId = new Map(docs.map((doc) => [doc._id, doc]));
-  return servers.map((def) => toSummary(def, byId.get(def.id) ?? null));
+  return fleet.map((def) => toSummary(def, byId.get(def.id) ?? null));
 }
 
 /**
@@ -112,8 +119,10 @@ async function getLiveServersDirect(): Promise<ServerSummary[]> {
  * At most one A2S query per server per TTL window regardless of traffic.
  */
 export async function getLiveServers(): Promise<ServerSummary[]> {
+  const fleet = await getGameServers();
+
   if (!isMongoConfigured()) {
-    return getLiveServersDirect();
+    return getLiveServersDirect(fleet);
   }
 
   try {
@@ -121,13 +130,13 @@ export async function getLiveServers(): Promise<ServerSummary[]> {
     const db = await getDb();
     const collection = db.collection<StatusDoc>(COLLECTION);
 
-    const ids = servers.map((s) => s.id);
+    const ids = fleet.map((s) => s.id);
     const existing = await collection.find({ _id: { $in: ids } }).toArray();
     const byId = new Map(existing.map((doc) => [doc._id, doc]));
 
     const now = Date.now();
     const ttl = snapshotTtlMs();
-    const stale = servers.filter((def) => {
+    const stale = fleet.filter((def) => {
       const doc = byId.get(def.id);
       return !doc || now - doc.lastPolled.getTime() > ttl;
     });
@@ -148,9 +157,9 @@ export async function getLiveServers(): Promise<ServerSummary[]> {
       await collection.bulkWrite(ops);
     }
 
-    return servers.map((def) => toSummary(def, byId.get(def.id) ?? null));
+    return fleet.map((def) => toSummary(def, byId.get(def.id) ?? null));
   } catch {
     // Never let a cache/DB hiccup take down the public list — fall back to A2S.
-    return getLiveServersDirect();
+    return getLiveServersDirect(fleet);
   }
 }

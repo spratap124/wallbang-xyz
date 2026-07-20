@@ -106,6 +106,62 @@ export type PlayerPresenceDoc = {
   updatedAt: Date;
 };
 
+/**
+ * Historical connection session derived from presence heartbeats.
+ * Open sessions have `leftAt: null`; duration uses `lastSeenAt` until closed.
+ */
+export type PlayerSessionDoc = {
+  _id: string;
+  steamId: string;
+  serverId: string;
+  serverName: string;
+  map: string | null;
+  joinedAt: Date;
+  lastSeenAt: Date;
+  leftAt: Date | null;
+};
+
+export type ServerStatsRange = "1d" | "7d" | "30d" | "all";
+
+export type ServerStatsSummary = {
+  range: ServerStatsRange;
+  serverId: string;
+  serverName: string;
+  uniquePlayers: number;
+  totalSessions: number;
+  totalPlayTimeMs: number;
+  avgSessionMs: number;
+  currentlyOnline: number;
+  livePlayers: number | null;
+  liveMaxPlayers: number | null;
+  online: boolean;
+};
+
+export type ServerStatsRecentSession = {
+  id: string;
+  steamId: string;
+  personaName: string | null;
+  avatarUrl: string | null;
+  map: string | null;
+  joinedAt: string;
+  leftAt: string | null;
+  lastSeenAt: string;
+  durationMs: number;
+  active: boolean;
+};
+
+export type ServerStatsDayBucket = {
+  date: string;
+  uniquePlayers: number;
+  sessions: number;
+};
+
+export type ServerStatsResponse = {
+  summary: ServerStatsSummary;
+  recent: ServerStatsRecentSession[];
+  daily: ServerStatsDayBucket[];
+};
+
 export type QuickStats = {
   matchesPlayed: number;
   wins: number;

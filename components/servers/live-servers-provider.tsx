@@ -10,25 +10,10 @@ import {
   type ReactNode,
 } from "react";
 
-import { servers as serverDefs } from "@/config/servers";
 import { fetchServers } from "@/lib/api/servers";
 import type { ServerSummary } from "@/lib/servers/types";
 
 const POLL_MS = 10_000;
-
-const initialServers: ServerSummary[] = serverDefs.map((def) => ({
-  id: def.id,
-  name: def.name,
-  ip: `${def.host}:${def.port}`,
-  region: def.region,
-  mode: def.mode,
-  online: false,
-  map: def.map,
-  players: null,
-  maxPlayers: def.maxPlayersOverride ?? def.maxPlayers,
-  pingUrl: def.pingUrl ?? null,
-  lastSeen: null,
-}));
 
 type LiveServersContextValue = {
   servers: ServerSummary[];
@@ -41,9 +26,10 @@ const LiveServersContext = createContext<LiveServersContextValue | null>(null);
 /**
  * Single /api/servers poll shared by the hero card and servers list so the
  * homepage does not fire duplicate requests on every tick.
+ * Fleet list comes from the API (DB registry) — no static config seed.
  */
 export function LiveServersProvider({ children }: { children: ReactNode }) {
-  const [servers, setServers] = useState<ServerSummary[]>(initialServers);
+  const [servers, setServers] = useState<ServerSummary[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const mounted = useRef(true);

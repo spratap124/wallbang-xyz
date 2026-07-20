@@ -67,6 +67,16 @@ export async function findUserBySteamId(
   return col.findOne({ steamId });
 }
 
+export async function findUsersBySteamIds(
+  steamIds: string[],
+): Promise<UserDoc[]> {
+  const ids = [...new Set(steamIds.filter(Boolean))];
+  if (ids.length === 0) return [];
+  await ensureIndexes();
+  const col = await users();
+  return col.find({ steamId: { $in: ids } }).toArray();
+}
+
 export async function updateUserDisplayRole(
   userId: string,
   role: RoleCode,
