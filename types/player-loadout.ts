@@ -37,11 +37,20 @@ export type GameGloveSkin = {
   wear: number;
 };
 
+/** Plugin-facing agent selection. */
+export type GameAgent = {
+  agentId: string;
+  name: string;
+  faction: "CT" | "T";
+};
+
 /** Returned on GET /api/v1/player/:steamId as `loadout`. */
 export type GameLoadout = {
   weapons: Record<string, GameWeaponSkin>;
   knife: GameKnifeSkin | null;
   gloves: GameGloveSkin | null;
+  agentCT: GameAgent | null;
+  agentT: GameAgent | null;
   updatedAt: string;
 };
 
@@ -123,6 +132,20 @@ export function toGameLoadout(
     weapons,
     knife,
     gloves,
+    agentCT: state.agentCT
+      ? {
+          agentId: state.agentCT.agentId,
+          name: state.agentCT.name,
+          faction: state.agentCT.faction,
+        }
+      : null,
+    agentT: state.agentT
+      ? {
+          agentId: state.agentT.agentId,
+          name: state.agentT.name,
+          faction: state.agentT.faction,
+        }
+      : null,
     updatedAt:
       typeof updatedAt === "string" ? updatedAt : updatedAt.toISOString(),
   };

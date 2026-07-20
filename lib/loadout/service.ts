@@ -16,6 +16,11 @@ import {
   ensureLoadoutIndexes,
   playerLoadoutsCollection,
 } from "@/lib/loadout/player-collections";
+import {
+  mergeGameLoadoutPatch,
+  resolveLoadoutUserId,
+} from "@/lib/loadout/game-sync";
+import type { PatchGameLoadoutInput } from "@/lib/validations/game-loadout";
 
 function toResponse(
   steamId: string,
@@ -77,4 +82,33 @@ export async function savePlayerLoadout(
   );
 
   return toResponse(user.steamId, loadout, updatedAt);
+}
+
+/** CS2 plugin → merge in-game selections into the player's saved loadout. */
+export async function patchPlayerLoadoutFromGame(
+  steamId: string,
+  patch: PatchGameLoadoutInput,
+): Promise<PlayerLoadoutResponse> {
+  await ensureLoadoutIndexes();
+  const col = await playerLoadoutsCollection();
+  const existing = await col.findOne({ steamId });
+  const base = existing?.loadout ?? emptyUserLoadout();
+  const loadout = await mergeGameLoadoutPatch(base, patch);
+  const updatedAt = new Date();
+  const userId = await resolveLoadoutUserId(steamId);
+
+  await col.updateOne(
+    { steamId },
+    {
+      $set: {
+        steamId,
+        userId,
+        loadout,
+        updatedAt,
+      },
+    },
+    { upsert: true },
+  );
+
+  return toResponse(steamId, loadout, updatedAt);
 }
