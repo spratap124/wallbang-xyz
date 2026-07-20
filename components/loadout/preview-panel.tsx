@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FavoriteButton, SkinImage } from "@/components/loadout/skin-image";
 import { StatTrakToggle } from "@/components/loadout/stattrak-toggle";
 import { WearSlider } from "@/components/loadout/wear-slider";
-import { resolveAnySkinImage } from "@/lib/loadout/images";
+import { resolveDefaultWeaponImage } from "@/lib/loadout/images";
 import { cn } from "@/lib/utils";
 import type { EquippedItem, Skin } from "@/types/loadout";
 
@@ -55,7 +55,7 @@ export function PreviewPanel({
     draftSkin?.image ??
     preview?.image ??
     (weaponName || weaponId
-      ? resolveAnySkinImage({
+      ? resolveDefaultWeaponImage({
           id: weaponId,
           defIndex: weaponDefIndex,
           name: weaponName,

@@ -95,8 +95,40 @@ export function resolveSkinImage(
 }
 
 /**
- * Pick any available skin preview for a weapon / knife / glove.
- * Used when nothing is equipped so cards aren't empty placeholders.
+ * Resolve the default (vanilla) CS2 weapon / knife preview.
+ * Keys come from ByMykel base_weapons.json merged into skin-images.json.
+ */
+export function resolveDefaultWeaponImage(weaponRef: {
+  defIndex?: number | null;
+  id?: string | null;
+  name?: string | null;
+}): string | undefined {
+  const images = data.images;
+  if (!images) return undefined;
+
+  if (weaponRef.defIndex != null && weaponRef.defIndex > 0) {
+    const byDef = images[`def:${weaponRef.defIndex}`];
+    if (byDef) return byDef;
+  }
+
+  if (weaponRef.id) {
+    const byId = images[`id:${weaponRef.id}`];
+    if (byId) return byId;
+    const byWeapon = images[`weapon:weapon_${weaponRef.id}`];
+    if (byWeapon) return byWeapon;
+  }
+
+  if (weaponRef.name) {
+    const direct = images[weaponRef.name];
+    if (direct) return direct;
+  }
+
+  return undefined;
+}
+
+/**
+ * @deprecated Prefer resolveDefaultWeaponImage for unequipped slots.
+ * Picks any cosmetic skin preview — not the vanilla model.
  */
 export function resolveAnySkinImage(weaponRef: {
   defIndex?: number | null;

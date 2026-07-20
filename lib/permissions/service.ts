@@ -34,6 +34,7 @@ import type {
   RoleSource,
   UserRoleDoc,
 } from "@/types/permissions";
+import { getGameLoadoutForPlayer } from "@/lib/loadout/service";
 
 async function ready(): Promise<void> {
   await ensurePermissionIndexes();
@@ -474,12 +475,17 @@ export async function getAuditLogs(params?: {
 export async function getPlayerPermissions(
   steamId: string,
 ): Promise<PlayerPermissionsResponse | null> {
-  const resolved = await getUserPermissions({ steamId });
+  const [resolved, loadout] = await Promise.all([
+    getUserPermissions({ steamId }),
+    getGameLoadoutForPlayer(steamId).catch(() => null),
+  ]);
+
   if (!resolved) {
     return {
       player: { steamId, username: "" },
       roles: [],
       permissions: [],
+      loadout,
     };
   }
 
@@ -490,6 +496,7 @@ export async function getPlayerPermissions(
     },
     roles: resolved.roles,
     permissions: resolved.permissions,
+    loadout,
   };
 }
 

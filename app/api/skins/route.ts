@@ -14,6 +14,7 @@ import {
   resolveSkinImage,
   resolveSkinImageByName,
 } from "@/lib/loadout/images";
+import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk } from "@/lib/permissions/authz";
 
@@ -55,15 +56,20 @@ export async function GET(request: Request): Promise<Response> {
       const byId = new Map(skins.map((s) => [s.id, s]));
       return jsonOk({
         weapon,
-        skins: toLoadoutSkins(weapon, skins, (paintKit, skinId) => {
-          const skin = byId.get(skinId);
-          return (
-            resolveSkinImage(weaponRef, paintKit) ??
-            (skin
-              ? resolveSkinImageByName(`${displayName}|${skin.name}`)
-              : undefined)
-          );
-        }),
+        skins: toLoadoutSkins(
+          weapon,
+          skins,
+          (paintKit, skinId) => {
+            const skin = byId.get(skinId);
+            return (
+              resolveSkinImage(weaponRef, paintKit) ??
+              (skin
+                ? resolveSkinImageByName(`${displayName}|${skin.name}`)
+                : undefined)
+            );
+          },
+          { defIndex: weaponDef?.defIndex, name: displayName },
+        ),
       });
     }
 
@@ -95,21 +101,30 @@ export async function GET(request: Request): Promise<Response> {
       return jsonOk({
         glove: detail.glove,
         wearPresets: detail.wearPresets,
-        skins: detail.glove.skins.map((s) => ({
-          id: `${detail.glove.id}:${s.id}`,
-          weapon: detail.glove.id,
-          paintKit: s.paintKit,
-          skinName: s.displayName,
-          rarity: "Extraordinary" as const,
-          collection: "",
-          wearSupported: true,
-          stattrakSupported: false,
-          image:
-            resolveSkinImage(weaponRef, s.paintKit) ??
-            resolveSkinImageByName(
-              `${detail.glove.displayName}|${s.displayName}`,
-            ),
-        })),
+        skins: detail.glove.skins.map((s) => {
+          const meta = lookupSkinMetadata({
+            weaponId: detail.glove.id,
+            defIndex: detail.glove.defIndex,
+            paintKit: s.paintKit,
+            skinName: s.displayName,
+            weaponDisplayName: detail.glove.displayName,
+          });
+          return {
+            id: `${detail.glove.id}:${s.id}`,
+            weapon: detail.glove.id,
+            paintKit: s.paintKit,
+            skinName: s.displayName,
+            rarity: meta?.rarity ?? "Extraordinary",
+            collection: meta?.collection ?? "",
+            wearSupported: true,
+            stattrakSupported: false,
+            image:
+              resolveSkinImage(weaponRef, s.paintKit) ??
+              resolveSkinImageByName(
+                `${detail.glove.displayName}|${s.displayName}`,
+              ),
+          };
+        }),
       });
     }
 

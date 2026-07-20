@@ -12,6 +12,7 @@ import type {
   KnifeFinish,
 } from "@/types/catalog";
 import type { Skin, WeaponDef } from "@/types/loadout";
+import { enrichSkinMeta, lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 
 type ApiOk<T> = { ok: true; data: T };
 type ApiErr = { ok: false; error: string };
@@ -120,17 +121,25 @@ export function knifeFinishesToSkins(
   knifeId: string,
   finishes: KnifeFinish[],
 ): Skin[] {
-  return finishes.map((f) => ({
-    id: `${knifeId}:${f.id}`,
-    weapon: knifeId,
-    paintKit: f.paintKit,
-    skinName: f.displayName,
-    rarity: "Covert",
-    collection: "",
-    wearSupported: !f.skipWear,
-    stattrakSupported: true,
-    image: f.image,
-  }));
+  return finishes.map((f) => {
+    const meta = lookupSkinMetadata({
+      weaponId: knifeId,
+      paintKit: f.paintKit,
+      skinName: f.displayName,
+    });
+    const base: Skin = {
+      id: `${knifeId}:${f.id}`,
+      weapon: knifeId,
+      paintKit: f.paintKit,
+      skinName: f.displayName,
+      rarity: meta?.rarity ?? "Covert",
+      collection: meta?.collection ?? "",
+      wearSupported: !f.skipWear,
+      stattrakSupported: true,
+      image: f.image,
+    };
+    return enrichSkinMeta(base, { id: knifeId });
+  });
 }
 
 export type LoadoutSkinCategory = "weapons" | "knives" | "gloves";
@@ -154,6 +163,52 @@ export async function loadSkinsForSlot(
   }
   const detail = await fetchSkinsForWeapon(id, baseUrl);
   return detail.skins;
+}
+
+async function mutateJson<T>(
+  url: string,
+  method: string,
+  body?: unknown,
+): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Accept: "application/json",
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const json = (await res.json()) as ApiOk<T> | ApiErr;
+  if (!res.ok || !json.ok) {
+    const msg = !json.ok ? json.error : `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return json.data;
+}
+
+export type SavedLoadoutResponse = {
+  loadout: import("@/types/loadout").UserLoadoutState;
+  game: import("@/types/player-loadout").GameLoadout;
+  updatedAt: string;
+};
+
+/** GET /api/loadout — session user's saved loadout. */
+export function fetchSavedLoadout(
+  baseUrl = "",
+): Promise<SavedLoadoutResponse> {
+  return getJson<SavedLoadoutResponse>(`${baseUrl}/api/loadout`);
+}
+
+/** PUT /api/loadout — persist full loadout for the signed-in player. */
+export function saveSavedLoadout(
+  loadout: import("@/types/loadout").UserLoadoutState,
+  baseUrl = "",
+): Promise<SavedLoadoutResponse> {
+  return mutateJson<SavedLoadoutResponse>(
+    `${baseUrl}/api/loadout`,
+    "PUT",
+    loadout,
+  );
 }
 
 /** Re-export raw catalog shapes for advanced UI. */
