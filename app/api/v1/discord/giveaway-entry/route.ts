@@ -10,8 +10,8 @@ import { isMongoConfigured } from "@/lib/mongo";
 
 const bodySchema = z.object({
   steamId: z.string().regex(/^\d{17}$/),
-  discordUserId: z.string().min(1),
-  discordUsername: z.string().min(1),
+  discordUserId: z.string().min(1).optional(),
+  discordUsername: z.string().min(1).optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -42,7 +42,9 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const result = await processGiveawayEntry({
-      ...parsed.data,
+      steamId: parsed.data.steamId,
+      discordUserId: parsed.data.discordUserId,
+      discordUsername: parsed.data.discordUsername,
       maxWinners: Number.isFinite(maxWinners) ? maxWinners : 100,
     });
     return jsonOk(result);

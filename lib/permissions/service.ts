@@ -504,6 +504,18 @@ export function refreshCache(steamId: string): void {
   invalidatePermissionCache(steamId);
 }
 
+export type LaunchGiveawayStatus = "granted" | "already_granted" | "slots_full";
+
+export type LaunchGiveawayResult = {
+  steamId: string;
+  personaName: string;
+  position: number;
+  maxWinners: number;
+  status: LaunchGiveawayStatus;
+  expiresAt: Date | null;
+};
+
+/** @deprecated Use LaunchGiveawayResult — kept for the legacy Discord bot API. */
 export type GiveawayEntryResult = {
   steamId: string;
   personaName: string;
@@ -513,26 +525,74 @@ export type GiveawayEntryResult = {
   expiresAt: Date;
 };
 
+export function getLaunchGiveawayMaxWinners(): number {
+  const parsed = Number.parseInt(process.env.GIVEAWAY_MAX_WINNERS ?? "100", 10);
+  return Number.isFinite(parsed) ? parsed : 100;
+}
+
+export function getLaunchGiveawayVipMonths(): number {
+  const parsed = Number.parseInt(process.env.GIVEAWAY_VIP_MONTHS ?? "3", 10);
+  return Number.isFinite(parsed) ? parsed : 3;
+}
+
 function giveawayVipExpiresAt(from = new Date()): Date {
-  const months = Number.parseInt(process.env.GIVEAWAY_VIP_MONTHS ?? "3", 10);
   const expiresAt = new Date(from);
-  expiresAt.setMonth(expiresAt.getMonth() + (Number.isFinite(months) ? months : 3));
+  expiresAt.setMonth(expiresAt.getMonth() + getLaunchGiveawayVipMonths());
   return expiresAt;
 }
 
-export async function processGiveawayEntry(input: {
+async function countActiveGiveawayVips(now = new Date()): Promise<number> {
+  const col = await userRolesCollection();
+  return col.countDocuments({
+    roleCode: "VIP",
+    source: "GIVEAWAY",
+    active: true,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+  });
+}
+
+export async function getLaunchGiveawayStatus(): Promise<{
+  maxWinners: number;
+  claimed: number;
+  remaining: number;
+  vipMonths: number;
+}> {
+  await ready();
+  const maxWinners = getLaunchGiveawayMaxWinners();
+  const claimed = await countActiveGiveawayVips();
+  return {
+    maxWinners,
+    claimed,
+    remaining: Math.max(0, maxWinners - claimed),
+    vipMonths: getLaunchGiveawayVipMonths(),
+  };
+}
+
+function toLegacyGiveawayResult(result: LaunchGiveawayResult): GiveawayEntryResult {
+  return {
+    steamId: result.steamId,
+    personaName: result.personaName,
+    position: result.position,
+    maxWinners: result.maxWinners,
+    alreadyGranted: result.status === "already_granted",
+    expiresAt: result.expiresAt ?? giveawayVipExpiresAt(),
+  };
+}
+
+/** Grant launch VIP on Steam login (or legacy Discord entry). Idempotent. */
+export async function processLaunchGiveaway(input: {
   steamId: string;
-  discordUserId: string;
-  discordUsername: string;
   maxWinners?: number;
-}): Promise<GiveawayEntryResult> {
+  discordUserId?: string;
+  discordUsername?: string;
+}): Promise<LaunchGiveawayResult> {
   await ready();
 
-  const maxWinners = input.maxWinners ?? 100;
+  const maxWinners = input.maxWinners ?? getLaunchGiveawayMaxWinners();
   const user = await findUserBySteamId(input.steamId);
   if (!user) {
     throw new Error(
-      "You need to sign in with Steam on wallbang.xyz before entering the giveaway.",
+      "You need to sign in with Steam on wallbang.xyz before claiming the launch offer.",
     );
   }
 
@@ -561,22 +621,24 @@ export async function processGiveawayEntry(input: {
       personaName: user.personaName,
       position,
       maxWinners,
-      alreadyGranted: true,
-      expiresAt: existingGiveaway.expiresAt ?? giveawayVipExpiresAt(existingGiveaway.grantedAt),
+      status: "already_granted",
+      expiresAt:
+        existingGiveaway.expiresAt ??
+        giveawayVipExpiresAt(existingGiveaway.grantedAt),
     };
   }
 
-  const winnerCount = await col.countDocuments({
-    roleCode: "VIP",
-    source: "GIVEAWAY",
-    active: true,
-    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-  });
+  const winnerCount = await countActiveGiveawayVips(now);
 
   if (winnerCount >= maxWinners) {
-    throw new Error(
-      "All 100 VIP giveaway slots have been claimed. Thanks for joining WallBang!",
-    );
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: maxWinners,
+      maxWinners,
+      status: "slots_full",
+      expiresAt: null,
+    };
   }
 
   const expiresAt = giveawayVipExpiresAt(now);
@@ -594,11 +656,13 @@ export async function processGiveawayEntry(input: {
     await recordPlayerActivity({
       steamId: user.steamId,
       type: "won_giveaway",
-      title: "Won launch VIP giveaway",
-      description: "Earned 3 months of VIP through the Discord launch giveaway.",
+      title: "Claimed launch VIP offer",
+      description: `Earned ${getLaunchGiveawayVipMonths()} months of VIP by signing in during the launch offer.`,
       metadata: {
-        discordUserId: input.discordUserId,
-        discordUsername: input.discordUsername,
+        ...(input.discordUserId ? { discordUserId: input.discordUserId } : {}),
+        ...(input.discordUsername
+          ? { discordUsername: input.discordUsername }
+          : {}),
         expiresAt: expiresAt.toISOString(),
       },
     });
@@ -611,7 +675,23 @@ export async function processGiveawayEntry(input: {
     personaName: user.personaName,
     position: winnerCount + 1,
     maxWinners,
-    alreadyGranted: false,
+    status: "granted",
     expiresAt,
   };
+}
+
+/** Legacy Discord bot entry point — wraps processLaunchGiveaway. */
+export async function processGiveawayEntry(input: {
+  steamId: string;
+  discordUserId?: string;
+  discordUsername?: string;
+  maxWinners?: number;
+}): Promise<GiveawayEntryResult> {
+  const result = await processLaunchGiveaway(input);
+  if (result.status === "slots_full") {
+    throw new Error(
+      `All ${result.maxWinners} VIP launch offer slots have been claimed. Thanks for joining WallBang!`,
+    );
+  }
+  return toLegacyGiveawayResult(result);
 }

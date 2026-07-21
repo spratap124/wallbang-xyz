@@ -17,7 +17,11 @@ import {
 } from "@/lib/auth/steam-openid";
 import { upsertSteamUser } from "@/lib/auth/users";
 import { isMongoConfigured } from "@/lib/mongo";
-import { onUserAuthenticated } from "@/lib/permissions/service";
+import { announceLaunchGiveawayGrant } from "@/lib/discord/giveaway-announce";
+import {
+  onUserAuthenticated,
+  processLaunchGiveaway,
+} from "@/lib/permissions/service";
 import { ensurePlayerDomain } from "@/lib/profile";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -54,9 +58,25 @@ export async function GET(request: Request): Promise<Response> {
     const user = await upsertSteamUser(profile);
     await onUserAuthenticated(user);
     await ensurePlayerDomain(user);
+
+    try {
+      const giveaway = await processLaunchGiveaway({ steamId: user.steamId });
+      if (giveaway.status === "granted") {
+        void announceLaunchGiveawayGrant(giveaway).catch((err) => {
+          console.error("[steam/callback] Discord announcement failed", err);
+        });
+      }
+    } catch (err) {
+      console.error("[steam/callback] launch giveaway failed", err);
+    }
+
     const token = await createSessionToken(user);
 
-    const response = NextResponse.redirect(new URL(returnTo, getSiteUrl()));
+    const redirectUrl = new URL(returnTo, getSiteUrl());
+    if (returnTo === "/offer" || returnTo.startsWith("/offer?")) {
+      redirectUrl.pathname = "/offer";
+    }
+    const response = NextResponse.redirect(redirectUrl);
     response.cookies.set(
       authConfig.sessionCookie,
       token,
