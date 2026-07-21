@@ -94,6 +94,8 @@ docker compose -f docker-compose.prod.yml --profile watchtower --env-file .env u
 docker compose -f docker-compose.prod.yml --profile discord --env-file .env up -d
 ```
 
+See [`discord-bot/README.md`](../discord-bot/README.md) for Developer Portal intents, channel IDs, and the launch giveaway flow.
+
 ## Runbook
 
 | Task | Command |

@@ -503,3 +503,101 @@ export async function getPlayerPermissions(
 export function refreshCache(steamId: string): void {
   invalidatePermissionCache(steamId);
 }
+
+export type GiveawayEntryResult = {
+  steamId: string;
+  personaName: string;
+  position: number;
+  maxWinners: number;
+  alreadyGranted: boolean;
+};
+
+export async function processGiveawayEntry(input: {
+  steamId: string;
+  discordUserId: string;
+  discordUsername: string;
+  maxWinners?: number;
+}): Promise<GiveawayEntryResult> {
+  await ready();
+
+  const maxWinners = input.maxWinners ?? 100;
+  const user = await findUserBySteamId(input.steamId);
+  if (!user) {
+    throw new Error(
+      "You need to sign in with Steam on wallbang.xyz before entering the giveaway.",
+    );
+  }
+
+  const col = await userRolesCollection();
+  const now = new Date();
+
+  const existingGiveaway = await col.findOne({
+    userId: user._id,
+    roleCode: "VIP",
+    source: "GIVEAWAY",
+    active: true,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+  });
+
+  if (existingGiveaway) {
+    const position = await col.countDocuments({
+      roleCode: "VIP",
+      source: "GIVEAWAY",
+      active: true,
+      grantedAt: { $lte: existingGiveaway.grantedAt },
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+    });
+
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position,
+      maxWinners,
+      alreadyGranted: true,
+    };
+  }
+
+  const winnerCount = await col.countDocuments({
+    roleCode: "VIP",
+    source: "GIVEAWAY",
+    active: true,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+  });
+
+  if (winnerCount >= maxWinners) {
+    throw new Error(
+      "All 100 VIP giveaway slots have been claimed. Thanks for joining WallBang!",
+    );
+  }
+
+  await grantRole({
+    targetSteamId: user.steamId,
+    roleCode: "VIP",
+    source: "GIVEAWAY",
+    grantedBy: null,
+  });
+
+  try {
+    const { recordPlayerActivity } = await import("@/lib/profile/activity");
+    await recordPlayerActivity({
+      steamId: user.steamId,
+      type: "won_giveaway",
+      title: "Won launch VIP giveaway",
+      description: "Earned VIP through the Discord launch giveaway.",
+      metadata: {
+        discordUserId: input.discordUserId,
+        discordUsername: input.discordUsername,
+      },
+    });
+  } catch (err) {
+    console.error("[giveaway] activity sync failed", err);
+  }
+
+  return {
+    steamId: user.steamId,
+    personaName: user.personaName,
+    position: winnerCount + 1,
+    maxWinners,
+    alreadyGranted: false,
+  };
+}
