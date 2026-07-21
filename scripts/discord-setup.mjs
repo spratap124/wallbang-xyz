@@ -55,6 +55,8 @@ function rulesMessage(siteUrl) {
     "Custom `/id/` links are not accepted. Open your Steam profile and copy the `/profiles/` URL.",
     "",
     "VIP perks: reserved slot, in-game chat tag, and more.",
+    "",
+    "Giveaway VIP lasts **3 months** from the day you enter.",
   ].join("\n");
 }
 
