@@ -5,7 +5,7 @@ function buildWelcomeMessage(siteUrl, offerUrl) {
     "We're giving **3 months of VIP** to the first **100 players** who sign in with Steam.",
     "",
     "**How to claim (2 steps):**",
-    `1. Sign in with Steam at **${siteUrl}/offer** — VIP is granted automatically`,
+    `1. Sign in with Steam at **${siteUrl}/offers** — VIP is granted automatically`,
     "2. You're already here on Discord — welcome aboard!",
     "",
     `Full offer details: **${offerUrl}**`,
@@ -21,7 +21,7 @@ export function registerGuildMemberAdd(client, config) {
     if (member.guild.id !== config.guildId) return;
     if (member.user.bot) return;
 
-    const offerUrl = `${config.siteUrl}/offer`;
+    const offerUrl = `${config.siteUrl}/offers`;
     const message = buildWelcomeMessage(config.siteUrl, offerUrl);
 
     try {
@@ -42,7 +42,7 @@ export function registerReadyLog(client, config) {
   client.once("ready", () => {
     console.log(`[bot] Logged in as ${client.user.tag}`);
     console.log(
-      `[bot] Launch VIP offer: sign in at ${config.siteUrl}/offer (announcements in #launch-giveaway via webhook)`,
+      `[bot] Launch VIP offer: sign in at ${config.siteUrl}/offers (announcements in #launch-giveaway via webhook)`,
     );
   });
 }

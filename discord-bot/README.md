@@ -44,7 +44,7 @@ npm install
 DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... npm start
 ```
 
-Run the Next.js app separately. VIP is granted on Steam login at `/offer`.
+Run the Next.js app separately. VIP is granted on Steam login at `/offers`.
 
 ### 5. Production (Docker)
 
@@ -52,9 +52,20 @@ Run the Next.js app separately. VIP is granted on Steam login at `/offer`.
 docker compose -f docker-compose.prod.yml --profile discord --env-file .env up -d
 ```
 
+On the VPS, Node.js is not installed on the host — run setup scripts via Docker:
+
+```bash
+cd /home/ubuntu/wallbang-xyz
+sudo docker run --rm --network host --env-file .env \
+  -v "$(pwd):/repo" -w /repo node:20-alpine \
+  node scripts/discord-setup.mjs --pin-rules
+```
+
+The bot needs **Manage Messages** in `#launch-giveaway` to pin rules. If pin fails, the script still posts the message — pin it manually in Discord.
+
 ## Player flow
 
-1. Visit [wallbang.xyz/offer](https://wallbang.xyz/offer) and **sign in with Steam** → VIP granted automatically (first 100 players, 3 months).
+1. Visit [wallbang.xyz/offers](https://wallbang.xyz/offers) and **sign in with Steam** → VIP granted automatically (first 100 players, 3 months).
 2. **Join the Discord server** → welcome DM with offer recap.
 3. A message is posted in `#launch-giveaway` announcing each new VIP claim.
 

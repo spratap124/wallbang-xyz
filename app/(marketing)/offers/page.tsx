@@ -36,7 +36,7 @@ export const metadata = createPageMetadata({
   title: "Launch VIP Offer",
   description:
     "Claim 3 months of free WallBang VIP — sign in with Steam and join Discord. First 100 players get reserved slots, VIP chat tag, and more.",
-  path: "/offer",
+  path: "/offers",
 });
 
 function formatExpiry(date: Date): string {
@@ -77,7 +77,7 @@ export default async function LaunchOfferPage() {
           justGranted: true,
         };
         void announceLaunchGiveawayGrant(result).catch((err) => {
-          console.error("[offer] Discord announcement failed", err);
+          console.error("[offers] Discord announcement failed", err);
         });
       } else if (result.status === "already_granted" && result.expiresAt) {
         userGiveaway = {
@@ -103,10 +103,10 @@ export default async function LaunchOfferPage() {
   return (
     <div className="py-16 sm:py-20">
       <JsonLd
-        id="ld-offer-breadcrumb"
+        id="ld-offers-breadcrumb"
         data={breadcrumbJsonLd([
           { name: "Home", path: "/" },
-          { name: "Launch VIP Offer", path: "/offer" },
+          { name: "Offers", path: "/offers" },
         ])}
       />
       <Container>
@@ -192,7 +192,7 @@ export default async function LaunchOfferPage() {
               instantly — no Discord posting required.
             </p>
             <a
-              href="/api/auth/steam?returnTo=/offer"
+              href="/api/auth/steam?returnTo=/offers"
               className={cn(buttonVariants({ size: "lg", className: "mt-5" }))}
             >
               Sign in with Steam

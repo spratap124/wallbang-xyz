@@ -73,8 +73,13 @@ export async function GET(request: Request): Promise<Response> {
     const token = await createSessionToken(user);
 
     const redirectUrl = new URL(returnTo, getSiteUrl());
-    if (returnTo === "/offer" || returnTo.startsWith("/offer?")) {
-      redirectUrl.pathname = "/offer";
+    if (
+      returnTo === "/offers" ||
+      returnTo.startsWith("/offers?") ||
+      returnTo === "/offer" ||
+      returnTo.startsWith("/offer?")
+    ) {
+      redirectUrl.pathname = "/offers";
     }
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.set(

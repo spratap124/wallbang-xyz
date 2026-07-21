@@ -46,7 +46,7 @@ function rulesMessage(siteUrl) {
   return [
     "**Launch VIP Offer — first 100 players**",
     "",
-    "1. Sign in with Steam at **" + siteUrl + "/offer** — VIP is granted automatically",
+    "1. Sign in with Steam at **" + siteUrl + "/offers** — VIP is granted automatically",
     "2. Join the WallBang Discord server",
     "",
     "No profile links or forms required. Each claim is announced in this channel.",
@@ -82,7 +82,7 @@ async function main() {
         name: CHANNEL_NAME,
         type: 0,
         topic:
-          "Launch VIP announcements — sign in at wallbang.xyz/offer to claim (first 100 get 3 months free).",
+          "Launch VIP announcements — sign in at wallbang.xyz/offers to claim (first 100 get 3 months free).",
       }),
     });
     console.log(`Created #${CHANNEL_NAME} (${giveaway.id})`);
@@ -101,10 +101,17 @@ async function main() {
       method: "POST",
       body: JSON.stringify({ content: rulesMessage(siteUrl) }),
     });
-    await api(`/channels/${giveaway.id}/pins/${message.id}`, {
-      method: "PUT",
-    });
-    console.log("Pinned giveaway rules in #" + CHANNEL_NAME);
+    try {
+      await api(`/channels/${giveaway.id}/pins/${message.id}`, {
+        method: "PUT",
+      });
+      console.log("Pinned giveaway rules in #" + CHANNEL_NAME);
+    } catch (err) {
+      console.warn(
+        `Posted rules in #${CHANNEL_NAME} but could not pin (bot needs Manage Messages): ${err.message}`,
+      );
+      console.warn(`Pin manually: https://discord.com/channels/${guild.id}/${giveaway.id}/${message.id}`);
+    }
   }
 
   console.log("\nAdd these to .env on the VPS:\n");

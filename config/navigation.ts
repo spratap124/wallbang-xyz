@@ -7,7 +7,7 @@ export type NavItem = {
 export const mainNav: NavItem[] = [
   { title: "Servers", href: "/servers" },
   { title: "Loadout", href: "/loadout" },
-  { title: "Launch VIP", href: "/offer" },
+  { title: "Offers", href: "/offers" },
   { title: "Features", href: "/features" },
 ];
 
@@ -17,7 +17,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
     items: [
       { title: "Servers", href: "/servers" },
       { title: "Loadout", href: "/loadout" },
-      { title: "Launch VIP Offer", href: "/offer" },
+      { title: "Offers", href: "/offers" },
       { title: "Features", href: "/features" },
       { title: "Roadmap", href: "/roadmap" },
       { title: "Changelog", href: "/changelog" },
