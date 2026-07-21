@@ -75,7 +75,7 @@ jobs:
             git reset --hard "origin/$BRANCH"
 
             COMPOSE_PROFILES=""
-            if grep -qE '^DISCORD_BOT_TOKEN=.+$' .env; then
+            if grep -qE '^DISCORD_BOT_TOKEN=MT[A-Za-z0-9._-]{20,}$' .env; then
               COMPOSE_PROFILES="--profile discord"
               echo "Discord bot token found — enabling discord profile"
             fi
@@ -83,7 +83,7 @@ jobs:
             sudo docker compose -f docker-compose.prod.yml ${COMPOSE_PROFILES} --env-file .env up -d --build --remove-orphans
             sudo docker image prune -f
 
-            if grep -qE '^DISCORD_BOT_TOKEN=.+$' .env; then
+            if grep -qE '^DISCORD_BOT_TOKEN=MT[A-Za-z0-9._-]{20,}$' .env; then
               for i in 1 2 3 4 5 6; do
                 if sudo docker ps --filter name=wallbang-discord --filter status=running -q | grep -q .; then
                   echo "Discord bot container running"
