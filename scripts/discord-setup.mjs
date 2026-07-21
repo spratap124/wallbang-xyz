@@ -44,19 +44,16 @@ async function api(path, options = {}) {
 
 function rulesMessage(siteUrl) {
   return [
-    "**Launch VIP Giveaway — first 100 players**",
+    "**Launch VIP Offer — first 100 players**",
     "",
-    "1. Sign in with Steam at **" + siteUrl + "**",
-    "2. Post your **numeric** Steam profile link in this channel",
+    "1. Sign in with Steam at **" + siteUrl + "/offer** — VIP is granted automatically",
+    "2. Join the WallBang Discord server",
     "",
-    "Example:",
-    "`https://steamcommunity.com/profiles/76561198000000000`",
+    "No profile links or forms required. Each claim is announced in this channel.",
     "",
-    "Custom `/id/` links are not accepted. Open your Steam profile and copy the `/profiles/` URL.",
+    "VIP perks: reserved slot, in-game chat tag, colored chat, and more.",
     "",
-    "VIP perks: reserved slot, in-game chat tag, and more.",
-    "",
-    "Giveaway VIP lasts **3 months** from the day you enter.",
+    "Launch VIP lasts **3 months** from the day you sign in.",
   ].join("\n");
 }
 
@@ -85,7 +82,7 @@ async function main() {
         name: CHANNEL_NAME,
         type: 0,
         topic:
-          "Post your Steam profile link after signing in at wallbang.xyz (first 100 get VIP).",
+          "Launch VIP announcements — sign in at wallbang.xyz/offer to claim (first 100 get 3 months free).",
       }),
     });
     console.log(`Created #${CHANNEL_NAME} (${giveaway.id})`);
@@ -113,8 +110,11 @@ async function main() {
   console.log("\nAdd these to .env on the VPS:\n");
   console.log(`DISCORD_BOT_TOKEN=${token}`);
   console.log(`DISCORD_GUILD_ID=${guild.id}`);
-  console.log(`DISCORD_GIVEAWAY_CHANNEL_ID=${giveaway.id}`);
+  console.log(
+    "DISCORD_GIVEAWAY_WEBHOOK_URL=...  # create in #launch-giveaway → Integrations → Webhooks",
+  );
   console.log("GIVEAWAY_MAX_WINNERS=100");
+  console.log("GIVEAWAY_VIP_MONTHS=3");
 }
 
 main().catch((err) => {

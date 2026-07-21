@@ -1,22 +1,18 @@
-import { ChannelType } from "discord.js";
-
-function buildWelcomeMessage(siteUrl, giveawayChannelId) {
+function buildWelcomeMessage(siteUrl, offerUrl) {
   return [
     "**Welcome to WallBang!**",
     "",
-    "We're giving **VIP access** to the first **100 players** who complete both steps:",
+    "We're giving **3 months of VIP** to the first **100 players** who sign in with Steam.",
     "",
-    `1. Sign in with Steam at **${siteUrl}**`,
-    `2. Post your Steam profile link in <#${giveawayChannelId}>`,
+    "**How to claim (2 steps):**",
+    `1. Sign in with Steam at **${siteUrl}/offer** — VIP is granted automatically`,
+    "2. You're already here on Discord — welcome aboard!",
     "",
-    "Use your numeric profile URL, for example:",
-    "`https://steamcommunity.com/profiles/76561198000000000`",
+    `Full offer details: **${offerUrl}**`,
     "",
-    "VIP perks include a reserved server slot, in-game chat tag, and more.",
+    "VIP perks include a reserved server slot, in-game chat tag, colored chat, and more.",
     "",
-    "Giveaway VIP lasts **3 months** from the day you enter.",
-    "",
-    "Good luck — see you on the servers!",
+    "See you on the servers!",
   ].join("\n");
 }
 
@@ -25,12 +21,13 @@ export function registerGuildMemberAdd(client, config) {
     if (member.guild.id !== config.guildId) return;
     if (member.user.bot) return;
 
-    const message = buildWelcomeMessage(config.siteUrl, config.giveawayChannelId);
+    const offerUrl = `${config.siteUrl}/offer`;
+    const message = buildWelcomeMessage(config.siteUrl, offerUrl);
 
     try {
       await member.send(message);
       console.log(
-        `[welcome] Sent launch giveaway DM to ${member.user.tag} (${member.id})`,
+        `[welcome] Sent launch offer DM to ${member.user.tag} (${member.id})`,
       );
     } catch (err) {
       console.warn(
@@ -42,20 +39,10 @@ export function registerGuildMemberAdd(client, config) {
 }
 
 export function registerReadyLog(client, config) {
-  client.once("ready", async () => {
+  client.once("ready", () => {
     console.log(`[bot] Logged in as ${client.user.tag}`);
-
-    try {
-      const channel = await client.channels.fetch(config.giveawayChannelId);
-      if (!channel || channel.type !== ChannelType.GuildText) {
-        console.error(
-          `[bot] Giveaway channel ${config.giveawayChannelId} is missing or not a text channel`,
-        );
-        return;
-      }
-      console.log(`[bot] Watching giveaway channel #${channel.name}`);
-    } catch (err) {
-      console.error("[bot] Failed to resolve giveaway channel", err);
-    }
+    console.log(
+      `[bot] Launch VIP offer: sign in at ${config.siteUrl}/offer (announcements in #launch-giveaway via webhook)`,
+    );
   });
 }
