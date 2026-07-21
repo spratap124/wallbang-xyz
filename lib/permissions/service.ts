@@ -504,7 +504,11 @@ export function refreshCache(steamId: string): void {
   invalidatePermissionCache(steamId);
 }
 
-export type LaunchGiveawayStatus = "granted" | "already_granted" | "slots_full";
+export type LaunchGiveawayStatus =
+  | "granted"
+  | "already_granted"
+  | "slots_full"
+  | "ineligible";
 
 export type LaunchGiveawayResult = {
   steamId: string;
@@ -541,14 +545,47 @@ function giveawayVipExpiresAt(from = new Date()): Date {
   return expiresAt;
 }
 
+/** Count unique users with an active launch VIP (duplicate rows for one user = 1 slot). */
 async function countActiveGiveawayVips(now = new Date()): Promise<number> {
   const col = await userRolesCollection();
-  return col.countDocuments({
+  const userIds = await col.distinct("userId", {
     roleCode: "VIP",
     source: "GIVEAWAY",
     active: true,
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
   });
+  return userIds.length;
+}
+
+async function isLaunchGiveawayIneligible(user: {
+  id: string;
+  steamId: string;
+}): Promise<boolean> {
+  if (parseOwnerSteamIds().includes(user.steamId)) return true;
+
+  const col = await userRolesCollection();
+  const owner = await col.findOne({
+    userId: user.id,
+    roleCode: "OWNER",
+    active: true,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+  });
+  return Boolean(owner);
+}
+
+/** Revoke any active launch VIP so staff accounts do not consume offer slots. */
+async function revokeActiveGiveawayVip(userId: string): Promise<number> {
+  const col = await userRolesCollection();
+  const result = await col.updateMany(
+    {
+      userId,
+      roleCode: "VIP",
+      source: "GIVEAWAY",
+      active: true,
+    },
+    { $set: { active: false } },
+  );
+  return result.modifiedCount;
 }
 
 export async function getLaunchGiveawayStatus(): Promise<{
@@ -599,6 +636,26 @@ export async function processLaunchGiveaway(input: {
   const col = await userRolesCollection();
   const now = new Date();
 
+  // Owners already have full access — never consume a launch VIP slot.
+  if (await isLaunchGiveawayIneligible({ id: user._id, steamId: user.steamId })) {
+    const revoked = await revokeActiveGiveawayVip(user._id);
+    if (revoked > 0) {
+      invalidatePermissionCache(user.steamId);
+      const resolved = await getUserPermissions({ userId: user._id });
+      if (resolved) {
+        await syncDisplayRole(user._id, resolved.roles);
+      }
+    }
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: 0,
+      maxWinners,
+      status: "ineligible",
+      expiresAt: null,
+    };
+  }
+
   const existingGiveaway = await col.findOne({
     userId: user._id,
     roleCode: "VIP",
@@ -608,7 +665,8 @@ export async function processLaunchGiveaway(input: {
   });
 
   if (existingGiveaway) {
-    const position = await col.countDocuments({
+    // Position = how many unique winners claimed at or before this grant.
+    const earlierOrSame = await col.distinct("userId", {
       roleCode: "VIP",
       source: "GIVEAWAY",
       active: true,
@@ -619,7 +677,7 @@ export async function processLaunchGiveaway(input: {
     return {
       steamId: user.steamId,
       personaName: user.personaName,
-      position,
+      position: earlierOrSame.length,
       maxWinners,
       status: "already_granted",
       expiresAt:
@@ -638,6 +696,25 @@ export async function processLaunchGiveaway(input: {
       maxWinners,
       status: "slots_full",
       expiresAt: null,
+    };
+  }
+
+  // Re-check after the slot count to shrink the login/offers race window.
+  const raced = await col.findOne({
+    userId: user._id,
+    roleCode: "VIP",
+    source: "GIVEAWAY",
+    active: true,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+  });
+  if (raced) {
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: winnerCount,
+      maxWinners,
+      status: "already_granted",
+      expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
     };
   }
 
@@ -691,6 +768,11 @@ export async function processGiveawayEntry(input: {
   if (result.status === "slots_full") {
     throw new Error(
       `All ${result.maxWinners} VIP launch offer slots have been claimed. Thanks for joining WallBang!`,
+    );
+  }
+  if (result.status === "ineligible") {
+    throw new Error(
+      "Owner and staff accounts are not eligible for the launch VIP offer.",
     );
   }
   return toLegacyGiveawayResult(result);
