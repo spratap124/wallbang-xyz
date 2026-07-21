@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/offer",
+        destination: "/offers",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

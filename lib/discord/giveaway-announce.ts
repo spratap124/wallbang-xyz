@@ -1,5 +1,6 @@
 import "server-only";
 
+import { siteConfig } from "@/config/site";
 import type { LaunchGiveawayResult } from "@/lib/permissions/service";
 
 function formatExpiry(date: Date): string {
@@ -19,7 +20,7 @@ function buildAnnouncementMessage(result: LaunchGiveawayResult): string {
     "",
     `Entry **#${result.position}** of **${result.maxWinners}** · VIP active until **${expiry}**`,
     "",
-    "Want in? Sign in with Steam at https://wallbang.xyz/offer — first 100 players get 3 months free.",
+    `Want in? Sign in with Steam at ${siteConfig.url}/offers — first 100 players get 3 months free.`,
   ].join("\n");
 }
 

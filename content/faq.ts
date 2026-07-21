@@ -23,7 +23,7 @@ export const faqs: FaqItem[] = [
     id: "become-vip",
     question: "How do I become VIP?",
     answer:
-      "During the launch offer, the first 100 players who sign in with Steam at wallbang.xyz/offer receive 3 months of VIP automatically — no Discord posting required. Join our Discord server to stay close to the community. After the launch slots fill, paid VIP details will be announced on the site and in Discord.",
+      "During the launch offer, the first 100 players who sign in with Steam at wallbang.xyz/offers receive 3 months of VIP automatically — no Discord posting required. Join our Discord server to stay close to the community. After the launch slots fill, paid VIP details will be announced on the site and in Discord.",
   },
   {
     id: "regions",
