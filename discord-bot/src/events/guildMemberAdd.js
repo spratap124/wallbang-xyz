@@ -14,6 +14,8 @@ function buildWelcomeMessage(siteUrl, giveawayChannelId) {
     "",
     "VIP perks include a reserved server slot, in-game chat tag, and more.",
     "",
+    "Giveaway VIP lasts **3 months** from the day you enter.",
+    "",
     "Good luck — see you on the servers!",
   ].join("\n");
 }

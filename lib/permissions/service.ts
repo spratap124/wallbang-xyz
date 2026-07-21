@@ -510,7 +510,15 @@ export type GiveawayEntryResult = {
   position: number;
   maxWinners: number;
   alreadyGranted: boolean;
+  expiresAt: Date;
 };
+
+function giveawayVipExpiresAt(from = new Date()): Date {
+  const months = Number.parseInt(process.env.GIVEAWAY_VIP_MONTHS ?? "3", 10);
+  const expiresAt = new Date(from);
+  expiresAt.setMonth(expiresAt.getMonth() + (Number.isFinite(months) ? months : 3));
+  return expiresAt;
+}
 
 export async function processGiveawayEntry(input: {
   steamId: string;
@@ -554,6 +562,7 @@ export async function processGiveawayEntry(input: {
       position,
       maxWinners,
       alreadyGranted: true,
+      expiresAt: existingGiveaway.expiresAt ?? giveawayVipExpiresAt(existingGiveaway.grantedAt),
     };
   }
 
@@ -570,11 +579,14 @@ export async function processGiveawayEntry(input: {
     );
   }
 
+  const expiresAt = giveawayVipExpiresAt(now);
+
   await grantRole({
     targetSteamId: user.steamId,
     roleCode: "VIP",
     source: "GIVEAWAY",
     grantedBy: null,
+    expiresAt,
   });
 
   try {
@@ -583,10 +595,11 @@ export async function processGiveawayEntry(input: {
       steamId: user.steamId,
       type: "won_giveaway",
       title: "Won launch VIP giveaway",
-      description: "Earned VIP through the Discord launch giveaway.",
+      description: "Earned 3 months of VIP through the Discord launch giveaway.",
       metadata: {
         discordUserId: input.discordUserId,
         discordUsername: input.discordUsername,
+        expiresAt: expiresAt.toISOString(),
       },
     });
   } catch (err) {
@@ -599,5 +612,6 @@ export async function processGiveawayEntry(input: {
     position: winnerCount + 1,
     maxWinners,
     alreadyGranted: false,
+    expiresAt,
   };
 }

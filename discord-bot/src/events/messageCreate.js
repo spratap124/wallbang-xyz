@@ -15,17 +15,32 @@ function buildInvalidLinkReply(siteUrl) {
   ].join("\n");
 }
 
+function formatExpiry(isoDate) {
+  return new Date(isoDate).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
+}
+
 function buildSuccessReply(data) {
+  const expiry = formatExpiry(data.expiresAt);
+
   if (data.alreadyGranted) {
     return [
       `You're already in the giveaway as **${data.personaName}** (entry **#${data.position}** of ${data.maxWinners}).`,
       "",
-      "Your VIP perks are active — connect to our CS2 servers to use them.",
+      `Your VIP is active until **${expiry}**.`,
+      "",
+      "Connect to our CS2 servers to use your reserved slot and VIP chat tag.",
     ].join("\n");
   }
 
   return [
     `**You're in!** VIP granted to **${data.personaName}** (entry **#${data.position}** of ${data.maxWinners}).`,
+    "",
+    `Your VIP lasts **3 months** and expires on **${expiry}**.`,
     "",
     "Connect to our CS2 servers to use your reserved slot and VIP chat tag.",
   ].join("\n");
