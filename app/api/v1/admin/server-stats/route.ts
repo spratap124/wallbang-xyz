@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
     return jsonError("Unknown serverId.", 400);
   }
   if (!isServerStatsRange(rangeRaw)) {
-    return jsonError("Invalid range. Use 1d, 7d, 30d, or all.", 400);
+    return jsonError("Invalid range. Use 1d, 7d, or 30d.", 400);
   }
 
   const stats = await getServerConnectionStats({

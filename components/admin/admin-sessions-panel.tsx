@@ -16,7 +16,6 @@ const RANGES: { value: ServerStatsRange; label: string }[] = [
   { value: "1d", label: "1D" },
   { value: "7d", label: "7D" },
   { value: "30d", label: "30D" },
-  { value: "all", label: "All" },
 ];
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {

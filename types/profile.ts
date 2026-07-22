@@ -121,7 +121,7 @@ export type PlayerSessionDoc = {
   leftAt: Date | null;
 };
 
-export type ServerStatsRange = "1d" | "7d" | "30d" | "all";
+export type ServerStatsRange = "1d" | "7d" | "30d";
 
 export type ServerStatsSummary = {
   range: ServerStatsRange;
@@ -201,9 +201,18 @@ export type FleetOverviewServerCard = {
 
 export type FleetOverviewResponse = {
   summary: FleetOverviewSummary;
+  lifetime: LifetimeSessionStats;
   recent: FleetOverviewRecentSession[];
   daily: ServerStatsDayBucket[];
   servers: FleetOverviewServerCard[];
+};
+
+/** Durable counters that survive the 30-day session retention window. */
+export type LifetimeSessionStats = {
+  totalSessions: number;
+  totalPlayTimeMs: number;
+  uniquePlayers: number;
+  updatedAt: string;
 };
 
 export type AdminHealthStatus = "ok" | "degraded" | "down";

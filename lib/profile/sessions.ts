@@ -9,6 +9,11 @@ import {
 } from "@/lib/profile/collections";
 import { getGameServerById, getGameServers } from "@/lib/servers/registry";
 import { getLiveServers } from "@/lib/servers/status";
+import {
+  recordLifetimePlayTime,
+  recordLifetimeSessionStart,
+  getLifetimeSessionStats,
+} from "@/lib/profile/session-stats";
 import type {
   FleetOverviewRecentSession,
   FleetOverviewResponse,
@@ -19,19 +24,19 @@ import type {
   ServerStatsResponse,
   ServerStatsSummary,
 } from "@/types/profile";
+import type { Filter } from "mongodb";
 
-const RANGE_MS: Record<Exclude<ServerStatsRange, "all">, number> = {
+const RANGE_MS: Record<ServerStatsRange, number> = {
   "1d": 24 * 60 * 60 * 1000,
   "7d": 7 * 24 * 60 * 60 * 1000,
   "30d": 30 * 24 * 60 * 60 * 1000,
 };
 
 export function isServerStatsRange(value: string): value is ServerStatsRange {
-  return value === "1d" || value === "7d" || value === "30d" || value === "all";
+  return value === "1d" || value === "7d" || value === "30d";
 }
 
-function rangeStart(range: ServerStatsRange, now = new Date()): Date | null {
-  if (range === "all") return null;
+function rangeStart(range: ServerStatsRange, now = new Date()): Date {
   return new Date(now.getTime() - RANGE_MS[range]);
 }
 
@@ -54,14 +59,38 @@ function isSessionActive(session: PlayerSessionDoc, now = Date.now()): boolean {
   return now - session.lastSeenAt.getTime() <= presenceStaleMs() * 2;
 }
 
+/** Close matching open sessions and credit completed play time to lifetime stats. */
+async function closeOpenSessions(
+  filter: Filter<PlayerSessionDoc>,
+  leftAt: Date,
+  lastSeenAt = leftAt,
+): Promise<void> {
+  const col = await playerSessionsCollection();
+  const open = await col.find({ ...filter, leftAt: null }).toArray();
+  if (open.length === 0) return;
+
+  let playTimeMs = 0;
+  for (const session of open) {
+    playTimeMs += Math.max(
+      0,
+      leftAt.getTime() - session.joinedAt.getTime(),
+    );
+  }
+
+  await col.updateMany(
+    { _id: { $in: open.map((s) => s._id) }, leftAt: null },
+    { $set: { leftAt, lastSeenAt } },
+  );
+  await recordLifetimePlayTime(playTimeMs);
+}
+
 /** Close any open session whose last heartbeat is older than the presence TTL window. */
 async function closeStaleOpenSession(
   steamId: string,
   serverId: string,
-  now: Date,
 ): Promise<void> {
   const col = await playerSessionsCollection();
-  const staleBefore = new Date(now.getTime() - presenceStaleMs() * 2);
+  const staleBefore = new Date(Date.now() - presenceStaleMs() * 2);
   const stale = await col.findOne({
     steamId,
     serverId,
@@ -69,9 +98,10 @@ async function closeStaleOpenSession(
     lastSeenAt: { $lt: staleBefore },
   });
   if (!stale) return;
-  await col.updateOne(
-    { _id: stale._id, leftAt: null },
-    { $set: { leftAt: stale.lastSeenAt } },
+  await closeOpenSessions(
+    { _id: stale._id },
+    stale.lastSeenAt,
+    stale.lastSeenAt,
   );
 }
 
@@ -90,16 +120,15 @@ export async function touchPlayerSession(input: {
   const col = await playerSessionsCollection();
 
   // Close open sessions on other servers (player moved / reconnect edge case).
-  await col.updateMany(
+  await closeOpenSessions(
     {
       steamId: input.steamId,
       serverId: { $ne: input.serverId },
-      leftAt: null,
     },
-    { $set: { leftAt: now, lastSeenAt: now } },
+    now,
   );
 
-  await closeStaleOpenSession(input.steamId, input.serverId, now);
+  await closeStaleOpenSession(input.steamId, input.serverId);
 
   const open = await col.findOne({
     steamId: input.steamId,
@@ -132,6 +161,7 @@ export async function touchPlayerSession(input: {
     leftAt: null,
   };
   await col.insertOne(doc);
+  await recordLifetimeSessionStart(input.steamId);
 }
 
 export async function endPlayerSession(
@@ -140,21 +170,16 @@ export async function endPlayerSession(
 ): Promise<void> {
   await ensureProfileIndexes();
   const now = new Date();
-  const col = await playerSessionsCollection();
-  const filter = serverId
-    ? { steamId, serverId, leftAt: null }
-    : { steamId, leftAt: null };
-  await col.updateMany(filter, { $set: { leftAt: now, lastSeenAt: now } });
+  const filter: Filter<PlayerSessionDoc> = serverId
+    ? { steamId, serverId }
+    : { steamId };
+  await closeOpenSessions(filter, now);
 }
 
 export async function endServerSessions(serverId: string): Promise<void> {
   await ensureProfileIndexes();
   const now = new Date();
-  const col = await playerSessionsCollection();
-  await col.updateMany(
-    { serverId, leftAt: null },
-    { $set: { leftAt: now, lastSeenAt: now } },
-  );
+  await closeOpenSessions({ serverId }, now);
 }
 
 function utcDayKey(date: Date): string {
@@ -172,29 +197,13 @@ function buildDailyBuckets(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
 
-  let days: number;
-  if (range === "1d") days = 1;
-  else if (range === "7d") days = 7;
-  else if (range === "30d") days = 30;
-  else {
-    if (sessions.length === 0) return [];
-    const earliest = sessions.reduce(
-      (min, s) => (s.joinedAt < min ? s.joinedAt : min),
-      sessions[0].joinedAt,
-    );
-    const span = endDay.getTime() - Date.UTC(
-      earliest.getUTCFullYear(),
-      earliest.getUTCMonth(),
-      earliest.getUTCDate(),
-    );
-    days = Math.min(90, Math.max(1, Math.floor(span / dayMs) + 1));
-  }
+  const days = range === "1d" ? 1 : range === "7d" ? 7 : 30;
 
   const buckets: ServerStatsDayBucket[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const dayStart = new Date(endDay.getTime() - i * dayMs);
     const dayEnd = new Date(dayStart.getTime() + dayMs);
-    if (start && dayEnd <= start) continue;
+    if (dayEnd <= start) continue;
 
     const inDay = sessions.filter((s) => {
       const joined = s.joinedAt.getTime();
@@ -225,9 +234,10 @@ export async function getServerConnectionStats(input: {
   const start = rangeStart(input.range, now);
   const col = await playerSessionsCollection();
 
-  const filter = start
-    ? { serverId: input.serverId, joinedAt: { $gte: start } }
-    : { serverId: input.serverId };
+  const filter = {
+    serverId: input.serverId,
+    joinedAt: { $gte: start },
+  };
 
   const [sessions, presenceCol, live] = await Promise.all([
     col.find(filter).sort({ joinedAt: -1 }).toArray(),
@@ -306,13 +316,14 @@ export async function getFleetConnectionStats(input: {
   const now = new Date();
   const start = rangeStart(input.range, now);
   const col = await playerSessionsCollection();
-  const filter = start ? { joinedAt: { $gte: start } } : {};
+  const filter = { joinedAt: { $gte: start } };
 
-  const [fleet, sessions, presenceCol, live] = await Promise.all([
+  const [fleet, sessions, presenceCol, live, lifetime] = await Promise.all([
     getGameServers({ includeDisabled: true }),
     col.find(filter).sort({ joinedAt: -1 }).toArray(),
     playerPresenceCollection(),
     getLiveServers().catch(() => []),
+    getLifetimeSessionStats(),
   ]);
 
   const unique = new Set(sessions.map((s) => s.steamId));
@@ -375,6 +386,7 @@ export async function getFleetConnectionStats(input: {
       totalServers: fleet.length,
       enabledServers: enabled.length,
     },
+    lifetime,
     recent,
     daily: buildDailyBuckets(sessions, input.range, now),
     servers: fleet.map((s) => {
@@ -411,9 +423,10 @@ export async function listAdminSessions(input: {
   const col = await playerSessionsCollection();
   const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
 
-  const filter: Record<string, unknown> = {};
+  const filter: Record<string, unknown> = {
+    joinedAt: { $gte: start },
+  };
   if (input.serverId) filter.serverId = input.serverId;
-  if (start) filter.joinedAt = { $gte: start };
   if (input.activeOnly) {
     filter.leftAt = null;
     filter.lastSeenAt = {
