@@ -58,6 +58,7 @@ export default async function AdminLayout({
       permissions={resolved.permissions}
       healthLabel={healthLabel}
       healthOk={healthOk}
+      steamAuthEnabled={steamAuthEnabled}
     >
       {children}
     </AdminShell>

@@ -110,6 +110,14 @@ export async function searchUsers(
   return col.find(filter).sort({ lastLoginAt: -1 }).limit(limit).toArray();
 }
 
+/** List users for admin directory (newest login first). */
+export async function listUsers(limit = 200): Promise<UserDoc[]> {
+  await ensureIndexes();
+  const col = await users();
+  const capped = Math.min(Math.max(limit, 1), 500);
+  return col.find({}).sort({ lastLoginAt: -1 }).limit(capped).toArray();
+}
+
 /** Create or refresh a Steam-linked account after successful OpenID. */
 export async function upsertSteamUser(
   profile: SteamPlayerSummary,
