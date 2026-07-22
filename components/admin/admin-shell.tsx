@@ -17,6 +17,8 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SteamAuthControls } from "@/components/auth/steam-auth-controls";
+import { mainNav } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
 import type { PermissionCode, RoleCode } from "@/types/permissions";
@@ -115,6 +117,7 @@ type AdminShellProps = {
   children: React.ReactNode;
   healthLabel?: string;
   healthOk?: boolean;
+  steamAuthEnabled?: boolean;
 };
 
 export function AdminShell({
@@ -124,6 +127,7 @@ export function AdminShell({
   children,
   healthLabel = "Checking systems…",
   healthOk = true,
+  steamAuthEnabled = true,
 }: AdminShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -241,6 +245,28 @@ export function AdminShell({
               </Button>
             </div>
             <NavLinks onNavigate={() => setMobileOpen(false)} />
+            <div className="border-t border-sidebar-border px-3 py-3">
+              <p className="mb-2 px-2 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+                Site
+              </p>
+              <Link
+                href="/"
+                onClick={() => setMobileOpen(false)}
+                className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                Home
+              </Link>
+              {mainNav.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  {item.title}
+                </Link>
+              ))}
+            </div>
             <UserChip />
           </aside>
         </div>
@@ -259,36 +285,69 @@ export function AdminShell({
             <span className="sr-only">Open menu</span>
           </Button>
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 shrink-0">
             <p className="truncate text-sm font-semibold">{meta.title}</p>
             <p className="truncate text-xs text-muted-foreground">
               {meta.subtitle}
             </p>
           </div>
 
-          <span
-            className={cn(
-              "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs sm:inline-flex",
-              healthOk
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                : "border-amber-500/30 bg-amber-500/10 text-amber-400",
-            )}
+          <nav
+            aria-label="Site"
+            className="ml-2 hidden min-w-0 flex-1 items-center gap-0.5 lg:flex"
           >
+            <Link
+              href="/"
+              className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Home
+            </Link>
+            {mainNav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.title}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-2">
             <span
               className={cn(
-                "size-1.5 rounded-full",
-                healthOk ? "bg-emerald-400" : "bg-amber-400",
+                "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs xl:inline-flex",
+                healthOk
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-400",
               )}
-            />
-            {healthLabel}
-          </span>
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  healthOk ? "bg-emerald-400" : "bg-amber-400",
+                )}
+              />
+              {healthLabel}
+            </span>
 
-          {canManageServers ? (
-            <Button render={<Link href="/admin/servers?new=1" />} size="sm">
-              <Plus className="size-3.5" data-icon="inline-start" />
-              Add Server
-            </Button>
-          ) : null}
+            {canManageServers ? (
+              <Button
+                render={<Link href="/admin/servers?new=1" />}
+                size="sm"
+                className="hidden sm:inline-flex"
+              >
+                <Plus className="size-3.5" data-icon="inline-start" />
+                Add Server
+              </Button>
+            ) : null}
+
+            <SteamAuthControls
+              user={user}
+              enabled={steamAuthEnabled}
+              showAdmin
+            />
+          </div>
         </header>
 
         <main id="main-content" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">

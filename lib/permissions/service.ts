@@ -20,6 +20,7 @@ import { seedPermissionsCatalog } from "@/lib/permissions/seed";
 import {
   findUserById,
   findUserBySteamId,
+  listUsers as listUserDocs,
   searchUsers as searchUserDocs,
   toAuthUser,
   updateUserDisplayRole,
@@ -428,6 +429,17 @@ export async function revokeRole(
 export async function searchUsers(query: string) {
   await ready();
   const docs = await searchUserDocs(query);
+  return docs.map((doc) => ({
+    ...toAuthUser(doc),
+    role: doc.role ?? "USER",
+    lastLoginAt: doc.lastLoginAt,
+    createdAt: doc.createdAt,
+  }));
+}
+
+export async function listUsers(limit?: number) {
+  await ready();
+  const docs = await listUserDocs(limit);
   return docs.map((doc) => ({
     ...toAuthUser(doc),
     role: doc.role ?? "USER",

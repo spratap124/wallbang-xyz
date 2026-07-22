@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,12 +28,21 @@ export function AdminPlayersPanel() {
   const [results, setResults] = useState<SearchUser[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [loaded, setLoaded] = useState(false);
 
-  function search() {
+  const load = useCallback((q?: string) => {
     setError(null);
     startTransition(async () => {
-      const res = await fetch(`/api/v1/users?q=${encodeURIComponent(query)}`);
+      const params = new URLSearchParams();
+      const trimmed = q?.trim() ?? "";
+      if (trimmed) {
+        params.set("q", trimmed);
+      } else {
+        params.set("limit", "500");
+      }
+      const res = await fetch(`/api/v1/users?${params}`);
       const payload = await readJson<SearchUser[]>(res);
+      setLoaded(true);
       if (!payload.ok) {
         setError(payload.error);
         setResults([]);
@@ -41,26 +50,45 @@ export function AdminPlayersPanel() {
       }
       setResults(payload.data);
     });
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function search() {
+    load(query);
+  }
+
+  function clearSearch() {
+    setQuery("");
+    load();
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex max-w-xl gap-2">
+      <div className="flex max-w-xl flex-wrap gap-2">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search SteamID or username"
+          placeholder="Filter by SteamID or username"
           onKeyDown={(e) => {
             if (e.key === "Enter") search();
           }}
         />
-        <Button
-          type="button"
-          onClick={search}
-          disabled={pending || !query.trim()}
-        >
+        <Button type="button" onClick={search} disabled={pending}>
           Search
         </Button>
+        {query.trim() ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={clearSearch}
+            disabled={pending}
+          >
+            Show all
+          </Button>
+        ) : null}
       </div>
 
       {error ? (
@@ -68,6 +96,12 @@ export function AdminPlayersPanel() {
           {error}
         </p>
       ) : null}
+
+      <p className="text-xs text-muted-foreground">
+        {pending && !loaded
+          ? "Loading players…"
+          : `${results.length} player${results.length === 1 ? "" : "s"}`}
+      </p>
 
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[36rem] text-left text-sm">
@@ -87,8 +121,10 @@ export function AdminPlayersPanel() {
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   {pending
-                    ? "Searching…"
-                    : "Search by SteamID64 or persona name."}
+                    ? "Loading…"
+                    : query.trim()
+                      ? "No players match that search."
+                      : "No players in the system yet."}
                 </td>
               </tr>
             ) : (

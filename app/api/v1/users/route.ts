@@ -1,5 +1,9 @@
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
-import { getUserPermissions, searchUsers } from "@/lib/permissions/service";
+import {
+  getUserPermissions,
+  listUsers,
+  searchUsers,
+} from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 
 export async function GET(request: Request): Promise<Response> {
@@ -13,6 +17,8 @@ export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
   const steamId = searchParams.get("steamId")?.trim();
+  const limitRaw = Number(searchParams.get("limit") ?? "200");
+  const limit = Number.isFinite(limitRaw) ? limitRaw : 200;
 
   if (steamId) {
     const resolved = await getUserPermissions({ steamId });
@@ -23,7 +29,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (!q) {
-    return jsonError("Query parameter q is required.", 400);
+    const users = await listUsers(limit);
+    return jsonOk(users);
   }
 
   const users = await searchUsers(q);
