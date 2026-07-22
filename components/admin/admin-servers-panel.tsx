@@ -75,15 +75,21 @@ export function AdminServersPanel() {
       ) : null}
 
       {tab === "activity" ? (
-        <ServerStatsDashboard
-          servers={servers.map((s) => ({
-            id: s.id,
-            name: s.name,
-            shortName: s.shortName,
-            mode: s.mode,
-            region: s.region,
-          }))}
-        />
+        servers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {pending ? "Loading servers…" : error ? null : "No servers configured."}
+          </p>
+        ) : (
+          <ServerStatsDashboard
+            servers={servers.map((s) => ({
+              id: s.id,
+              name: s.name,
+              shortName: s.shortName,
+              mode: s.mode,
+              region: s.region,
+            }))}
+          />
+        )
       ) : (
         <div className={cn(pending && servers.length === 0 && "opacity-60")}>
           <ServerManageDashboard />

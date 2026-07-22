@@ -66,48 +66,67 @@ type ServerStatsDashboardProps = {
   initialServerId?: string;
 };
 
+function resolveServerId(
+  servers: ServerStatsOption[],
+  preferredId: string | undefined,
+): string {
+  if (preferredId && servers.some((s) => s.id === preferredId)) {
+    return preferredId;
+  }
+  return servers[0]?.id ?? "";
+}
+
 export function ServerStatsDashboard({
   servers,
   initialServerId,
 }: ServerStatsDashboardProps) {
-  const [serverId, setServerId] = useState(
-    () =>
-      servers.find((s) => s.id === initialServerId)?.id ??
-      servers[0]?.id ??
-      "",
+  const [serverId, setServerId] = useState(() =>
+    resolveServerId(servers, initialServerId),
   );
   const [range, setRange] = useState<ServerStatsRange>("7d");
   const [data, setData] = useState<ServerStatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Parent loads the fleet async; sync selection once servers arrive (or change).
+  useEffect(() => {
+    setServerId((current) => resolveServerId(servers, current || initialServerId));
+  }, [servers, initialServerId]);
+
   const selected =
     servers.find((s) => s.id === serverId) ?? servers[0] ?? null;
+  const activeServerId = selected?.id ?? "";
 
   const load = useCallback(
     (nextServerId: string, nextRange: ServerStatsRange) => {
       if (!nextServerId) return;
       setError(null);
       startTransition(async () => {
-        const res = await fetch(
-          `/api/v1/admin/server-stats?serverId=${encodeURIComponent(nextServerId)}&range=${nextRange}`,
-        );
-        const payload = await readJson<ServerStatsResponse>(res);
-        if (!payload.ok) {
-          setError(payload.error);
+        try {
+          const res = await fetch(
+            `/api/v1/admin/server-stats?serverId=${encodeURIComponent(nextServerId)}&range=${nextRange}`,
+          );
+          const payload = await readJson<ServerStatsResponse>(res);
+          if (!payload.ok) {
+            setError(payload.error);
+            setData(null);
+            return;
+          }
+          setData(payload.data);
+        } catch {
+          setError("Failed to load server activity.");
           setData(null);
-          return;
         }
-        setData(payload.data);
       });
     },
     [],
   );
 
   useEffect(() => {
+    if (!activeServerId) return;
     setData(null);
-    load(serverId, range);
-  }, [load, serverId, range]);
+    load(activeServerId, range);
+  }, [load, activeServerId, range]);
 
   const summary = data?.summary;
   const maxDaily = Math.max(
@@ -117,7 +136,9 @@ export function ServerStatsDashboard({
 
   if (!selected) {
     return (
-      <p className="text-sm text-muted-foreground">No servers configured.</p>
+      <p className="text-sm text-muted-foreground">
+        {servers.length === 0 ? "Loading servers…" : "No servers configured."}
+      </p>
     );
   }
 
@@ -133,7 +154,7 @@ export function ServerStatsDashboard({
           </label>
           <select
             id="server-stats-server"
-            value={serverId}
+            value={activeServerId}
             disabled={pending}
             onChange={(e) => setServerId(e.target.value)}
             className="h-9 w-full max-w-md rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-input/30"
@@ -167,7 +188,7 @@ export function ServerStatsDashboard({
             size="sm"
             variant="ghost"
             disabled={pending}
-            onClick={() => load(serverId, range)}
+            onClick={() => load(activeServerId, range)}
           >
             Refresh
           </Button>
@@ -215,11 +236,13 @@ export function ServerStatsDashboard({
               : "—"
           }
           hint={
-            summary?.online
-              ? summary.livePlayers != null
-                ? `A2S reports ${summary.livePlayers} players`
-                : "Server online"
-              : "Server offline or unreachable"
+            !summary
+              ? "Live A2S status"
+              : summary.online
+                ? summary.livePlayers != null
+                  ? `A2S reports ${summary.livePlayers} players`
+                  : "Server online"
+                : "Server offline or unreachable"
           }
           loading={pending && !summary}
           accent={summary?.currentlyOnline ? "live" : undefined}
