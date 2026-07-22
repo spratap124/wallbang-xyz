@@ -60,10 +60,18 @@ function fromServer(s: GameServerAdminView): FormState {
   };
 }
 
-export function ServerManageDashboard() {
+export function ServerManageDashboard({
+  initialMode,
+  initialEditId,
+}: {
+  initialMode?: "create" | "edit";
+  initialEditId?: string | null;
+} = {}) {
   const [servers, setServers] = useState<GameServerAdminView[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(
+    initialEditId ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -77,8 +85,18 @@ export function ServerManageDashboard() {
         return;
       }
       setServers(payload.data);
+      if (initialMode === "create") {
+        setEditingId(null);
+        setForm(emptyForm());
+      } else if (initialEditId) {
+        const match = payload.data.find((s) => s.id === initialEditId);
+        if (match) {
+          setEditingId(match.id);
+          setForm(fromServer(match));
+        }
+      }
     });
-  }, []);
+  }, [initialEditId, initialMode]);
 
   useEffect(() => {
     load();

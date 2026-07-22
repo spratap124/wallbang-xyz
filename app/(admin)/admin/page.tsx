@@ -1,34 +1,30 @@
 import type { Metadata } from "next";
 
-import { AdminDashboard } from "@/components/admin/admin-dashboard";
-import { AdminNav } from "@/components/admin/admin-nav";
+import { OverviewDashboard } from "@/components/admin/overview-dashboard";
+import { getSession } from "@/lib/auth/session";
+import { getUserPermissions } from "@/lib/permissions/service";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Admin",
-  description: "WallBang admin dashboard for roles, permissions, and audit logs.",
+  title: "Admin Overview",
+  description: "WallBang admin overview for CS2 fleet health and activity.",
   path: "/admin",
   noIndex: true,
 });
 
-export default function AdminPage() {
+export default async function AdminOverviewPage() {
+  const user = await getSession();
+  if (!user) return null;
+
+  const resolved = await getUserPermissions({ userId: user.id });
+
   return (
-    <div className="container-wb py-10">
-      <AdminNav />
-      <div className="mb-8">
-        <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-          Admin
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Permissions
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Search players, grant or revoke roles, and review audit history.
-          Permissions always resolve from active roles — never from payments
-          directly.
-        </p>
-      </div>
-      <AdminDashboard />
-    </div>
+    <OverviewDashboard
+      user={user}
+      displayRole={resolved?.displayRole ?? "ADMIN"}
+      canManageServers={
+        resolved?.permissions.includes("manage_servers") ?? false
+      }
+    />
   );
 }
