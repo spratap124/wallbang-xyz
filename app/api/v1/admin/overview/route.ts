@@ -22,7 +22,7 @@ export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const rangeRaw = searchParams.get("range") ?? "7d";
   if (!isServerStatsRange(rangeRaw)) {
-    return jsonError("Invalid range. Use 1d, 7d, 30d, or all.", 400);
+    return jsonError("Invalid range. Use 1d, 7d, or 30d.", 400);
   }
 
   const data = await getFleetConnectionStats({ range: rangeRaw });

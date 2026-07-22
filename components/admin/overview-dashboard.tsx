@@ -25,7 +25,6 @@ const RANGES: { value: ServerStatsRange; label: string }[] = [
   { value: "1d", label: "1D" },
   { value: "7d", label: "7D" },
   { value: "30d", label: "30D" },
-  { value: "all", label: "All" },
 ];
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {
@@ -137,7 +136,11 @@ export function OverviewDashboard({
           icon={<Users className="size-4 text-violet-400" />}
           label="Unique players"
           value={summary ? String(summary.uniquePlayers) : "—"}
-          hint="Distinct SteamIDs"
+          hint={
+            data?.lifetime
+              ? `${data.lifetime.uniquePlayers} lifetime`
+              : "Distinct SteamIDs"
+          }
           loading={pending && !summary}
           tone="violet"
         />
@@ -145,7 +148,11 @@ export function OverviewDashboard({
           icon={<Server className="size-4 text-sky-400" />}
           label="Sessions"
           value={summary ? String(summary.totalSessions) : "—"}
-          hint="Join → leave stretches"
+          hint={
+            data?.lifetime
+              ? `${data.lifetime.totalSessions} lifetime`
+              : "Join → leave stretches"
+          }
           loading={pending && !summary}
           tone="sky"
         />
@@ -154,9 +161,11 @@ export function OverviewDashboard({
           label="Play time"
           value={summary ? formatDuration(summary.totalPlayTimeMs) : "—"}
           hint={
-            summary
-              ? `Avg session ${formatDuration(summary.avgSessionMs)}`
-              : "Total across sessions"
+            data?.lifetime
+              ? `${formatDuration(data.lifetime.totalPlayTimeMs)} lifetime`
+              : summary
+                ? `Avg session ${formatDuration(summary.avgSessionMs)}`
+                : "Total across sessions"
           }
           loading={pending && !summary}
           tone="orange"
@@ -269,10 +278,10 @@ export function OverviewDashboard({
               Players by day
             </h2>
             <Link
-              href="/admin/servers"
+              href="/admin/sessions"
               className="text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              View full analytics
+              View all sessions
             </Link>
           </div>
           <div className="p-4">

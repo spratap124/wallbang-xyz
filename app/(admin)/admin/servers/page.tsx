@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { AdminServersPanel } from "@/components/admin/admin-servers-panel";
@@ -6,8 +7,7 @@ import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Servers",
-  description:
-    "Admin dashboard for CS2 server fleet registry, connection activity, and player presence.",
+  description: "Admin dashboard for CS2 server fleet registry and configuration.",
   path: "/admin/servers",
   noIndex: true,
 });
@@ -20,8 +20,15 @@ export default function AdminServersPage() {
           Servers
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Manage the CS2 fleet and review unique players, sessions, and play
-          time per server.
+          Add, edit, and enable servers in the fleet registry. Connection
+          history lives under{" "}
+          <Link
+            href="/admin/sessions"
+            className="text-foreground underline-offset-4 hover:underline"
+          >
+            Sessions
+          </Link>
+          ; fleet KPIs are on Overview.
         </p>
       </div>
       <Suspense

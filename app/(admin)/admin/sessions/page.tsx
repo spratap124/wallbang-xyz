@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { AdminSessionsPanel } from "@/components/admin/admin-sessions-panel";
 import { createPageMetadata } from "@/seo/metadata";
@@ -18,10 +19,15 @@ export default function AdminSessionsPage() {
           Sessions
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Cross-server join → leave history from presence heartbeats.
+          Cross-server join → leave history from presence heartbeats. Sessions
+          older than 30 days are pruned automatically.
         </p>
       </div>
-      <AdminSessionsPanel />
+      <Suspense
+        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
+      >
+        <AdminSessionsPanel />
+      </Suspense>
     </div>
   );
 }

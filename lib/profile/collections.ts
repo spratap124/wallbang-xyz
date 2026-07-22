@@ -78,6 +78,40 @@ export function presenceStaleMs(): number {
   return (Number.isFinite(secs) && secs > 0 ? secs : 90) * 1000;
 }
 
+/** How long closed/open session docs are kept (Mongo TTL on joinedAt). */
+export function playerSessionRetentionSeconds(): number {
+  const days = Number(process.env.PLAYER_SESSION_RETENTION_DAYS ?? 30);
+  const capped = Number.isFinite(days) && days > 0 ? days : 30;
+  return Math.round(capped * 24 * 60 * 60);
+}
+
+async function ensureSessionRetentionIndex(
+  sessions: Collection<PlayerSessionDoc>,
+): Promise<void> {
+  const expireAfterSeconds = playerSessionRetentionSeconds();
+  const name = "joinedAt_ttl";
+  const existing = await sessions.indexes();
+  const current = existing.find(
+    (idx) =>
+      idx.name === name ||
+      (idx.key &&
+        Object.keys(idx.key).length === 1 &&
+        (idx.key as { joinedAt?: number }).joinedAt === 1),
+  );
+
+  if (
+    current?.name &&
+    (current.expireAfterSeconds !== expireAfterSeconds || current.name !== name)
+  ) {
+    await sessions.dropIndex(current.name);
+  }
+
+  await sessions.createIndex(
+    { joinedAt: 1 },
+    { expireAfterSeconds, name },
+  );
+}
+
 export async function ensureProfileIndexes(): Promise<void> {
   if (!indexesReady) {
     indexesReady = (async () => {
@@ -110,6 +144,7 @@ export async function ensureProfileIndexes(): Promise<void> {
         sessions.createIndex({ serverId: 1, joinedAt: -1 }),
         sessions.createIndex({ steamId: 1, serverId: 1, leftAt: 1 }),
         sessions.createIndex({ serverId: 1, leftAt: 1, lastSeenAt: -1 }),
+        ensureSessionRetentionIndex(sessions),
       ]);
     })().catch((err) => {
       indexesReady = null;
