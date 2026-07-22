@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:ngrok": "concurrently -k -n next,ngrok -c cyan,magenta \"next dev --turbopack\" \"ngrok http --url=python-tropical-outspoken.ngrok-free.dev 3000\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -43,6 +44,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.20",
     "prettier": "^3.9.5",
