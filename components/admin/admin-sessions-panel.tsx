@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -25,13 +26,20 @@ async function readJson<T>(res: Response): Promise<ApiResult<T>> {
 type ServerOption = { id: string; shortName: string };
 
 export function AdminSessionsPanel() {
+  const searchParams = useSearchParams();
+  const initialServerId = searchParams.get("serverId")?.trim() ?? "";
+
   const [range, setRange] = useState<ServerStatsRange>("7d");
-  const [serverId, setServerId] = useState("");
+  const [serverId, setServerId] = useState(initialServerId);
   const [activeOnly, setActiveOnly] = useState(false);
   const [servers, setServers] = useState<ServerOption[]>([]);
   const [sessions, setSessions] = useState<FleetOverviewRecentSession[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (initialServerId) setServerId(initialServerId);
+  }, [initialServerId]);
 
   useEffect(() => {
     startTransition(async () => {

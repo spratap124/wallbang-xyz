@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -314,6 +315,17 @@ export function ServerManageDashboard({
                         onClick={() => startEdit(server)}
                       >
                         Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        render={
+                          <Link
+                            href={`/admin/sessions?serverId=${encodeURIComponent(server.id)}`}
+                          />
+                        }
+                      >
+                        Sessions
                       </Button>
                       <Button
                         type="button"

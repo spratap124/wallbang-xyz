@@ -269,10 +269,10 @@ export function OverviewDashboard({
               Players by day
             </h2>
             <Link
-              href="/admin/servers"
+              href="/admin/sessions"
               className="text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              View full analytics
+              View all sessions
             </Link>
           </div>
           <div className="p-4">
