@@ -162,6 +162,66 @@ export type ServerStatsResponse = {
   daily: ServerStatsDayBucket[];
 };
 
+/** Fleet-wide rollup for the admin Overview dashboard. */
+export type FleetOverviewSummary = {
+  range: ServerStatsRange;
+  uniquePlayers: number;
+  totalSessions: number;
+  totalPlayTimeMs: number;
+  avgSessionMs: number;
+  currentlyOnline: number;
+  livePlayers: number;
+  liveMaxPlayers: number;
+  onlineServers: number;
+  totalServers: number;
+  enabledServers: number;
+};
+
+export type FleetOverviewRecentSession = ServerStatsRecentSession & {
+  serverId: string;
+  serverName: string;
+};
+
+export type FleetOverviewServerCard = {
+  id: string;
+  name: string;
+  shortName: string;
+  host: string;
+  port: number;
+  mode: string;
+  map: string;
+  region: string;
+  city: string;
+  enabled: boolean;
+  featured: boolean;
+  players: number | null;
+  maxPlayers: number | null;
+  online: boolean;
+};
+
+export type FleetOverviewResponse = {
+  summary: FleetOverviewSummary;
+  recent: FleetOverviewRecentSession[];
+  daily: ServerStatsDayBucket[];
+  servers: FleetOverviewServerCard[];
+};
+
+export type AdminHealthStatus = "ok" | "degraded" | "down";
+
+export type AdminHealthCheck = {
+  id: "game_servers" | "web_api" | "database" | "discord_bot";
+  label: string;
+  status: AdminHealthStatus;
+  detail: string;
+  value: string;
+};
+
+export type AdminHealthResponse = {
+  overall: "operational" | "degraded" | "down";
+  checkedAt: string;
+  checks: AdminHealthCheck[];
+};
+
 export type QuickStats = {
   matchesPlayed: number;
   wins: number;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminServersPanel } from "@/components/admin/admin-servers-panel";
 import { createPageMetadata } from "@/seo/metadata";
 
@@ -14,19 +14,21 @@ export const metadata: Metadata = createPageMetadata({
 
 export default function AdminServersPage() {
   return (
-    <div className="container-wb py-10">
-      <AdminNav />
-      <div className="mb-8">
-        <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-          Admin
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Servers</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Manage the CS2 fleet in the database, and review unique players,
-          sessions, and play time per server.
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Servers
+        </h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          Manage the CS2 fleet and review unique players, sessions, and play
+          time per server.
         </p>
       </div>
-      <AdminServersPanel />
+      <Suspense
+        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
+      >
+        <AdminServersPanel />
+      </Suspense>
     </div>
   );
 }

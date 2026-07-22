@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApiResult } from "@/lib/api/waitlist";
 import type {
-  AuditLogDoc,
   ResolvedPermissions,
   RoleCode,
   RoleSource,
@@ -55,23 +56,13 @@ function formatDate(value: string | Date | null | undefined): string {
   return d.toLocaleString();
 }
 
-function auditRoleLabel(entry: AuditLogDoc): string {
-  const fromNew = entry.newValue?.roleCode;
-  const fromOld = entry.oldValue?.roleCode;
-  const code =
-    typeof fromNew === "string"
-      ? fromNew
-      : typeof fromOld === "string"
-        ? fromOld
-        : null;
-  return code ?? "—";
-}
-
 export function AdminDashboard() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const initialSteamId = searchParams.get("steamId")?.trim() ?? "";
+
+  const [query, setQuery] = useState(initialSteamId);
   const [results, setResults] = useState<SearchUser[]>([]);
   const [selected, setSelected] = useState<ResolvedPermissions | null>(null);
-  const [audit, setAudit] = useState<AuditLogDoc[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -81,17 +72,27 @@ export function AdminDashboard() {
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("never");
   const [customExpiry, setCustomExpiry] = useState("");
 
-  const loadAudit = useCallback(() => {
+  const selectUser = useCallback((steamId: string) => {
+    setError(null);
+    setMessage(null);
     startTransition(async () => {
-      const res = await fetch("/api/v1/admin/audit?limit=40");
-      const payload = await readJson<AuditLogDoc[]>(res);
-      if (payload.ok) setAudit(payload.data);
+      const res = await fetch(
+        `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
+      );
+      const payload = await readJson<ResolvedPermissions>(res);
+      if (!payload.ok) {
+        setError(payload.error);
+        return;
+      }
+      setSelected(payload.data);
     });
   }, []);
 
   useEffect(() => {
-    loadAudit();
-  }, [loadAudit]);
+    if (initialSteamId) {
+      selectUser(initialSteamId);
+    }
+  }, [initialSteamId, selectUser]);
 
   function search() {
     setError(null);
@@ -105,22 +106,6 @@ export function AdminDashboard() {
         return;
       }
       setResults(payload.data);
-    });
-  }
-
-  function selectUser(steamId: string) {
-    setError(null);
-    setMessage(null);
-    startTransition(async () => {
-      const res = await fetch(
-        `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
-      );
-      const payload = await readJson<ResolvedPermissions>(res);
-      if (!payload.ok) {
-        setError(payload.error);
-        return;
-      }
-      setSelected(payload.data);
     });
   }
 
@@ -158,7 +143,6 @@ export function AdminDashboard() {
       }
       setSelected(payload.data);
       setMessage(`Granted ${roleCode}.`);
-      loadAudit();
     });
   }
 
@@ -183,12 +167,11 @@ export function AdminDashboard() {
       }
       setSelected(payload.data);
       setMessage(`Revoked ${code}.`);
-      loadAudit();
     });
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <section className="space-y-4">
           <div className="flex gap-2">
@@ -420,60 +403,16 @@ export function AdminDashboard() {
         </section>
       </div>
 
-      <section className="w-full">
-        <h2 className="mb-3 text-sm font-medium tracking-wide text-muted-foreground uppercase">
-          Audit log
-        </h2>
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead className="border-b border-border bg-secondary/50 text-xs text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 font-medium">Time</th>
-                <th className="px-3 py-2 font-medium">Action</th>
-                <th className="px-3 py-2 font-medium">Role</th>
-                <th className="px-3 py-2 font-medium">Admin</th>
-                <th className="px-3 py-2 font-medium">Target</th>
-                <th className="px-3 py-2 font-medium">SteamID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audit.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-6 text-muted-foreground">
-                    No audit entries yet.
-                  </td>
-                </tr>
-              ) : (
-                audit.map((entry) => (
-                  <tr
-                    key={entry._id}
-                    className="border-b border-border/60 last:border-0"
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
-                      {formatDate(entry.timestamp)}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">
-                      {entry.action}
-                    </td>
-                    <td className="px-3 py-2 text-xs font-medium">
-                      {auditRoleLabel(entry)}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">
-                      {entry.adminSteamId ?? "SYSTEM"}
-                    </td>
-                    <td className="px-3 py-2 text-sm">
-                      {entry.targetPersonaName ?? "—"}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                      {entry.targetSteamId}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <p className="text-sm text-muted-foreground">
+        Role changes are recorded in the{" "}
+        <Link
+          href="/admin/audit"
+          className="text-foreground underline-offset-4 hover:underline"
+        >
+          audit log
+        </Link>
+        .
+      </p>
     </div>
   );
 }

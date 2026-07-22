@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { ServerManageDashboard } from "@/components/admin/server-manage-dashboard";
@@ -16,7 +17,13 @@ async function readJson<T>(res: Response): Promise<ApiResult<T>> {
 }
 
 export function AdminServersPanel() {
-  const [tab, setTab] = useState<Tab>("activity");
+  const searchParams = useSearchParams();
+  const wantsNew = searchParams.get("new") === "1";
+  const editId = searchParams.get("edit")?.trim() || null;
+
+  const [tab, setTab] = useState<Tab>(() =>
+    wantsNew || editId ? "manage" : "activity",
+  );
   const [servers, setServers] = useState<GameServerAdminView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -37,6 +44,10 @@ export function AdminServersPanel() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (wantsNew || editId) setTab("manage");
+  }, [wantsNew, editId]);
 
   return (
     <div className="space-y-6">
@@ -86,7 +97,10 @@ export function AdminServersPanel() {
         />
       ) : (
         <div className={cn(pending && servers.length === 0 && "opacity-60")}>
-          <ServerManageDashboard />
+          <ServerManageDashboard
+            initialMode={wantsNew ? "create" : editId ? "edit" : undefined}
+            initialEditId={editId}
+          />
         </div>
       )}
     </div>

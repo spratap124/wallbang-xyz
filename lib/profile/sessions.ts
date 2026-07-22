@@ -7,9 +7,11 @@ import {
   playerSessionsCollection,
   presenceStaleMs,
 } from "@/lib/profile/collections";
-import { getGameServerById } from "@/lib/servers/registry";
+import { getGameServerById, getGameServers } from "@/lib/servers/registry";
 import { getLiveServers } from "@/lib/servers/status";
 import type {
+  FleetOverviewRecentSession,
+  FleetOverviewResponse,
   PlayerSessionDoc,
   ServerStatsDayBucket,
   ServerStatsRange,
@@ -293,4 +295,157 @@ export async function getServerConnectionStats(input: {
     recent,
     daily: buildDailyBuckets(sessions, input.range, now),
   };
+}
+
+export async function getFleetConnectionStats(input: {
+  range: ServerStatsRange;
+  recentLimit?: number;
+}): Promise<FleetOverviewResponse> {
+  await ensureProfileIndexes();
+
+  const now = new Date();
+  const start = rangeStart(input.range, now);
+  const col = await playerSessionsCollection();
+  const filter = start ? { joinedAt: { $gte: start } } : {};
+
+  const [fleet, sessions, presenceCol, live] = await Promise.all([
+    getGameServers({ includeDisabled: true }),
+    col.find(filter).sort({ joinedAt: -1 }).toArray(),
+    playerPresenceCollection(),
+    getLiveServers().catch(() => []),
+  ]);
+
+  const unique = new Set(sessions.map((s) => s.steamId));
+  const totalPlayTimeMs = sessions.reduce(
+    (sum, s) => sum + sessionDurationMs(s, now.getTime()),
+    0,
+  );
+  const totalSessions = sessions.length;
+  const avgSessionMs =
+    totalSessions > 0 ? Math.round(totalPlayTimeMs / totalSessions) : 0;
+
+  const staleBefore = new Date(now.getTime() - presenceStaleMs());
+  const currentlyOnline = await presenceCol.countDocuments({
+    updatedAt: { $gte: staleBefore },
+  });
+
+  const enabled = fleet.filter((s) => s.enabled);
+  const onlineServers = live.filter((s) => s.online).length;
+  const livePlayers = live.reduce((sum, s) => sum + (s.players ?? 0), 0);
+  const liveMaxPlayers = live.reduce((sum, s) => sum + (s.maxPlayers ?? 0), 0);
+  const liveById = new Map(live.map((s) => [s.id, s]));
+
+  const recentLimit = input.recentLimit ?? 12;
+  const recentSessions = sessions.slice(0, recentLimit);
+  const users = await findUsersBySteamIds(
+    recentSessions.map((s) => s.steamId),
+  );
+  const userBySteam = new Map(users.map((u) => [u.steamId, u]));
+
+  const recent: FleetOverviewRecentSession[] = recentSessions.map((s) => {
+    const user = userBySteam.get(s.steamId);
+    const active = isSessionActive(s, now.getTime());
+    return {
+      id: s._id,
+      steamId: s.steamId,
+      personaName: user?.personaName ?? null,
+      avatarUrl: user?.avatarUrl ?? null,
+      map: s.map,
+      joinedAt: s.joinedAt.toISOString(),
+      leftAt: s.leftAt?.toISOString() ?? null,
+      lastSeenAt: s.lastSeenAt.toISOString(),
+      durationMs: sessionDurationMs(s, now.getTime()),
+      active,
+      serverId: s.serverId,
+      serverName: s.serverName,
+    };
+  });
+
+  return {
+    summary: {
+      range: input.range,
+      uniquePlayers: unique.size,
+      totalSessions,
+      totalPlayTimeMs,
+      avgSessionMs,
+      currentlyOnline,
+      livePlayers,
+      liveMaxPlayers,
+      onlineServers,
+      totalServers: fleet.length,
+      enabledServers: enabled.length,
+    },
+    recent,
+    daily: buildDailyBuckets(sessions, input.range, now),
+    servers: fleet.map((s) => {
+      const match = liveById.get(s.id);
+      return {
+        id: s.id,
+        name: s.name,
+        shortName: s.shortName,
+        host: s.host,
+        port: s.port,
+        mode: s.mode,
+        map: match?.map ?? s.map,
+        region: s.region,
+        city: s.city,
+        enabled: s.enabled,
+        featured: s.featured,
+        players: match?.players ?? null,
+        maxPlayers: match?.maxPlayers ?? s.maxPlayers,
+        online: match?.online ?? false,
+      };
+    }),
+  };
+}
+
+export async function listAdminSessions(input: {
+  range: ServerStatsRange;
+  serverId?: string;
+  activeOnly?: boolean;
+  limit?: number;
+}): Promise<FleetOverviewRecentSession[]> {
+  await ensureProfileIndexes();
+  const now = new Date();
+  const start = rangeStart(input.range, now);
+  const col = await playerSessionsCollection();
+  const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
+
+  const filter: Record<string, unknown> = {};
+  if (input.serverId) filter.serverId = input.serverId;
+  if (start) filter.joinedAt = { $gte: start };
+  if (input.activeOnly) {
+    filter.leftAt = null;
+    filter.lastSeenAt = {
+      $gte: new Date(now.getTime() - presenceStaleMs() * 2),
+    };
+  }
+
+  const sessions = await col
+    .find(filter)
+    .sort({ joinedAt: -1 })
+    .limit(limit)
+    .toArray();
+
+  const users = await findUsersBySteamIds(sessions.map((s) => s.steamId));
+  const userBySteam = new Map(users.map((u) => [u.steamId, u]));
+
+  return sessions.map((s) => {
+    const user = userBySteam.get(s.steamId);
+    const active = isSessionActive(s, now.getTime());
+    return {
+      id: s._id,
+      steamId: s.steamId,
+      personaName: user?.personaName ?? null,
+      avatarUrl: user?.avatarUrl ?? null,
+      map: s.map,
+      joinedAt: s.joinedAt.toISOString(),
+      leftAt: s.leftAt?.toISOString() ?? null,
+      lastSeenAt: s.lastSeenAt.toISOString(),
+      durationMs: sessionDurationMs(s, now.getTime()),
+      active,
+      serverId: s.serverId,
+      serverName: s.serverName,
+    };
+  });
 }
