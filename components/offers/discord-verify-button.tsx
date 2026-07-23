@@ -14,8 +14,14 @@ type VerifyResponse = {
 
 export function DiscordVerifyButton({
   className,
+  label = "I've already joined",
+  variant = "outline",
+  size = "default",
 }: {
   className?: string;
+  label?: string;
+  variant?: "default" | "outline" | "secondary" | "ghost";
+  size?: "default" | "sm" | "lg";
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -46,9 +52,9 @@ export function DiscordVerifyButton({
         type="button"
         disabled={pending}
         onClick={onClick}
-        className={cn(buttonVariants({ variant: "outline" }))}
+        className={cn(buttonVariants({ variant, size }), "w-full sm:w-auto")}
       >
-        {pending ? "Checking…" : "I've joined — verify membership"}
+        {pending ? "Checking…" : label}
       </button>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>

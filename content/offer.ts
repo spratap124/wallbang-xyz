@@ -1,24 +1,13 @@
-export const launchOfferPerks = [
-  {
-    title: "Reserved server slot",
-    description: "Join full retake servers when regular slots are taken.",
-  },
-  {
-    title: "VIP chat tag",
-    description: "Stand out in CS2 chat with a VIP tag on WallBang servers.",
-  },
-  {
-    title: "Colored chat",
-    description: "Customize your in-game chat color as a VIP member.",
-  },
-  {
-    title: "Website badge",
-    description: "Show a VIP badge on your WallBang profile.",
-  },
-  {
-    title: "Priority queue",
-    description: "Higher join priority when servers are busy.",
-  },
+export const launchOfferIncludes = [
+  "3 months of VIP",
+  "Priority access to all VIP server features",
+  "Reserved for the first 100 eligible players",
+] as const;
+
+export const launchOfferRewardBenefits = [
+  "VIP access for 3 months",
+  "Automatic activation",
+  "No payment required",
 ] as const;
 
 export const launchOfferSteps = [
@@ -26,18 +15,14 @@ export const launchOfferSteps = [
     step: 1,
     title: "Sign in with Steam",
     description:
-      "Create your WallBang account with Steam login. This locks in your player identity — VIP is not granted yet.",
+      "Create your WallBang account using Steam. This securely links your player identity and enables stats, loadouts, and rewards.",
+    successLabel: "Steam account connected",
   },
   {
     step: 2,
-    title: "Join our Discord",
+    title: "Join the WallBang Discord",
     description:
-      "Join the WallBang Discord server, then link Discord on this page so we can confirm you're a member.",
-  },
-  {
-    step: 3,
-    title: "Claim VIP",
-    description:
-      "After Steam + Discord membership are verified, launch VIP is applied automatically while slots remain.",
+      "Join our Discord community to receive announcements, server updates, tournaments, support, and to verify your eligibility for the Launch VIP reward.",
+    successLabel: "Discord membership verified",
   },
 ] as const;
