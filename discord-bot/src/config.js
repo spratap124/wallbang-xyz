@@ -10,4 +10,5 @@ export const config = {
   token: required("DISCORD_BOT_TOKEN"),
   guildId: required("DISCORD_GUILD_ID"),
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://wallbang.xyz",
+  pluginApiKey: process.env.PLUGIN_API_KEY?.trim() || "",
 };

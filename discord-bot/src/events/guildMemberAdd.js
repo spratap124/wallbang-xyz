@@ -2,13 +2,13 @@ function buildWelcomeMessage(siteUrl, offerUrl) {
   return [
     "**Welcome to WallBang!**",
     "",
-    "We're giving **3 months of VIP** to the first **100 players** who sign in with Steam.",
+    "We're giving **3 months of VIP** to the first **100 players**.",
     "",
-    "**How to claim (2 steps):**",
-    `1. Sign in with Steam at **${siteUrl}/offers** — VIP is granted automatically`,
-    "2. You're already here on Discord — welcome aboard!",
+    "**How to claim (both steps required):**",
+    "1. Sign in with Steam at the offer page",
+    "2. Join this Discord, then **Link Discord & claim VIP** on the site",
     "",
-    `Full offer details: **${offerUrl}**`,
+    `Claim here: **${offerUrl}**`,
     "",
     "VIP perks include a reserved server slot, in-game chat tag, colored chat, and more.",
     "",
@@ -35,6 +35,44 @@ export function registerGuildMemberAdd(client, config) {
         err,
       );
     }
+
+    if (!config.pluginApiKey) {
+      console.warn(
+        "[welcome] PLUGIN_API_KEY not set — skipping VIP grant on join",
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${config.siteUrl}/api/v1/discord/member-joined`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": config.pluginApiKey,
+          },
+          body: JSON.stringify({
+            discordUserId: member.id,
+            discordUsername: member.user.globalName || member.user.username,
+          }),
+        },
+      );
+      const json = await response.json().catch(() => null);
+      if (!response.ok) {
+        console.warn(
+          `[welcome] member-joined API failed (${response.status})`,
+          json,
+        );
+        return;
+      }
+      console.log(
+        `[welcome] member-joined for ${member.user.tag}:`,
+        json?.data ?? json,
+      );
+    } catch (err) {
+      console.warn("[welcome] member-joined request failed", err);
+    }
   });
 }
 
@@ -42,7 +80,7 @@ export function registerReadyLog(client, config) {
   client.once("ready", () => {
     console.log(`[bot] Logged in as ${client.user.tag}`);
     console.log(
-      `[bot] Launch VIP offer: sign in at ${config.siteUrl}/offers (announcements in #launch-giveaway via webhook)`,
+      `[bot] Launch VIP: Steam login + Discord membership required at ${config.siteUrl}/offers`,
     );
   });
 }

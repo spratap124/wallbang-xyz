@@ -15,6 +15,10 @@ export type UserDoc = {
   personaName: string;
   avatarUrl: string;
   profileUrl: string;
+  /** Discord snowflake when the player has linked Discord for the launch offer. */
+  discordUserId?: string | null;
+  discordUsername?: string | null;
+  discordLinkedAt?: Date | null;
   /** Denormalized highest active role for display. */
   role: RoleCode;
   createdAt: Date;
@@ -35,6 +39,16 @@ async function ensureIndexes(): Promise<void> {
       const col = await users();
       await col.createIndex({ steamId: 1 }, { unique: true });
       await col.createIndex({ personaName: 1 });
+      await col.createIndex(
+        { discordUserId: 1 },
+        {
+          unique: true,
+          sparse: true,
+          partialFilterExpression: {
+            discordUserId: { $type: "string" },
+          },
+        },
+      );
     })().catch((err) => {
       indexesReady = null;
       throw err;
@@ -65,6 +79,55 @@ export async function findUserBySteamId(
   await ensureIndexes();
   const col = await users();
   return col.findOne({ steamId });
+}
+
+export async function findUserByDiscordUserId(
+  discordUserId: string,
+): Promise<UserDoc | null> {
+  await ensureIndexes();
+  const col = await users();
+  return col.findOne({ discordUserId });
+}
+
+/**
+ * Link a Discord identity to a Steam user.
+ * Fails if this Discord account is already linked to a different WallBang user.
+ */
+export async function linkDiscordAccount(input: {
+  userId: string;
+  discordUserId: string;
+  discordUsername: string;
+}): Promise<UserDoc> {
+  await ensureIndexes();
+  const col = await users();
+  const now = new Date();
+
+  const existing = await col.findOne({
+    discordUserId: input.discordUserId,
+  });
+  if (existing && existing._id !== input.userId) {
+    throw new Error(
+      "That Discord account is already linked to another WallBang user.",
+    );
+  }
+
+  const result = await col.findOneAndUpdate(
+    { _id: input.userId },
+    {
+      $set: {
+        discordUserId: input.discordUserId,
+        discordUsername: input.discordUsername,
+        discordLinkedAt: now,
+        updatedAt: now,
+      },
+    },
+    { returnDocument: "after" },
+  );
+
+  if (!result) {
+    throw new Error("User not found.");
+  }
+  return result;
 }
 
 export async function findUsersBySteamIds(

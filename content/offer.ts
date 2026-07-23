@@ -26,12 +26,18 @@ export const launchOfferSteps = [
     step: 1,
     title: "Sign in with Steam",
     description:
-      "Create your WallBang account with Steam login. VIP is granted automatically on your first sign-in while slots remain.",
+      "Create your WallBang account with Steam login. This locks in your player identity — VIP is not granted yet.",
   },
   {
     step: 2,
     title: "Join our Discord",
     description:
-      "Hop into the community for server updates, patch notes, and queue culture.",
+      "Join the WallBang Discord server, then link Discord on this page so we can confirm you're a member.",
+  },
+  {
+    step: 3,
+    title: "Claim VIP",
+    description:
+      "After Steam + Discord membership are verified, launch VIP is applied automatically while slots remain.",
   },
 ] as const;
