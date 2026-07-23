@@ -186,6 +186,77 @@ function utcDayKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+function sessionEndedAtMs(session: PlayerSessionDoc, nowMs: number): number {
+  return sessionEndedAt(session, nowMs).getTime();
+}
+
+/** Sessions that joined in-range, plus any still overlapping the window (for peak). */
+function sessionsOverlappingRangeFilter(start: Date): Filter<PlayerSessionDoc> {
+  return {
+    $or: [
+      { joinedAt: { $gte: start } },
+      {
+        joinedAt: { $lt: start },
+        $or: [{ leftAt: null }, { leftAt: { $gte: start } }],
+      },
+    ],
+  };
+}
+
+/** Players on the same server when `target` joined (includes target). */
+function concurrentAtJoin(
+  target: PlayerSessionDoc,
+  pool: PlayerSessionDoc[],
+): number {
+  const joinMs = target.joinedAt.getTime();
+  let count = 0;
+  for (const other of pool) {
+    if (other.serverId !== target.serverId) continue;
+    if (other.joinedAt.getTime() > joinMs) continue;
+    const leftMs = other.leftAt?.getTime();
+    if (leftMs != null && leftMs <= joinMs) continue;
+    count += 1;
+  }
+  return Math.max(1, count);
+}
+
+/** Peak simultaneous players on one server during a day window. */
+function peakConcurrentInWindow(
+  sessions: PlayerSessionDoc[],
+  windowStartMs: number,
+  windowEndMs: number,
+  nowMs: number,
+): number {
+  const byServer = new Map<string, PlayerSessionDoc[]>();
+  for (const session of sessions) {
+    const start = session.joinedAt.getTime();
+    const end = sessionEndedAtMs(session, nowMs);
+    if (end <= windowStartMs || start >= windowEndMs) continue;
+    const list = byServer.get(session.serverId) ?? [];
+    list.push(session);
+    byServer.set(session.serverId, list);
+  }
+
+  let peak = 0;
+  for (const list of byServer.values()) {
+    const events: Array<{ t: number; delta: number }> = [];
+    for (const session of list) {
+      const start = Math.max(session.joinedAt.getTime(), windowStartMs);
+      const end = Math.min(sessionEndedAtMs(session, nowMs), windowEndMs);
+      if (end <= start) continue;
+      events.push({ t: start, delta: 1 });
+      events.push({ t: end, delta: -1 });
+    }
+    events.sort((a, b) => a.t - b.t || a.delta - b.delta);
+    let current = 0;
+    for (const event of events) {
+      current += event.delta;
+      if (current > peak) peak = current;
+    }
+  }
+  return peak;
+}
+
 function buildDailyBuckets(
   sessions: PlayerSessionDoc[],
   range: ServerStatsRange,
@@ -196,6 +267,7 @@ function buildDailyBuckets(
   const endDay = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
+  const nowMs = now.getTime();
 
   const days = range === "1d" ? 1 : range === "7d" ? 7 : 30;
 
@@ -214,6 +286,12 @@ function buildDailyBuckets(
       date: utcDayKey(dayStart),
       uniquePlayers: unique.size,
       sessions: inDay.length,
+      peakConcurrent: peakConcurrentInWindow(
+        sessions,
+        dayStart.getTime(),
+        dayEnd.getTime(),
+        nowMs,
+      ) || 0,
     });
   }
   return buckets;
@@ -234,16 +312,19 @@ export async function getServerConnectionStats(input: {
   const start = rangeStart(input.range, now);
   const col = await playerSessionsCollection();
 
-  const filter = {
+  const filter: Filter<PlayerSessionDoc> = {
     serverId: input.serverId,
-    joinedAt: { $gte: start },
+    ...sessionsOverlappingRangeFilter(start),
   };
 
-  const [sessions, presenceCol, live] = await Promise.all([
+  const [allSessions, presenceCol, live] = await Promise.all([
     col.find(filter).sort({ joinedAt: -1 }).toArray(),
     playerPresenceCollection(),
     getLiveServers().catch(() => []),
   ]);
+
+  // Summary / recent use in-range joins only; overlap pool is for peak concurrent.
+  const sessions = allSessions.filter((s) => s.joinedAt.getTime() >= start.getTime());
 
   const unique = new Set(sessions.map((s) => s.steamId));
   const totalPlayTimeMs = sessions.reduce(
@@ -297,13 +378,14 @@ export async function getServerConnectionStats(input: {
       lastSeenAt: s.lastSeenAt.toISOString(),
       durationMs: sessionDurationMs(s, now.getTime()),
       active,
+      concurrentAtJoin: concurrentAtJoin(s, allSessions),
     };
   });
 
   return {
     summary,
     recent,
-    daily: buildDailyBuckets(sessions, input.range, now),
+    daily: buildDailyBuckets(allSessions, input.range, now),
   };
 }
 
@@ -316,15 +398,19 @@ export async function getFleetConnectionStats(input: {
   const now = new Date();
   const start = rangeStart(input.range, now);
   const col = await playerSessionsCollection();
-  const filter = { joinedAt: { $gte: start } };
+  const filter = sessionsOverlappingRangeFilter(start);
 
-  const [fleet, sessions, presenceCol, live, lifetime] = await Promise.all([
+  const [fleet, allSessions, presenceCol, live, lifetime] = await Promise.all([
     getGameServers({ includeDisabled: true }),
     col.find(filter).sort({ joinedAt: -1 }).toArray(),
     playerPresenceCollection(),
     getLiveServers().catch(() => []),
     getLifetimeSessionStats(),
   ]);
+
+  const sessions = allSessions.filter(
+    (s) => s.joinedAt.getTime() >= start.getTime(),
+  );
 
   const unique = new Set(sessions.map((s) => s.steamId));
   const totalPlayTimeMs = sessions.reduce(
@@ -367,6 +453,7 @@ export async function getFleetConnectionStats(input: {
       lastSeenAt: s.lastSeenAt.toISOString(),
       durationMs: sessionDurationMs(s, now.getTime()),
       active,
+      concurrentAtJoin: concurrentAtJoin(s, allSessions),
       serverId: s.serverId,
       serverName: s.serverName,
     };
@@ -388,7 +475,7 @@ export async function getFleetConnectionStats(input: {
     },
     lifetime,
     recent,
-    daily: buildDailyBuckets(sessions, input.range, now),
+    daily: buildDailyBuckets(allSessions, input.range, now),
     servers: fleet.map((s) => {
       const match = liveById.get(s.id);
       return {
@@ -440,6 +527,18 @@ export async function listAdminSessions(input: {
     .limit(limit)
     .toArray();
 
+  let overlapPool = sessions;
+  if (sessions.length > 0) {
+    const newestJoin = sessions[0]!.joinedAt;
+    const oldestJoin = sessions[sessions.length - 1]!.joinedAt;
+    const overlapFilter: Record<string, unknown> = {
+      joinedAt: { $lte: newestJoin },
+      $or: [{ leftAt: null }, { leftAt: { $gte: oldestJoin } }],
+    };
+    if (input.serverId) overlapFilter.serverId = input.serverId;
+    overlapPool = await col.find(overlapFilter).limit(2000).toArray();
+  }
+
   const users = await findUsersBySteamIds(sessions.map((s) => s.steamId));
   const userBySteam = new Map(users.map((u) => [u.steamId, u]));
 
@@ -457,6 +556,7 @@ export async function listAdminSessions(input: {
       lastSeenAt: s.lastSeenAt.toISOString(),
       durationMs: sessionDurationMs(s, now.getTime()),
       active,
+      concurrentAtJoin: concurrentAtJoin(s, overlapPool),
       serverId: s.serverId,
       serverName: s.serverName,
     };

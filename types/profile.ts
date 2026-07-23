@@ -148,12 +148,16 @@ export type ServerStatsRecentSession = {
   lastSeenAt: string;
   durationMs: number;
   active: boolean;
+  /** Players on the same server when this session started (includes this player). */
+  concurrentAtJoin: number | null;
 };
 
 export type ServerStatsDayBucket = {
   date: string;
   uniquePlayers: number;
   sessions: number;
+  /** Peak simultaneous players on any single server that day. */
+  peakConcurrent: number;
 };
 
 export type ServerStatsResponse = {
