@@ -20,7 +20,7 @@ function buildAnnouncementMessage(result: LaunchGiveawayResult): string {
     "",
     `Entry **#${result.position}** of **${result.maxWinners}** · VIP active until **${expiry}**`,
     "",
-    `Want in? Sign in with Steam at ${siteConfig.url}/offers — first 100 players get 3 months free.`,
+    `Want in? Sign in with Steam, join Discord, then claim at ${siteConfig.url}/offers — first 100 players get 3 months free.`,
   ].join("\n");
 }
 

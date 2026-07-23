@@ -520,7 +520,9 @@ export type LaunchGiveawayStatus =
   | "granted"
   | "already_granted"
   | "slots_full"
-  | "ineligible";
+  | "ineligible"
+  | "needs_discord"
+  | "not_in_guild";
 
 export type LaunchGiveawayResult = {
   steamId: string;
@@ -529,6 +531,8 @@ export type LaunchGiveawayResult = {
   maxWinners: number;
   status: LaunchGiveawayStatus;
   expiresAt: Date | null;
+  discordUserId?: string | null;
+  discordUsername?: string | null;
 };
 
 /** @deprecated Use LaunchGiveawayResult — kept for the legacy Discord bot API. */
@@ -628,7 +632,7 @@ function toLegacyGiveawayResult(result: LaunchGiveawayResult): GiveawayEntryResu
   };
 }
 
-/** Grant launch VIP on Steam login (or legacy Discord entry). Idempotent. */
+/** Grant launch VIP after Steam login + Discord membership. Idempotent. */
 export async function processLaunchGiveaway(input: {
   steamId: string;
   maxWinners?: number;
@@ -665,6 +669,8 @@ export async function processLaunchGiveaway(input: {
       maxWinners,
       status: "ineligible",
       expiresAt: null,
+      discordUserId: user.discordUserId ?? null,
+      discordUsername: user.discordUsername ?? null,
     };
   }
 
@@ -695,6 +701,41 @@ export async function processLaunchGiveaway(input: {
       expiresAt:
         existingGiveaway.expiresAt ??
         giveawayVipExpiresAt(existingGiveaway.grantedAt),
+      discordUserId: user.discordUserId ?? null,
+      discordUsername: user.discordUsername ?? null,
+    };
+  }
+
+  const discordUserId =
+    input.discordUserId?.trim() || user.discordUserId?.trim() || null;
+  const discordUsername =
+    input.discordUsername?.trim() || user.discordUsername?.trim() || null;
+
+  if (!discordUserId) {
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: 0,
+      maxWinners,
+      status: "needs_discord",
+      expiresAt: null,
+      discordUserId: null,
+      discordUsername: null,
+    };
+  }
+
+  const { isDiscordGuildMember } = await import("@/lib/discord/guild");
+  const inGuild = await isDiscordGuildMember(discordUserId);
+  if (!inGuild) {
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: 0,
+      maxWinners,
+      status: "not_in_guild",
+      expiresAt: null,
+      discordUserId,
+      discordUsername,
     };
   }
 
@@ -708,6 +749,8 @@ export async function processLaunchGiveaway(input: {
       maxWinners,
       status: "slots_full",
       expiresAt: null,
+      discordUserId,
+      discordUsername,
     };
   }
 
@@ -727,6 +770,8 @@ export async function processLaunchGiveaway(input: {
       maxWinners,
       status: "already_granted",
       expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
+      discordUserId,
+      discordUsername,
     };
   }
 
@@ -746,12 +791,10 @@ export async function processLaunchGiveaway(input: {
       steamId: user.steamId,
       type: "won_giveaway",
       title: "Claimed launch VIP offer",
-      description: `Earned ${getLaunchGiveawayVipMonths()} months of VIP by signing in during the launch offer.`,
+      description: `Earned ${getLaunchGiveawayVipMonths()} months of VIP by signing in with Steam and joining Discord during the launch offer.`,
       metadata: {
-        ...(input.discordUserId ? { discordUserId: input.discordUserId } : {}),
-        ...(input.discordUsername
-          ? { discordUsername: input.discordUsername }
-          : {}),
+        discordUserId,
+        ...(discordUsername ? { discordUsername } : {}),
         expiresAt: expiresAt.toISOString(),
       },
     });
@@ -766,6 +809,8 @@ export async function processLaunchGiveaway(input: {
     maxWinners,
     status: "granted",
     expiresAt,
+    discordUserId,
+    discordUsername,
   };
 }
 
@@ -787,5 +832,51 @@ export async function processGiveawayEntry(input: {
       "Owner and staff accounts are not eligible for the launch VIP offer.",
     );
   }
+  if (result.status === "needs_discord") {
+    throw new Error(
+      "Link Discord on wallbang.xyz/offers after signing in with Steam.",
+    );
+  }
+  if (result.status === "not_in_guild") {
+    throw new Error(
+      "Join the WallBang Discord server, then return to /offers to claim VIP.",
+    );
+  }
   return toLegacyGiveawayResult(result);
+}
+
+/**
+ * When a Discord member joins the guild, grant VIP if they already linked
+ * Discord to a Steam account on the site.
+ */
+export async function processDiscordMemberJoined(input: {
+  discordUserId: string;
+  discordUsername?: string;
+}): Promise<LaunchGiveawayResult | null> {
+  const { findUserByDiscordUserId, linkDiscordAccount } = await import(
+    "@/lib/auth/users"
+  );
+  const user = await findUserByDiscordUserId(input.discordUserId);
+  if (!user) return null;
+
+  if (
+    input.discordUsername &&
+    input.discordUsername !== user.discordUsername
+  ) {
+    try {
+      await linkDiscordAccount({
+        userId: user._id,
+        discordUserId: input.discordUserId,
+        discordUsername: input.discordUsername,
+      });
+    } catch (err) {
+      console.error("[giveaway] discord username refresh failed", err);
+    }
+  }
+
+  return processLaunchGiveaway({
+    steamId: user.steamId,
+    discordUserId: input.discordUserId,
+    discordUsername: input.discordUsername ?? user.discordUsername ?? undefined,
+  });
 }

@@ -2,8 +2,9 @@
 
 Handles **launch VIP offer** community onboarding:
 
-1. **Welcome DM** — when someone joins the server, they get a DM with the 2-step offer (sign in with Steam + join Discord).
-2. **#launch-giveaway announcements** — handled by the Next.js app via `DISCORD_GIVEAWAY_WEBHOOK_URL` when a player claims VIP on Steam login.
+1. **Welcome DM** — when someone joins the server, they get a DM with the claim steps (Steam + Discord link).
+2. **Member-joined notify** — calls the Next.js API so VIP can unlock if Discord was already linked after Steam login.
+3. **#launch-giveaway announcements** — handled by the Next.js app via `DISCORD_GIVEAWAY_WEBHOOK_URL` when VIP is claimed.
 
 ## Setup
 
@@ -11,12 +12,14 @@ Handles **launch VIP offer** community onboarding:
 
 1. Create an application at [Discord Developer Portal](https://discord.com/developers/applications).
 2. **Bot** → create a bot and copy the token → `DISCORD_BOT_TOKEN`.
-3. **Privileged Gateway Intents** (required):
+3. **OAuth2** → copy Client ID / Client Secret → `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` (used by Next.js for Discord linking).
+4. **OAuth2 → Redirects** → add `{SITE_URL}/api/auth/discord/callback`.
+5. **Privileged Gateway Intents** (required):
    - Server Members Intent
-4. **OAuth2 → URL Generator** — scopes: `bot`. Permissions:
+6. **OAuth2 → URL Generator** — scopes: `bot`. Permissions:
    - View Channels
    - Send Messages (for DMs)
-5. Invite the bot to your WallBang server.
+7. Invite the bot to your WallBang server.
 
 ### 2. Discord server
 
@@ -31,7 +34,10 @@ Add to the repo root `.env` (see `.env.production.example`):
 ```env
 DISCORD_BOT_TOKEN=...
 DISCORD_GUILD_ID=...
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
 DISCORD_GIVEAWAY_WEBHOOK_URL=...   # in root .env — posts to #launch-giveaway when VIP is claimed
+PLUGIN_API_KEY=...                 # bot uses this to call /api/v1/discord/member-joined
 GIVEAWAY_MAX_WINNERS=100
 GIVEAWAY_VIP_MONTHS=3
 ```
@@ -41,10 +47,10 @@ GIVEAWAY_VIP_MONTHS=3
 ```bash
 cd discord-bot
 npm install
-DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... npm start
+DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... PLUGIN_API_KEY=... npm start
 ```
 
-Run the Next.js app separately. VIP is granted on Steam login at `/offers`.
+Run the Next.js app separately. VIP is granted only after Steam login **and** Discord membership verification at `/offers`.
 
 ### 5. Production (Docker)
 
@@ -65,8 +71,6 @@ The bot needs **Manage Messages** in `#launch-giveaway` to pin rules. If pin fai
 
 ## Player flow
 
-1. Visit [wallbang.xyz/offers](https://wallbang.xyz/offers) and **sign in with Steam** → VIP granted automatically (first 100 players, 3 months).
-2. **Join the Discord server** → welcome DM with offer recap.
-3. A message is posted in `#launch-giveaway` announcing each new VIP claim.
-
-No Steam profile links or channel posting required.
+1. Visit [wallbang.xyz/offers](https://wallbang.xyz/offers) and **sign in with Steam**.
+2. **Join the Discord server**, then **Link Discord & claim VIP** on the site.
+3. VIP is granted only after both steps (first 100 players, 3 months). A message is posted in `#launch-giveaway`.
