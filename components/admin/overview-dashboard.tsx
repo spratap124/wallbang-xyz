@@ -74,10 +74,16 @@ export function OverviewDashboard({
   }, [load, range]);
 
   const summary = data?.summary;
-  const maxDaily = Math.max(
-    1,
-    ...(data?.daily.map((d) => d.uniquePlayers) ?? [1]),
-  );
+  const dailyValues =
+    data?.daily.map((d) => {
+      const peak = Number(d.peakConcurrent);
+      const unique = Number(d.uniquePlayers);
+      const peakSafe = Number.isFinite(peak) ? peak : 0;
+      const uniqueSafe = Number.isFinite(unique) ? unique : 0;
+      return peakSafe > 0 ? peakSafe : uniqueSafe;
+    }) ?? [];
+  const peakAcrossDays = dailyValues.length > 0 ? Math.max(0, ...dailyValues) : 0;
+  const maxDaily = Math.max(1, peakAcrossDays);
   const liveDenom =
     summary && summary.liveMaxPlayers > 0
       ? summary.liveMaxPlayers
@@ -196,13 +202,14 @@ export function OverviewDashboard({
                     Left
                   </th>
                   <th className="px-4 py-2.5 font-medium">Duration</th>
+                  <th className="px-4 py-2.5 font-medium">Online</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {!data || data.recent.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
                       {pending
@@ -264,6 +271,14 @@ export function OverviewDashboard({
                       <td className="px-4 py-3 whitespace-nowrap text-emerald-400">
                         {formatDuration(session.durationMs)}
                       </td>
+                      <td
+                        className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground"
+                        title="Players on this server when the session started"
+                      >
+                        {session.concurrentAtJoin != null
+                          ? session.concurrentAtJoin
+                          : "—"}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -286,63 +301,66 @@ export function OverviewDashboard({
           </div>
           <div className="p-4">
             {data && data.daily.length > 0 ? (
-              <>
-                <div className="relative h-44">
-                  <svg
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    className="absolute inset-0 size-full overflow-visible"
-                  >
-                    <polyline
-                      fill="none"
-                      stroke="var(--primary)"
-                      strokeWidth="2"
-                      vectorEffect="non-scaling-stroke"
-                      points={data.daily
-                        .map((day, i) => {
-                          const x =
-                            data.daily.length === 1
-                              ? 50
-                              : (i / (data.daily.length - 1)) * 100;
-                          const y =
-                            100 -
-                            (day.uniquePlayers / maxDaily) * 85 -
-                            5;
-                          return `${x},${y}`;
-                        })
-                        .join(" ")}
-                    />
-                    {data.daily.map((day, i) => {
-                      const x =
-                        data.daily.length === 1
-                          ? 50
-                          : (i / (data.daily.length - 1)) * 100;
-                      const y =
-                        100 - (day.uniquePlayers / maxDaily) * 85 - 5;
-                      return (
-                        <circle
-                          key={day.date}
-                          cx={x}
-                          cy={y}
-                          r="1.4"
-                          fill="var(--primary)"
-                          vectorEffect="non-scaling-stroke"
+              <div className="space-y-3">
+                <div className="flex items-end justify-between text-[10px] text-muted-foreground">
+                  <span>Peak concurrent</span>
+                  <span>Peak {peakAcrossDays}</span>
+                </div>
+                <div className="flex h-40 items-end gap-1 sm:gap-1.5">
+                  {data.daily.map((day, i) => {
+                    const peak = Number(day.peakConcurrent);
+                    const unique = Number(day.uniquePlayers);
+                    const peakSafe = Number.isFinite(peak) ? peak : 0;
+                    const uniqueSafe = Number.isFinite(unique) ? unique : 0;
+                    // Prefer concurrent; fall back to unique if API hasn't returned peak yet.
+                    const value = peakSafe > 0 ? peakSafe : uniqueSafe;
+                    const heightPct =
+                      value <= 0
+                        ? 0
+                        : Math.max(8, Math.round((value / maxDaily) * 100));
+                    const showLabel =
+                      data.daily.length <= 8 ||
+                      i === 0 ||
+                      i === data.daily.length - 1 ||
+                      i % Math.ceil(data.daily.length / 6) === 0;
+                    return (
+                      <div
+                        key={day.date}
+                        className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
+                        title={`${formatDay(day.date)}: peak ${peakSafe} concurrent · ${uniqueSafe} unique · ${day.sessions} sessions`}
+                      >
+                        <span className="h-3 text-[10px] font-medium tabular-nums text-foreground/80">
+                          {value > 0 ? value : ""}
+                        </span>
+                        <div
+                          className="flex w-full items-end justify-center"
+                          style={{ height: "7.5rem" }}
                         >
-                          <title>
-                            {formatDay(day.date)}: {day.uniquePlayers} players
-                          </title>
-                        </circle>
-                      );
-                    })}
-                  </svg>
+                          <div
+                            className={cn(
+                              "w-full max-w-9 rounded-t-sm transition-colors",
+                              value > 0
+                                ? "bg-primary/85 group-hover:bg-primary"
+                                : "bg-border/80",
+                            )}
+                            style={{
+                              height: value > 0 ? `${heightPct}%` : "3px",
+                            }}
+                          />
+                        </div>
+                        <span
+                          className={cn(
+                            "h-3 w-full truncate text-center text-[9px] text-muted-foreground sm:text-[10px]",
+                            !showLabel && "invisible",
+                          )}
+                        >
+                          {formatDay(day.date)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
-                  <span>{formatDay(data.daily[0].date)}</span>
-                  <span>
-                    {formatDay(data.daily[data.daily.length - 1].date)}
-                  </span>
-                </div>
-              </>
+              </div>
             ) : (
               <p className="py-16 text-center text-sm text-muted-foreground">
                 {pending ? "Loading…" : "No daily data yet."}

@@ -73,6 +73,9 @@ export function ServerManageDashboard({
   const [editingId, setEditingId] = useState<string | null>(
     initialEditId ?? null,
   );
+  const [formOpen, setFormOpen] = useState(
+    () => initialMode === "create" || Boolean(initialEditId),
+  );
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -89,11 +92,13 @@ export function ServerManageDashboard({
       if (initialMode === "create") {
         setEditingId(null);
         setForm(emptyForm());
+        setFormOpen(true);
       } else if (initialEditId) {
         const match = payload.data.find((s) => s.id === initialEditId);
         if (match) {
           setEditingId(match.id);
           setForm(fromServer(match));
+          setFormOpen(true);
         }
       }
     });
@@ -110,6 +115,7 @@ export function ServerManageDashboard({
   function startCreate() {
     setEditingId(null);
     setForm(emptyForm());
+    setFormOpen(true);
     setError(null);
     setMessage(null);
   }
@@ -117,8 +123,16 @@ export function ServerManageDashboard({
   function startEdit(server: GameServerAdminView) {
     setEditingId(server.id);
     setForm(fromServer(server));
+    setFormOpen(true);
     setError(null);
     setMessage(null);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+    setError(null);
   }
 
   function save() {
@@ -160,6 +174,9 @@ export function ServerManageDashboard({
           return;
         }
         setMessage(`Updated ${payload.data.id}.`);
+        setFormOpen(false);
+        setEditingId(null);
+        setForm(emptyForm());
         load();
         return;
       }
@@ -194,8 +211,9 @@ export function ServerManageDashboard({
         return;
       }
       setMessage(`Created ${payload.data.id}.`);
-      setEditingId(payload.data.id);
-      setForm(fromServer(payload.data));
+      setFormOpen(false);
+      setEditingId(null);
+      setForm(emptyForm());
       load();
     });
   }
@@ -237,11 +255,18 @@ export function ServerManageDashboard({
 
   return (
     <div className="space-y-8">
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Fleet registry is stored in MongoDB. After adding a server, set the CS2
-        plugin <span className="font-mono text-xs">ServerId</span> to the same
-        id and enable WallBang.Presence so heartbeats and stats work.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Fleet registry is stored in MongoDB. After adding a server, set the CS2
+          plugin <span className="font-mono text-xs">ServerId</span> to the same
+          id and enable WallBang.Presence so heartbeats and stats work.
+        </p>
+        {!formOpen ? (
+          <Button type="button" size="sm" onClick={startCreate}>
+            Add server
+          </Button>
+        ) : null}
+      </div>
 
       {error ? (
         <p className="text-sm text-destructive" role="alert">
@@ -345,126 +370,134 @@ export function ServerManageDashboard({
         </table>
       </div>
 
-      <section className="rounded-lg border border-border bg-card/40 p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
-            {editingId ? `Edit ${editingId}` : "Add server"}
-          </h2>
-          {editingId ? (
-            <Button type="button" size="sm" variant="ghost" onClick={startCreate}>
-              New
+      {formOpen ? (
+        <section className="rounded-lg border border-border bg-card/40 p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+              {editingId ? `Edit ${editingId}` : "Add server"}
+            </h2>
+            <Button type="button" size="sm" variant="ghost" onClick={closeForm}>
+              Cancel
             </Button>
-          ) : null}
-        </div>
+          </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {!editingId ? (
-            <Field label="Id" htmlFor="srv-id">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {!editingId ? (
+              <Field label="Id" htmlFor="srv-id">
+                <Input
+                  id="srv-id"
+                  value={form.id}
+                  onChange={(e) => setField("id", e.target.value)}
+                  placeholder="retake-2"
+                  className="font-mono"
+                />
+              </Field>
+            ) : null}
+            <Field label="Short name" htmlFor="srv-short">
               <Input
-                id="srv-id"
-                value={form.id}
-                onChange={(e) => setField("id", e.target.value)}
-                placeholder="retake-2"
+                id="srv-short"
+                value={form.shortName}
+                onChange={(e) => setField("shortName", e.target.value)}
+                placeholder="Retake Mumbai #2"
+              />
+            </Field>
+            <Field label="Full name" htmlFor="srv-name">
+              <Input
+                id="srv-name"
+                value={form.name}
+                onChange={(e) => setField("name", e.target.value)}
+                placeholder="[WallBang] Retake #2 | [Mumbai]"
+              />
+            </Field>
+            <Field label="Mode" htmlFor="srv-mode">
+              <Input
+                id="srv-mode"
+                value={form.mode}
+                onChange={(e) => setField("mode", e.target.value)}
+              />
+            </Field>
+            <Field label="Host" htmlFor="srv-host">
+              <Input
+                id="srv-host"
+                value={form.host}
+                onChange={(e) => setField("host", e.target.value)}
+                placeholder="1.2.3.4"
                 className="font-mono"
               />
             </Field>
-          ) : null}
-          <Field label="Short name" htmlFor="srv-short">
-            <Input
-              id="srv-short"
-              value={form.shortName}
-              onChange={(e) => setField("shortName", e.target.value)}
-              placeholder="Retake Mumbai #2"
-            />
-          </Field>
-          <Field label="Full name" htmlFor="srv-name">
-            <Input
-              id="srv-name"
-              value={form.name}
-              onChange={(e) => setField("name", e.target.value)}
-              placeholder="[WallBang] Retake #2 | [Mumbai]"
-            />
-          </Field>
-          <Field label="Mode" htmlFor="srv-mode">
-            <Input
-              id="srv-mode"
-              value={form.mode}
-              onChange={(e) => setField("mode", e.target.value)}
-            />
-          </Field>
-          <Field label="Host" htmlFor="srv-host">
-            <Input
-              id="srv-host"
-              value={form.host}
-              onChange={(e) => setField("host", e.target.value)}
-              placeholder="1.2.3.4"
-              className="font-mono"
-            />
-          </Field>
-          <Field label="Port" htmlFor="srv-port">
-            <Input
-              id="srv-port"
-              value={form.port}
-              onChange={(e) => setField("port", e.target.value)}
-              className="font-mono"
-            />
-          </Field>
-          <Field label="Max players" htmlFor="srv-max">
-            <Input
-              id="srv-max"
-              value={form.maxPlayers}
-              onChange={(e) => setField("maxPlayers", e.target.value)}
-            />
-          </Field>
-          <Field label="Map" htmlFor="srv-map">
-            <Input
-              id="srv-map"
-              value={form.map}
-              onChange={(e) => setField("map", e.target.value)}
-              className="font-mono"
-            />
-          </Field>
-          <Field label="City" htmlFor="srv-city">
-            <Input
-              id="srv-city"
-              value={form.city}
-              onChange={(e) => setField("city", e.target.value)}
-            />
-          </Field>
-          <Field label="Region" htmlFor="srv-region">
-            <Input
-              id="srv-region"
-              value={form.region}
-              onChange={(e) => setField("region", e.target.value)}
-            />
-          </Field>
-        </div>
+            <Field label="Port" htmlFor="srv-port">
+              <Input
+                id="srv-port"
+                value={form.port}
+                onChange={(e) => setField("port", e.target.value)}
+                className="font-mono"
+              />
+            </Field>
+            <Field label="Max players" htmlFor="srv-max">
+              <Input
+                id="srv-max"
+                value={form.maxPlayers}
+                onChange={(e) => setField("maxPlayers", e.target.value)}
+              />
+            </Field>
+            <Field label="Map" htmlFor="srv-map">
+              <Input
+                id="srv-map"
+                value={form.map}
+                onChange={(e) => setField("map", e.target.value)}
+                className="font-mono"
+              />
+            </Field>
+            <Field label="City" htmlFor="srv-city">
+              <Input
+                id="srv-city"
+                value={form.city}
+                onChange={(e) => setField("city", e.target.value)}
+              />
+            </Field>
+            <Field label="Region" htmlFor="srv-region">
+              <Input
+                id="srv-region"
+                value={form.region}
+                onChange={(e) => setField("region", e.target.value)}
+              />
+            </Field>
+          </div>
 
-        <div className="mt-4 flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.featured}
-              onChange={(e) => setField("featured", e.target.checked)}
-            />
-            Featured (hero Play Now preference)
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.enabled}
-              onChange={(e) => setField("enabled", e.target.checked)}
-            />
-            Enabled on public list
-          </label>
-        </div>
+          <div className="mt-4 flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.featured}
+                onChange={(e) => setField("featured", e.target.checked)}
+              />
+              Featured (hero Play Now preference)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.enabled}
+                onChange={(e) => setField("enabled", e.target.checked)}
+              />
+              Enabled on public list
+            </label>
+          </div>
 
-        <div className="mt-5">
-          <Button type="button" disabled={pending} onClick={save}>
-            {editingId ? "Save changes" : "Create server"}
-          </Button>
-        </div>
-      </section>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button type="button" disabled={pending} onClick={save}>
+              {editingId ? "Save changes" : "Create server"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={closeForm}
+            >
+              Cancel
+            </Button>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

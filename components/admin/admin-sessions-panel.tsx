@@ -144,13 +144,14 @@ export function AdminSessionsPanel() {
               <th className="px-4 py-3 font-medium">Joined</th>
               <th className="px-4 py-3 font-medium">Left</th>
               <th className="px-4 py-3 font-medium">Duration</th>
+              <th className="px-4 py-3 font-medium">Online</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {sessions.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   {pending ? "Loading…" : "No sessions for this filter."}
@@ -217,6 +218,14 @@ export function AdminSessionsPanel() {
                     )}
                   >
                     {formatDuration(session.durationMs)}
+                  </td>
+                  <td
+                    className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground"
+                    title="Players on this server when the session started"
+                  >
+                    {session.concurrentAtJoin != null
+                      ? session.concurrentAtJoin
+                      : "—"}
                   </td>
                 </tr>
               ))
