@@ -43,7 +43,7 @@ async function ensureIndexes(): Promise<void> {
         { discordUserId: 1 },
         {
           unique: true,
-          sparse: true,
+          // partialFilterExpression alone — MongoDB rejects sparse + partial together.
           partialFilterExpression: {
             discordUserId: { $type: "string" },
           },
