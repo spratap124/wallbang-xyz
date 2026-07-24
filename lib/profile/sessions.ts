@@ -14,6 +14,7 @@ import {
   recordLifetimeSessionStart,
   getLifetimeSessionStats,
 } from "@/lib/profile/session-stats";
+import { istDayBounds, listRecentIstDayKeys } from "@/lib/time/ist";
 import type {
   FleetOverviewRecentSession,
   FleetOverviewResponse,
@@ -182,10 +183,6 @@ export async function endServerSessions(serverId: string): Promise<void> {
   await closeOpenSessions({ serverId }, now);
 }
 
-function utcDayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 function sessionEndedAtMs(session: PlayerSessionDoc, nowMs: number): number {
   return sessionEndedAt(session, nowMs).getTime();
 }
@@ -247,6 +244,8 @@ function peakConcurrentInWindow(
       events.push({ t: start, delta: 1 });
       events.push({ t: end, delta: -1 });
     }
+    // Process leaves before joins at the same timestamp so churn doesn't
+    // inflate peak; still counts true overlap when joins stack.
     events.sort((a, b) => a.t - b.t || a.delta - b.delta);
     let current = 0;
     for (const event of events) {
@@ -257,41 +256,63 @@ function peakConcurrentInWindow(
   return peak;
 }
 
+/** Max Online column value for sessions that joined during the window. */
+function peakConcurrentAtJoinInWindow(
+  sessions: PlayerSessionDoc[],
+  pool: PlayerSessionDoc[],
+  windowStartMs: number,
+  windowEndMs: number,
+): number {
+  let peak = 0;
+  for (const session of sessions) {
+    const joinMs = session.joinedAt.getTime();
+    if (joinMs < windowStartMs || joinMs >= windowEndMs) continue;
+    peak = Math.max(peak, concurrentAtJoin(session, pool));
+  }
+  return peak;
+}
+
 function buildDailyBuckets(
   sessions: PlayerSessionDoc[],
   range: ServerStatsRange,
   now: Date,
 ): ServerStatsDayBucket[] {
-  const start = rangeStart(range, now);
-  const dayMs = 24 * 60 * 60 * 1000;
-  const endDay = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const rangeStartMs = rangeStart(range, now).getTime();
   const nowMs = now.getTime();
-
-  const days = range === "1d" ? 1 : range === "7d" ? 7 : 30;
+  const dayCount = range === "1d" ? 1 : range === "7d" ? 7 : 30;
+  const dayKeys = listRecentIstDayKeys(dayCount, now);
 
   const buckets: ServerStatsDayBucket[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const dayStart = new Date(endDay.getTime() - i * dayMs);
-    const dayEnd = new Date(dayStart.getTime() + dayMs);
-    if (dayEnd <= start) continue;
+  for (const dayKey of dayKeys) {
+    const { start: dayStart, end: dayEnd } = istDayBounds(dayKey);
+    if (dayEnd.getTime() <= rangeStartMs) continue;
+
+    const windowStartMs = dayStart.getTime();
+    const windowEndMs = dayEnd.getTime();
 
     const inDay = sessions.filter((s) => {
       const joined = s.joinedAt.getTime();
-      return joined >= dayStart.getTime() && joined < dayEnd.getTime();
+      return joined >= windowStartMs && joined < windowEndMs;
     });
     const unique = new Set(inDay.map((s) => s.steamId));
+    const sweepPeak = peakConcurrentInWindow(
+      sessions,
+      windowStartMs,
+      windowEndMs,
+      nowMs,
+    );
+    const joinPeak = peakConcurrentAtJoinInWindow(
+      sessions,
+      sessions,
+      windowStartMs,
+      windowEndMs,
+    );
     buckets.push({
-      date: utcDayKey(dayStart),
+      date: dayKey,
       uniquePlayers: unique.size,
       sessions: inDay.length,
-      peakConcurrent: peakConcurrentInWindow(
-        sessions,
-        dayStart.getTime(),
-        dayEnd.getTime(),
-        nowMs,
-      ) || 0,
+      // Match Sessions "Online" column (max at join) and true overlap peak.
+      peakConcurrent: Math.max(sweepPeak, joinPeak),
     });
   }
   return buckets;

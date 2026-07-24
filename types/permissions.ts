@@ -69,17 +69,27 @@ export type UserRoleDoc = {
   active: boolean;
 };
 
-export type AuditAction = "GRANT_ROLE" | "REVOKE_ROLE";
+export type AuditAction =
+  | "GRANT_ROLE"
+  | "REVOKE_ROLE"
+  | "GRANT_BADGE"
+  | "CREATE_SERVER"
+  | "UPDATE_SERVER"
+  | "DISABLE_SERVER";
 
 export type AuditLogDoc = {
   _id: string;
   adminId: string | null;
   adminSteamId: string | null;
   action: AuditAction;
-  targetUserId: string;
-  targetSteamId: string;
+  /** Present for user-targeted actions; null for server ops. */
+  targetUserId: string | null;
+  targetSteamId: string | null;
   /** Snapshot of the target's persona name at write time. */
   targetPersonaName: string | null;
+  /** Present for server-targeted actions. */
+  targetServerId?: string | null;
+  targetServerName?: string | null;
   oldValue: Record<string, unknown> | null;
   newValue: Record<string, unknown> | null;
   timestamp: Date;

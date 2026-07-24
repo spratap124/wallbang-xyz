@@ -502,18 +502,32 @@ components/admin/
 
 ---
 
-*Next action: stakeholder review of §4 IA, then Sprint 1 (Admin shell).*
+*Next action: S6 polish (charts, empty states, a11y), staging dogfood, then prod rollout.*
 
 ---
 
-## Implementation status (2026-07-22)
+## Implementation status (2026-07-23)
 
-Shipped on `redesign/admin-panel`:
+Shipped on `main` (via `redesign/admin-panel` PRs):
 
 - Admin shell (sidebar + header + mobile drawer + health badge)
 - Routes: Overview, Servers, Players, Sessions, Permissions, Audit, Settings
 - APIs: `GET /api/v1/admin/overview`, `/health`, `/sessions`
 - Overview dashboard wired to fleet rollup + health checks
 - Permissions moved to `/admin/permissions` (audit extracted)
+- Settings MVP (read-only feature flags + env snapshot)
 
-Remaining polish: richer Servers card UI on Manage tab, badge grant UI, audit for server CRUD, notifications.
+Shipped on `redesign/admin-panel-s3-s5`:
+
+- Servers Manage card grid (map thumbs, filters, Add Server tile)
+- Badge grant UI on Permissions (`POST /api/v1/admin/grant-badge`)
+- Audit actions: `GRANT_BADGE`, `CREATE_SERVER`, `UPDATE_SERVER`, `DISABLE_SERVER`
+- Audit panel generalized Detail / Target / ID columns
+
+Still deferred:
+
+- S6 polish (charts, empty states, a11y) + staging → prod rollout
+- Notifications bell (needs event model)
+- `/admin/servers/[id]` and `/admin/players/[steamId]` detail pages
+- Audit filters / cursor pagination
+- In-browser RCON / kick-ban

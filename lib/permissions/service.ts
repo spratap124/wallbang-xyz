@@ -133,6 +133,13 @@ async function writeAudit(entry: Omit<AuditLogDoc, "_id">): Promise<void> {
   await col.insertOne({ _id: crypto.randomUUID(), ...entry });
 }
 
+/** Write an admin audit log entry (role, badge, or server ops). */
+export async function recordAuditLog(
+  entry: Omit<AuditLogDoc, "_id">,
+): Promise<void> {
+  await writeAudit(entry);
+}
+
 async function syncDisplayRole(userId: string, roles: RoleCode[]): Promise<void> {
   await updateUserDisplayRole(userId, highestRole(roles));
 }
@@ -459,8 +466,8 @@ export async function getAuditLogs(params?: {
   const missingIds = Array.from(
     new Set(
       logs
-        .filter((log) => !log.targetPersonaName)
-        .map((log) => log.targetUserId),
+        .filter((log) => !log.targetPersonaName && log.targetUserId)
+        .map((log) => log.targetUserId as string),
     ),
   );
 
@@ -475,7 +482,7 @@ export async function getAuditLogs(params?: {
   );
 
   return logs.map((log) =>
-    log.targetPersonaName
+    log.targetPersonaName || !log.targetUserId
       ? log
       : {
           ...log,

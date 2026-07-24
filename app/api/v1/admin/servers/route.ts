@@ -1,7 +1,9 @@
 import { z } from "zod";
 
+import { serverAuditSnapshot } from "@/lib/admin/audit";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
+import { recordAuditLog } from "@/lib/permissions/service";
 import {
   createGameServer,
   listGameServersAdmin,
@@ -68,6 +70,19 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const created = await createGameServer(parsed.data);
+    await recordAuditLog({
+      adminId: auth.user.id,
+      adminSteamId: auth.user.steamId,
+      action: "CREATE_SERVER",
+      targetUserId: null,
+      targetSteamId: null,
+      targetPersonaName: null,
+      targetServerId: created.id,
+      targetServerName: created.name,
+      oldValue: null,
+      newValue: serverAuditSnapshot(created),
+      timestamp: new Date(),
+    });
     return jsonOk(created, 201);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create.";

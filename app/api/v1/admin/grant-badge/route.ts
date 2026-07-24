@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
+import { recordAuditLog } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 import { grantPlayerBadge, isValidSteamId64 } from "@/lib/profile";
 import { BADGE_TYPES } from "@/types/profile";
@@ -50,6 +51,21 @@ export async function POST(request: Request): Promise<Response> {
     badgeType: parsed.data.badgeType,
     grantedBy: auth.user.id,
     metadata: parsed.data.metadata ?? null,
+  });
+
+  await recordAuditLog({
+    adminId: auth.user.id,
+    adminSteamId: auth.user.steamId,
+    action: "GRANT_BADGE",
+    targetUserId: user._id,
+    targetSteamId: user.steamId,
+    targetPersonaName: user.personaName,
+    oldValue: null,
+    newValue: {
+      badgeType: badge.badgeType,
+      grantedAt: badge.grantedAt.toISOString(),
+    },
+    timestamp: new Date(),
   });
 
   return jsonOk({

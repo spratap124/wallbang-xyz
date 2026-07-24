@@ -74,15 +74,12 @@ export function OverviewDashboard({
   }, [load, range]);
 
   const summary = data?.summary;
-  const dailyValues =
+  const dailyPeaks =
     data?.daily.map((d) => {
       const peak = Number(d.peakConcurrent);
-      const unique = Number(d.uniquePlayers);
-      const peakSafe = Number.isFinite(peak) ? peak : 0;
-      const uniqueSafe = Number.isFinite(unique) ? unique : 0;
-      return peakSafe > 0 ? peakSafe : uniqueSafe;
+      return Number.isFinite(peak) ? peak : 0;
     }) ?? [];
-  const peakAcrossDays = dailyValues.length > 0 ? Math.max(0, ...dailyValues) : 0;
+  const peakAcrossDays = dailyPeaks.length > 0 ? Math.max(0, ...dailyPeaks) : 0;
   const maxDaily = Math.max(1, peakAcrossDays);
   const liveDenom =
     summary && summary.liveMaxPlayers > 0
@@ -289,9 +286,14 @@ export function OverviewDashboard({
 
         <section className="rounded-xl border border-border bg-card/40">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Players by day
-            </h2>
+            <div>
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Max peak players by day
+              </h2>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                Highest concurrent online per IST day — matches Sessions Online
+              </p>
+            </div>
             <Link
               href="/admin/sessions"
               className="text-xs text-muted-foreground transition-colors hover:text-foreground"
@@ -301,23 +303,22 @@ export function OverviewDashboard({
           </div>
           <div className="p-4">
             {data && data.daily.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 pt-2">
                 <div className="flex items-end justify-between text-[10px] text-muted-foreground">
                   <span>Peak concurrent</span>
-                  <span>Peak {peakAcrossDays}</span>
+                  <span>
+                    Range high · {peakAcrossDays}
+                  </span>
                 </div>
-                <div className="flex h-40 items-end gap-1 sm:gap-1.5">
+                <div className="flex h-44 items-end gap-1 pt-6 sm:gap-1.5">
                   {data.daily.map((day, i) => {
                     const peak = Number(day.peakConcurrent);
-                    const unique = Number(day.uniquePlayers);
                     const peakSafe = Number.isFinite(peak) ? peak : 0;
-                    const uniqueSafe = Number.isFinite(unique) ? unique : 0;
-                    // Prefer concurrent; fall back to unique if API hasn't returned peak yet.
-                    const value = peakSafe > 0 ? peakSafe : uniqueSafe;
+                    const dayLabel = formatDay(day.date);
                     const heightPct =
-                      value <= 0
+                      peakSafe <= 0
                         ? 0
-                        : Math.max(8, Math.round((value / maxDaily) * 100));
+                        : Math.max(8, Math.round((peakSafe / maxDaily) * 100));
                     const showLabel =
                       data.daily.length <= 8 ||
                       i === 0 ||
@@ -326,11 +327,17 @@ export function OverviewDashboard({
                     return (
                       <div
                         key={day.date}
-                        className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
-                        title={`${formatDay(day.date)}: peak ${peakSafe} concurrent · ${uniqueSafe} unique · ${day.sessions} sessions`}
+                        className="group relative flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
                       >
+                        <span
+                          className="pointer-events-none absolute -top-1 z-10 -translate-y-full rounded-md border border-border bg-popover px-2 py-1 text-[10px] font-medium whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+                          role="tooltip"
+                        >
+                          {dayLabel}
+                          {peakSafe > 0 ? ` · peak ${peakSafe}` : ""}
+                        </span>
                         <span className="h-3 text-[10px] font-medium tabular-nums text-foreground/80">
-                          {value > 0 ? value : ""}
+                          {peakSafe > 0 ? peakSafe : ""}
                         </span>
                         <div
                           className="flex w-full items-end justify-center"
@@ -339,22 +346,22 @@ export function OverviewDashboard({
                           <div
                             className={cn(
                               "w-full max-w-9 rounded-t-sm transition-colors",
-                              value > 0
+                              peakSafe > 0
                                 ? "bg-primary/85 group-hover:bg-primary"
-                                : "bg-border/80",
+                                : "bg-border/80 group-hover:bg-border",
                             )}
                             style={{
-                              height: value > 0 ? `${heightPct}%` : "3px",
+                              height: peakSafe > 0 ? `${heightPct}%` : "3px",
                             }}
                           />
                         </div>
                         <span
                           className={cn(
                             "h-3 w-full truncate text-center text-[9px] text-muted-foreground sm:text-[10px]",
-                            !showLabel && "invisible",
+                            !showLabel && "invisible group-hover:visible group-hover:text-foreground",
                           )}
                         >
-                          {formatDay(day.date)}
+                          {dayLabel}
                         </span>
                       </div>
                     );

@@ -7,12 +7,15 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatDate } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
+import { BADGE_LABELS } from "@/lib/profile/badges";
 import type {
   ResolvedPermissions,
   RoleCode,
   RoleSource,
 } from "@/types/permissions";
+import { BADGE_TYPES, type BadgeType } from "@/types/profile";
 
 type SearchUser = {
   id: string;
@@ -49,13 +52,6 @@ async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
 }
 
-function formatDate(value: string | Date | null | undefined): string {
-  if (!value) return "—";
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
-}
-
 export function AdminDashboard() {
   const searchParams = useSearchParams();
   const initialSteamId = searchParams.get("steamId")?.trim() ?? "";
@@ -71,6 +67,7 @@ export function AdminDashboard() {
   const [source, setSource] = useState<RoleSource>("MANUAL");
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("never");
   const [customExpiry, setCustomExpiry] = useState("");
+  const [badgeType, setBadgeType] = useState<BadgeType>("VIP");
 
   const selectUser = useCallback((steamId: string) => {
     setError(null);
@@ -167,6 +164,34 @@ export function AdminDashboard() {
       }
       setSelected(payload.data);
       setMessage(`Revoked ${code}.`);
+    });
+  }
+
+  function grantBadge() {
+    if (!selected) return;
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const res = await fetch("/api/v1/admin/grant-badge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          steamId: selected.steamId,
+          badgeType,
+        }),
+      });
+      const payload = await readJson<{
+        type: BadgeType;
+        grantedAt: string;
+        steamId: string;
+      }>(res);
+      if (!payload.ok) {
+        setError(payload.error);
+        return;
+      }
+      setMessage(
+        `Granted ${BADGE_LABELS[payload.data.type] ?? payload.data.type} badge.`,
+      );
     });
   }
 
@@ -398,13 +423,45 @@ export function AdminDashboard() {
                   Grant
                 </Button>
               </div>
+
+              <div className="space-y-3 border-t border-border pt-4">
+                <h3 className="text-sm font-medium">Grant badge</h3>
+                <p className="text-xs text-muted-foreground">
+                  Awards a profile badge without changing RBAC roles.
+                </p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="badgeType">Badge</Label>
+                  <select
+                    id="badgeType"
+                    value={badgeType}
+                    onChange={(e) =>
+                      setBadgeType(e.target.value as BadgeType)
+                    }
+                    className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:max-w-xs"
+                  >
+                    {BADGE_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {BADGE_LABELS[type]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={grantBadge}
+                  disabled={pending}
+                >
+                  Grant badge
+                </Button>
+              </div>
             </div>
           )}
         </section>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Role changes are recorded in the{" "}
+        Role and badge changes are recorded in the{" "}
         <Link
           href="/admin/audit"
           className="text-foreground underline-offset-4 hover:underline"
