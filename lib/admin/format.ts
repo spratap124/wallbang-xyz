@@ -1,3 +1,5 @@
+import { IST_LOCALE, IST_TIME_ZONE } from "@/lib/time/ist";
+
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "0m";
   const totalMinutes = Math.round(ms / 60_000);
@@ -10,23 +12,55 @@ export function formatDuration(ms: number): string {
   return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
 }
 
-export function formatDateTime(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
+function asDate(value: string | Date): Date | null {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+/** Always formats in IST (Asia/Kolkata). */
+export function formatDateTime(value: string | Date): string {
+  const d = asDate(value);
+  if (!d) return "—";
+  return d.toLocaleString(IST_LOCALE, {
+    timeZone: IST_TIME_ZONE,
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
   });
 }
 
-export function formatDay(value: string): string {
-  const d = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString(undefined, {
+/** Full IST datetime for audit / expiry style displays. */
+export function formatDate(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const d = asDate(value);
+  if (!d) return "—";
+  return d.toLocaleString(IST_LOCALE, {
+    timeZone: IST_TIME_ZONE,
+    year: "numeric",
     month: "short",
     day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+}
+
+/** Format a YYYY-MM-DD IST calendar day key (no timezone shift). */
+export function formatDay(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const d = new Date(
+    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
+  );
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(IST_LOCALE, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
   });
 }
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDateTime } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
 import type { RoleCode } from "@/types/permissions";
 
@@ -159,7 +160,7 @@ export function AdminPlayersPanel() {
                   <td className="px-4 py-3 text-muted-foreground">{user.role}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {user.lastLoginAt
-                      ? new Date(user.lastLoginAt).toLocaleString()
+                      ? formatDateTime(user.lastLoginAt)
                       : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">

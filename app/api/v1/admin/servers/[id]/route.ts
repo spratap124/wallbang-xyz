@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+import { serverAuditSnapshot } from "@/lib/admin/audit";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
+import { recordAuditLog } from "@/lib/permissions/service";
 import {
   disableGameServer,
+  getGameServerById,
   updateGameServer,
 } from "@/lib/servers/registry";
 
@@ -59,8 +62,26 @@ export async function PATCH(
     );
   }
 
+  const before = await getGameServerById(id, { includeDisabled: true });
+  if (!before) return jsonError("Server not found.", 404);
+
   const updated = await updateGameServer(id, parsed.data);
   if (!updated) return jsonError("Server not found.", 404);
+
+  await recordAuditLog({
+    adminId: auth.user.id,
+    adminSteamId: auth.user.steamId,
+    action: "UPDATE_SERVER",
+    targetUserId: null,
+    targetSteamId: null,
+    targetPersonaName: null,
+    targetServerId: updated.id,
+    targetServerName: updated.name,
+    oldValue: serverAuditSnapshot(before),
+    newValue: serverAuditSnapshot(updated),
+    timestamp: new Date(),
+  });
+
   return jsonOk(updated);
 }
 
@@ -79,7 +100,25 @@ export async function DELETE(
   const { id } = await context.params;
   if (!id) return jsonError("Missing server id.", 400);
 
+  const before = await getGameServerById(id, { includeDisabled: true });
+  if (!before) return jsonError("Server not found.", 404);
+
   const updated = await disableGameServer(id);
   if (!updated) return jsonError("Server not found.", 404);
+
+  await recordAuditLog({
+    adminId: auth.user.id,
+    adminSteamId: auth.user.steamId,
+    action: "DISABLE_SERVER",
+    targetUserId: null,
+    targetSteamId: null,
+    targetPersonaName: null,
+    targetServerId: updated.id,
+    targetServerName: updated.name,
+    oldValue: serverAuditSnapshot(before),
+    newValue: serverAuditSnapshot(updated),
+    timestamp: new Date(),
+  });
+
   return jsonOk(updated);
 }

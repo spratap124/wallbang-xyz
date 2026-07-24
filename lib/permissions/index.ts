@@ -10,6 +10,7 @@ export {
   ensureOwnerFromEnv,
   ensureBaselineUserRole,
   refreshCache,
+  recordAuditLog,
 } from "@/lib/permissions/service";
 export { seedPermissionsCatalog } from "@/lib/permissions/seed";
 export {

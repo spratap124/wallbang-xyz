@@ -1,11 +1,20 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { mapThumbPath } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
 import type { GameServerAdminView } from "@/types/servers";
 import { cn } from "@/lib/utils";
@@ -79,6 +88,25 @@ export function ServerManageDashboard({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [filterQuery, setFilterQuery] = useState("");
+  const [enabledFilter, setEnabledFilter] = useState<"all" | "enabled" | "disabled">(
+    "all",
+  );
+
+  const filteredServers = useMemo(() => {
+    const q = filterQuery.trim().toLowerCase();
+    return servers.filter((server) => {
+      if (enabledFilter === "enabled" && !server.enabled) return false;
+      if (enabledFilter === "disabled" && server.enabled) return false;
+      if (!q) return true;
+      return (
+        server.id.toLowerCase().includes(q) ||
+        server.name.toLowerCase().includes(q) ||
+        server.shortName.toLowerCase().includes(q) ||
+        server.host.toLowerCase().includes(q)
+      );
+    });
+  }, [servers, filterQuery, enabledFilter]);
 
   const load = useCallback(() => {
     startTransition(async () => {
@@ -277,98 +305,138 @@ export function ServerManageDashboard({
         <p className="text-sm text-muted-foreground">{message}</p>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-secondary/40 text-xs text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 font-medium">Server</th>
-              <th className="hidden px-4 py-3 font-medium sm:table-cell">
-                Address
-              </th>
-              <th className="px-4 py-3 font-medium">Flags</th>
-              <th className="px-4 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {servers.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-4 py-8 text-center text-muted-foreground"
-                >
-                  {pending ? "Loading…" : "No servers yet."}
-                </td>
-              </tr>
-            ) : (
-              servers.map((server) => (
-                <tr key={server.id} className="hover:bg-secondary/30">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{server.shortName}</div>
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {server.id}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Input
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          placeholder="Filter by name, id, or host"
+          className="sm:max-w-xs"
+        />
+        <select
+          value={enabledFilter}
+          onChange={(e) =>
+            setEnabledFilter(e.target.value as "all" | "enabled" | "disabled")
+          }
+          className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:w-40"
+        >
+          <option value="all">All status</option>
+          <option value="enabled">Enabled</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </div>
+
+      {servers.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card/40 px-4 py-10 text-center text-sm text-muted-foreground">
+          {pending ? "Loading…" : "No servers yet."}
+        </div>
+      ) : filteredServers.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card/40 px-4 py-10 text-center text-sm text-muted-foreground">
+          No servers match this filter.
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredServers.map((server) => {
+            const thumb = mapThumbPath(server.map);
+            return (
+              <div
+                key={server.id}
+                className="overflow-hidden rounded-xl border border-border bg-card/40"
+              >
+                <div className="relative h-28 bg-secondary">
+                  {thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={thumb}
+                      alt=""
+                      className="size-full object-cover opacity-80"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
+                  <div className="absolute right-3 bottom-3 left-3 flex items-end justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {server.shortName || server.name}
+                      </p>
+                      <p className="truncate font-mono text-[11px] text-muted-foreground">
+                        {server.id}
+                      </p>
                     </div>
-                  </td>
-                  <td className="hidden px-4 py-3 font-mono text-xs text-muted-foreground sm:table-cell">
-                    {server.host}:{server.port}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
                       {server.featured ? (
-                        <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium uppercase text-primary">
+                        <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary uppercase">
                           Featured
                         </span>
                       ) : null}
                       <span
                         className={cn(
-                          "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase",
+                          "rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
                           server.enabled
-                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                            : "bg-secondary text-muted-foreground",
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-muted text-muted-foreground",
                         )}
                       >
                         {server.enabled ? "Enabled" : "Disabled"}
                       </span>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={pending}
-                        onClick={() => startEdit(server)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        render={
-                          <Link
-                            href={`/admin/sessions?serverId=${encodeURIComponent(server.id)}`}
-                          />
-                        }
-                      >
-                        Sessions
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={pending}
-                        onClick={() => toggleEnabled(server)}
-                      >
-                        {server.enabled ? "Disable" : "Enable"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </div>
+                </div>
+                <div className="space-y-2 p-4 text-xs text-muted-foreground">
+                  <p className="font-mono">
+                    {server.host}:{server.port}
+                  </p>
+                  <p>
+                    {server.maxPlayersOverride ?? server.maxPlayers} slots ·{" "}
+                    {server.map} · {server.mode}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => startEdit(server)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      render={
+                        <Link
+                          href={`/admin/sessions?serverId=${encodeURIComponent(server.id)}`}
+                        />
+                      }
+                    >
+                      Sessions
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={pending}
+                      onClick={() => toggleEnabled(server)}
+                    >
+                      {server.enabled ? "Disable" : "Enable"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {!formOpen ? (
+            <button
+              type="button"
+              onClick={startCreate}
+              className="flex min-h-[12rem] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-background/20 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              <span className="flex size-10 items-center justify-center rounded-full border border-border">
+                <Plus className="size-4" />
+              </span>
+              Add Server
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {formOpen ? (
         <section className="rounded-lg border border-border bg-card/40 p-5">

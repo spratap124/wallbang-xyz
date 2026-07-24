@@ -4,29 +4,81 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { ApiResult } from "@/lib/api/waitlist";
+import { formatDate } from "@/lib/admin/format";
+import { BADGE_LABELS } from "@/lib/profile/badges";
 import type { AuditLogDoc } from "@/types/permissions";
+import type { BadgeType } from "@/types/profile";
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
 }
 
-function formatDate(value: string | Date | null | undefined): string {
-  if (!value) return "—";
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
+function stringField(
+  value: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  const raw = value?.[key];
+  return typeof raw === "string" ? raw : null;
 }
 
-function auditRoleLabel(entry: AuditLogDoc): string {
-  const fromNew = entry.newValue?.roleCode;
-  const fromOld = entry.oldValue?.roleCode;
-  const code =
-    typeof fromNew === "string"
-      ? fromNew
-      : typeof fromOld === "string"
-        ? fromOld
-        : null;
-  return code ?? "—";
+function auditDetailLabel(entry: AuditLogDoc): string {
+  switch (entry.action) {
+    case "GRANT_ROLE":
+    case "REVOKE_ROLE": {
+      const code =
+        stringField(entry.newValue, "roleCode") ??
+        stringField(entry.oldValue, "roleCode");
+      return code ?? "—";
+    }
+    case "GRANT_BADGE": {
+      const type = stringField(entry.newValue, "badgeType");
+      if (!type) return "—";
+      return BADGE_LABELS[type as BadgeType] ?? type;
+    }
+    case "CREATE_SERVER":
+    case "UPDATE_SERVER":
+    case "DISABLE_SERVER": {
+      const name =
+        entry.targetServerName ??
+        stringField(entry.newValue, "name") ??
+        stringField(entry.oldValue, "name");
+      const id =
+        entry.targetServerId ??
+        stringField(entry.newValue, "id") ??
+        stringField(entry.oldValue, "id");
+      if (name && id) return `${name} (${id})`;
+      return name ?? id ?? "—";
+    }
+    default:
+      return "—";
+  }
+}
+
+function auditTargetLabel(entry: AuditLogDoc): string {
+  if (
+    entry.action === "CREATE_SERVER" ||
+    entry.action === "UPDATE_SERVER" ||
+    entry.action === "DISABLE_SERVER"
+  ) {
+    return (
+      entry.targetServerName ??
+      stringField(entry.newValue, "shortName") ??
+      entry.targetServerId ??
+      "—"
+    );
+  }
+  return entry.targetPersonaName ?? "—";
+}
+
+function auditTargetId(entry: AuditLogDoc): string {
+  if (
+    entry.action === "CREATE_SERVER" ||
+    entry.action === "UPDATE_SERVER" ||
+    entry.action === "DISABLE_SERVER"
+  ) {
+    return entry.targetServerId ?? stringField(entry.newValue, "id") ?? "—";
+  }
+  return entry.targetSteamId ?? "—";
 }
 
 export function AdminAuditPanel() {
@@ -75,10 +127,10 @@ export function AdminAuditPanel() {
             <tr>
               <th className="px-3 py-2 font-medium">Time</th>
               <th className="px-3 py-2 font-medium">Action</th>
-              <th className="px-3 py-2 font-medium">Role</th>
+              <th className="px-3 py-2 font-medium">Detail</th>
               <th className="px-3 py-2 font-medium">Admin</th>
               <th className="px-3 py-2 font-medium">Target</th>
-              <th className="px-3 py-2 font-medium">SteamID</th>
+              <th className="px-3 py-2 font-medium">ID</th>
             </tr>
           </thead>
           <tbody>
@@ -99,16 +151,16 @@ export function AdminAuditPanel() {
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">{entry.action}</td>
                   <td className="px-3 py-2 text-xs font-medium">
-                    {auditRoleLabel(entry)}
+                    {auditDetailLabel(entry)}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">
                     {entry.adminSteamId ?? "SYSTEM"}
                   </td>
                   <td className="px-3 py-2 text-sm">
-                    {entry.targetPersonaName ?? "—"}
+                    {auditTargetLabel(entry)}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                    {entry.targetSteamId}
+                    {auditTargetId(entry)}
                   </td>
                 </tr>
               ))
