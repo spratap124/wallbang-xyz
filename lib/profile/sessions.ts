@@ -256,7 +256,7 @@ function peakConcurrentInWindow(
   return peak;
 }
 
-/** Max Online column value for sessions that joined during the window. */
+/** Max At-join column value for sessions that joined during the window. */
 function peakConcurrentAtJoinInWindow(
   sessions: PlayerSessionDoc[],
   pool: PlayerSessionDoc[],

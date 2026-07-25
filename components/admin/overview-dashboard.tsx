@@ -199,7 +199,12 @@ export function OverviewDashboard({
                     Left
                   </th>
                   <th className="px-4 py-2.5 font-medium">Duration</th>
-                  <th className="px-4 py-2.5 font-medium">Online</th>
+                  <th
+                    className="px-4 py-2.5 font-medium"
+                    title="Players on this server when the session started (not live)"
+                  >
+                    At join
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -270,7 +275,7 @@ export function OverviewDashboard({
                       </td>
                       <td
                         className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground"
-                        title="Players on this server when the session started"
+                        title="Players on this server when the session started (not live)"
                       >
                         {session.concurrentAtJoin != null
                           ? session.concurrentAtJoin
@@ -291,7 +296,7 @@ export function OverviewDashboard({
                 Max peak players by day
               </h2>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Highest concurrent online per IST day — matches Sessions Online
+                Highest concurrent at join per IST day — matches Sessions At join
               </p>
             </div>
             <Link

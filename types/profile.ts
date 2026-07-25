@@ -50,8 +50,19 @@ export type PlayerStatsDoc = {
   losses: number;
   kills: number;
   deaths: number;
+  assists: number;
   headshots: number;
+  damage: number;
+  roundsPlayed: number;
+  roundsWon: number;
+  roundsLost: number;
+  plants: number;
+  plantAttempts: number;
+  defuses: number;
+  defuseAttempts: number;
   mvps: number;
+  /** WallBang Rating v0 — starts at 1000; ±2 per round W/L. */
+  rating: number;
   hoursPlayed: number;
   updatedAt: Date;
 };
@@ -148,7 +159,7 @@ export type ServerStatsRecentSession = {
   lastSeenAt: string;
   durationMs: number;
   active: boolean;
-  /** Players on the same server when this session started (includes this player). */
+  /** Players on the same server when this session started (includes this player). Not live. */
   concurrentAtJoin: number | null;
 };
 
@@ -242,10 +253,23 @@ export type QuickStats = {
   winRate: number | null;
   kills: number;
   deaths: number;
+  assists: number;
   kd: number | null;
   headshots: number;
   headshotPercent: number | null;
+  damage: number;
+  /** Average damage per round; null when no rounds. */
+  adr: number | null;
+  roundsPlayed: number;
+  roundsWon: number;
+  roundsLost: number;
+  roundWinRate: number | null;
+  plants: number;
+  plantAttempts: number;
+  defuses: number;
+  defuseAttempts: number;
   mvps: number;
+  rating: number;
   hoursPlayed: number;
 };
 

@@ -4,6 +4,13 @@ import type { Collection } from "mongodb";
 
 import { getDb } from "@/lib/mongo";
 import type {
+  MatchDoc,
+  PlayerMapStatsDoc,
+  PlayerRatingHistoryDoc,
+  PlayerRoundStatsDoc,
+  RoundDoc,
+} from "@/types/match-stats";
+import type {
   PlayerActivityDoc,
   PlayerBadgeDoc,
   PlayerPresenceDoc,
@@ -20,6 +27,11 @@ const SETTINGS = "player_settings";
 const ACTIVITY = "player_activity";
 const PRESENCE = "player_presence";
 const SESSIONS = "player_sessions";
+const MATCHES = "matches";
+const ROUNDS = "rounds";
+const PLAYER_ROUND_STATS = "player_round_stats";
+const PLAYER_MAP_STATS = "player_map_stats";
+const PLAYER_RATING_HISTORY = "player_rating_history";
 
 let indexesReady: Promise<void> | null = null;
 
@@ -72,6 +84,37 @@ export async function playerSessionsCollection(): Promise<
   return db.collection<PlayerSessionDoc>(SESSIONS);
 }
 
+export async function matchesCollection(): Promise<Collection<MatchDoc>> {
+  const db = await getDb();
+  return db.collection<MatchDoc>(MATCHES);
+}
+
+export async function roundsCollection(): Promise<Collection<RoundDoc>> {
+  const db = await getDb();
+  return db.collection<RoundDoc>(ROUNDS);
+}
+
+export async function playerRoundStatsCollection(): Promise<
+  Collection<PlayerRoundStatsDoc>
+> {
+  const db = await getDb();
+  return db.collection<PlayerRoundStatsDoc>(PLAYER_ROUND_STATS);
+}
+
+export async function playerMapStatsCollection(): Promise<
+  Collection<PlayerMapStatsDoc>
+> {
+  const db = await getDb();
+  return db.collection<PlayerMapStatsDoc>(PLAYER_MAP_STATS);
+}
+
+export async function playerRatingHistoryCollection(): Promise<
+  Collection<PlayerRatingHistoryDoc>
+> {
+  const db = await getDb();
+  return db.collection<PlayerRatingHistoryDoc>(PLAYER_RATING_HISTORY);
+}
+
 /** Presence older than this is treated as offline. */
 export function presenceStaleMs(): number {
   const secs = Number(process.env.PLAYER_PRESENCE_TTL_SECONDS ?? 90);
@@ -115,16 +158,33 @@ async function ensureSessionRetentionIndex(
 export async function ensureProfileIndexes(): Promise<void> {
   if (!indexesReady) {
     indexesReady = (async () => {
-      const [profiles, stats, badges, settings, activity, presence, sessions] =
-        await Promise.all([
-          playerProfilesCollection(),
-          playerStatsCollection(),
-          playerBadgesCollection(),
-          playerSettingsCollection(),
-          playerActivityCollection(),
-          playerPresenceCollection(),
-          playerSessionsCollection(),
-        ]);
+      const [
+        profiles,
+        stats,
+        badges,
+        settings,
+        activity,
+        presence,
+        sessions,
+        matches,
+        rounds,
+        roundStats,
+        mapStats,
+        ratingHistory,
+      ] = await Promise.all([
+        playerProfilesCollection(),
+        playerStatsCollection(),
+        playerBadgesCollection(),
+        playerSettingsCollection(),
+        playerActivityCollection(),
+        playerPresenceCollection(),
+        playerSessionsCollection(),
+        matchesCollection(),
+        roundsCollection(),
+        playerRoundStatsCollection(),
+        playerMapStatsCollection(),
+        playerRatingHistoryCollection(),
+      ]);
 
       await Promise.all([
         profiles.createIndex({ steamId: 1 }, { unique: true }),
@@ -145,6 +205,19 @@ export async function ensureProfileIndexes(): Promise<void> {
         sessions.createIndex({ steamId: 1, serverId: 1, leftAt: 1 }),
         sessions.createIndex({ serverId: 1, leftAt: 1, lastSeenAt: -1 }),
         ensureSessionRetentionIndex(sessions),
+        matches.createIndex({ serverId: 1, startedAt: -1 }),
+        matches.createIndex({ status: 1, startedAt: -1 }),
+        rounds.createIndex({ matchId: 1, round: 1 }, { unique: true }),
+        roundStats.createIndex(
+          { matchId: 1, round: 1, steamId: 1 },
+          { unique: true },
+        ),
+        roundStats.createIndex({ steamId: 1, createdAt: -1 }),
+        roundStats.createIndex({ matchId: 1, steamId: 1 }),
+        mapStats.createIndex({ steamId: 1, map: 1 }, { unique: true }),
+        mapStats.createIndex({ steamId: 1, updatedAt: -1 }),
+        ratingHistory.createIndex({ steamId: 1, createdAt: -1 }),
+        ratingHistory.createIndex({ matchId: 1, steamId: 1 }, { unique: true }),
       ]);
     })().catch((err) => {
       indexesReady = null;
