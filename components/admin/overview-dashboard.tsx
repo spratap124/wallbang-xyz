@@ -201,7 +201,7 @@ export function OverviewDashboard({
                   <th className="px-4 py-2.5 font-medium">Duration</th>
                   <th
                     className="px-4 py-2.5 font-medium"
-                    title="Players on this server when the session started (not live)"
+                    title="How many players were online on this server when they joined"
                   >
                     At join
                   </th>
@@ -275,7 +275,7 @@ export function OverviewDashboard({
                       </td>
                       <td
                         className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground"
-                        title="Players on this server when the session started (not live)"
+                        title="How many players were online on this server when they joined"
                       >
                         {session.concurrentAtJoin != null
                           ? session.concurrentAtJoin

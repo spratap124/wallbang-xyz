@@ -151,6 +151,8 @@ export async function touchPlayerSession(input: {
     return;
   }
 
+  const playersOnlineAtJoin = await countLivePlayersOnServer(input.serverId);
+
   const doc: PlayerSessionDoc = {
     _id: crypto.randomUUID(),
     steamId: input.steamId,
@@ -160,6 +162,7 @@ export async function touchPlayerSession(input: {
     joinedAt: now,
     lastSeenAt: now,
     leftAt: null,
+    playersOnlineAtJoin: Math.max(1, playersOnlineAtJoin),
   };
   await col.insertOne(doc);
   await recordLifetimeSessionStart(input.steamId);
@@ -187,6 +190,55 @@ function sessionEndedAtMs(session: PlayerSessionDoc, nowMs: number): number {
   return sessionEndedAt(session, nowMs).getTime();
 }
 
+/** Whether `session` was still on the server at historical time `atMs`. */
+function wasOnlineAt(session: PlayerSessionDoc, atMs: number): boolean {
+  if (session.joinedAt.getTime() > atMs) return false;
+  if (session.leftAt) return session.leftAt.getTime() > atMs;
+
+  const lastSeen = session.lastSeenAt.getTime();
+  // Session continued past this moment.
+  if (lastSeen >= atMs) return true;
+  // Unclosed but already stale by `atMs` → ghost; do not count.
+  const staleMs = presenceStaleMs() * 2;
+  return lastSeen + staleMs > atMs;
+}
+
+/**
+ * Unique players on the same server at `target.joinedAt`.
+ * Prefer stored `playersOnlineAtJoin` when present (true live snapshot).
+ */
+function concurrentAtJoin(
+  target: PlayerSessionDoc,
+  pool: PlayerSessionDoc[],
+): number {
+  if (
+    typeof target.playersOnlineAtJoin === "number" &&
+    target.playersOnlineAtJoin >= 1
+  ) {
+    return target.playersOnlineAtJoin;
+  }
+
+  const joinMs = target.joinedAt.getTime();
+  const steamIds = new Set<string>();
+  for (const other of pool) {
+    if (other.serverId !== target.serverId) continue;
+    if (!wasOnlineAt(other, joinMs)) continue;
+    steamIds.add(other.steamId);
+  }
+  steamIds.add(target.steamId);
+  return steamIds.size;
+}
+
+/** Live presence count on a server (fresh heartbeats only). */
+async function countLivePlayersOnServer(serverId: string): Promise<number> {
+  const presenceCol = await playerPresenceCollection();
+  const staleBefore = new Date(Date.now() - presenceStaleMs());
+  return presenceCol.countDocuments({
+    serverId,
+    updatedAt: { $gte: staleBefore },
+  });
+}
+
 /** Sessions that joined in-range, plus any still overlapping the window (for peak). */
 function sessionsOverlappingRangeFilter(start: Date): Filter<PlayerSessionDoc> {
   return {
@@ -198,23 +250,6 @@ function sessionsOverlappingRangeFilter(start: Date): Filter<PlayerSessionDoc> {
       },
     ],
   };
-}
-
-/** Players on the same server when `target` joined (includes target). */
-function concurrentAtJoin(
-  target: PlayerSessionDoc,
-  pool: PlayerSessionDoc[],
-): number {
-  const joinMs = target.joinedAt.getTime();
-  let count = 0;
-  for (const other of pool) {
-    if (other.serverId !== target.serverId) continue;
-    if (other.joinedAt.getTime() > joinMs) continue;
-    const leftMs = other.leftAt?.getTime();
-    if (leftMs != null && leftMs <= joinMs) continue;
-    count += 1;
-  }
-  return Math.max(1, count);
 }
 
 /** Peak simultaneous players on one server during a day window. */

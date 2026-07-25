@@ -130,6 +130,12 @@ export type PlayerSessionDoc = {
   joinedAt: Date;
   lastSeenAt: Date;
   leftAt: Date | null;
+  /**
+   * Snapshot of players online on this server when the session started
+   * (from live presence at insert time). Null on older docs — UI falls back
+   * to a computed estimate.
+   */
+  playersOnlineAtJoin: number | null;
 };
 
 export type ServerStatsRange = "1d" | "7d" | "30d";
@@ -159,7 +165,7 @@ export type ServerStatsRecentSession = {
   lastSeenAt: string;
   durationMs: number;
   active: boolean;
-  /** Players on the same server when this session started (includes this player). Not live. */
+  /** Players online on this server when the session started (live snapshot). */
   concurrentAtJoin: number | null;
 };
 
