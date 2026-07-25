@@ -144,7 +144,12 @@ export function AdminSessionsPanel() {
               <th className="px-4 py-3 font-medium">Joined</th>
               <th className="px-4 py-3 font-medium">Left</th>
               <th className="px-4 py-3 font-medium">Duration</th>
-              <th className="px-4 py-3 font-medium">Online</th>
+              <th
+                className="px-4 py-3 font-medium"
+                title="Players on this server when the session started (not live)"
+              >
+                At join
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
@@ -221,7 +226,7 @@ export function AdminSessionsPanel() {
                   </td>
                   <td
                     className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground"
-                    title="Players on this server when the session started"
+                    title="Players on this server when the session started (not live)"
                   >
                     {session.concurrentAtJoin != null
                       ? session.concurrentAtJoin

@@ -159,7 +159,7 @@ export type ServerStatsRecentSession = {
   lastSeenAt: string;
   durationMs: number;
   active: boolean;
-  /** Players on the same server when this session started (includes this player). */
+  /** Players on the same server when this session started (includes this player). Not live. */
   concurrentAtJoin: number | null;
 };
 
