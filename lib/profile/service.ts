@@ -28,6 +28,7 @@ import {
 import {
   buildProfileCompletion,
   emptyStats,
+  normalizeStatsDoc,
   toQuickStats,
 } from "@/lib/profile/stats";
 import { resolveCurrentServer } from "@/lib/profile/presence";
@@ -129,7 +130,7 @@ export async function ensurePlayerDomain(
 async function loadStats(steamId: string): Promise<PlayerStatsDoc> {
   const col = await playerStatsCollection();
   const doc = await col.findOne({ steamId });
-  if (doc) return doc;
+  if (doc) return normalizeStatsDoc(doc);
   const created: PlayerStatsDoc = {
     _id: crypto.randomUUID(),
     ...emptyStats(steamId),
@@ -194,10 +195,22 @@ function redactStatsForPrivacy(
     winRate: null,
     kills: 0,
     deaths: 0,
+    assists: 0,
     kd: null,
     headshots: 0,
     headshotPercent: null,
+    damage: 0,
+    adr: null,
+    roundsPlayed: 0,
+    roundsWon: 0,
+    roundsLost: 0,
+    roundWinRate: null,
+    plants: 0,
+    plantAttempts: 0,
+    defuses: 0,
+    defuseAttempts: 0,
     mvps: 0,
+    rating: 0,
     hoursPlayed: 0,
   };
 }

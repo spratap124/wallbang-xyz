@@ -19,9 +19,19 @@ export {
 export {
   toQuickStats,
   emptyStats,
+  normalizeStatsDoc,
   computeProfileCompletion,
   buildProfileCompletion,
+  DEFAULT_RATING,
+  ROUND_WIN_RATING_DELTA,
+  ROUND_LOSS_RATING_DELTA,
 } from "@/lib/profile/stats";
+export {
+  startMatch,
+  ingestMatchRound,
+  endMatch,
+  MatchIngestError,
+} from "@/lib/profile/matches";
 export {
   formatRelativeTime,
   formatMonthYear,
