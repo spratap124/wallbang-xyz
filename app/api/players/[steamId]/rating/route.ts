@@ -19,7 +19,8 @@ type RouteContext = {
  * Auth: X-API-Key
  *
  * Response data: { rating, rank, premier: { label, color, colorRgb } }
- * Missing players are created at 15,000 / Gold ("// 15,000" purple).
+ * Missing players are created at 0 / Iron ("// 00000" gray).
+ * Labels are always 5 digits: // 00000, // 00100, // 01500, // 15000, …
  */
 export async function GET(
   request: Request,

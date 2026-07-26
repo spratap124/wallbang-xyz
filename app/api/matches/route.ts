@@ -12,9 +12,10 @@ export const runtime = "nodejs";
 /**
  * POST /api/matches
  *
- * CS2 plugin → submit a finished match. Backend runs Elo + rank update.
- * Auth: X-API-Key
+ * @deprecated Prefer POST /api/rounds for public retakes.
+ * Kept for future ranked mode (team Elo over a full match).
  *
+ * Auth: X-API-Key
  * Body: { serverId, map, winner, players: [{ steamId, side, name?, avatar? }] }
  * Response data: { updatedPlayers: [...] }
  */

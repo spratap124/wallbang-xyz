@@ -3,11 +3,19 @@ import "server-only";
 import type { Collection } from "mongodb";
 
 import { getDb } from "@/lib/mongo";
-import type { PlayerDoc, RankName } from "@/types/rating";
+import type {
+  LifetimeStats,
+  PlayerDoc,
+  RankName,
+} from "@/types/rating";
 
 const PLAYERS = "players";
 
 let indexesReady: Promise<void> | null = null;
+
+function emptyLifetimeStats(): LifetimeStats {
+  return { retake: { kills: 0, deaths: 0, assists: 0 } };
+}
 
 export async function playersCollection(): Promise<Collection<PlayerDoc>> {
   const db = await getDb();
@@ -22,6 +30,7 @@ export async function ensurePlayerIndexes(): Promise<void> {
         col.createIndex({ steamId: 1 }, { unique: true }),
         col.createIndex({ rating: -1 }),
         col.createIndex({ rank: 1, rating: -1 }),
+        col.createIndex({ lastPlayedAt: -1 }),
       ]);
     })().catch((err) => {
       indexesReady = null;
@@ -91,9 +100,12 @@ export class RatingRepository {
       rating: defaults.rating,
       peakRating: defaults.rating,
       rank: defaults.rank,
+      roundsPlayed: 0,
       matchesPlayed: 0,
       wins: 0,
       losses: 0,
+      lifetimeStats: emptyLifetimeStats(),
+      lastPlayedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -109,6 +121,45 @@ export class RatingRepository {
     }
   }
 
+  /**
+   * Atomic round apply: rating + peak + rank + W-L + mode-scoped combat + lastPlayedAt.
+   */
+  async applyRoundUpdate(input: {
+    steamId: string;
+    rating: number;
+    peakRating: number;
+    rank: RankName;
+    won: boolean;
+    kills: number;
+    deaths: number;
+    assists: number;
+  }): Promise<void> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    const now = new Date();
+    await col.updateOne(
+      { steamId: input.steamId },
+      {
+        $set: {
+          rating: input.rating,
+          peakRating: input.peakRating,
+          rank: input.rank,
+          lastPlayedAt: now,
+          updatedAt: now,
+        },
+        $inc: {
+          roundsPlayed: 1,
+          wins: input.won ? 1 : 0,
+          losses: input.won ? 0 : 1,
+          "lifetimeStats.retake.kills": input.kills,
+          "lifetimeStats.retake.deaths": input.deaths,
+          "lifetimeStats.retake.assists": input.assists,
+        },
+      },
+    );
+  }
+
+  /** @deprecated Prefer applyRoundUpdate for public retakes. */
   async applyMatchUpdate(input: {
     steamId: string;
     rating: number;
@@ -126,12 +177,80 @@ export class RatingRepository {
           rating: input.rating,
           peakRating: input.peakRating,
           rank: input.rank,
+          lastPlayedAt: now,
           updatedAt: now,
         },
         $inc: {
           matchesPlayed: 1,
           wins: input.won ? 1 : 0,
           losses: input.won ? 0 : 1,
+        },
+      },
+    );
+  }
+
+  async updateRating(steamId: string, rating: number): Promise<void> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    await col.updateOne(
+      { steamId },
+      { $set: { rating, updatedAt: new Date() } },
+    );
+  }
+
+  async updatePeak(steamId: string, peakRating: number): Promise<void> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    await col.updateOne(
+      { steamId },
+      { $set: { peakRating, updatedAt: new Date() } },
+    );
+  }
+
+  async incrementRounds(steamId: string, by = 1): Promise<void> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    await col.updateOne(
+      { steamId },
+      { $inc: { roundsPlayed: by }, $set: { updatedAt: new Date() } },
+    );
+  }
+
+  async updateWins(steamId: string, by = 1): Promise<void> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    await col.updateOne(
+      { steamId },
+      { $inc: { wins: by }, $set: { updatedAt: new Date() } },
+    );
+  }
+
+  async updateLosses(steamId: string, by = 1): Promise<void> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    await col.updateOne(
+      { steamId },
+      { $inc: { losses: by }, $set: { updatedAt: new Date() } },
+    );
+  }
+
+  /** Set rating fields without touching W-L / roundsPlayed. */
+  async setRatingState(input: {
+    steamId: string;
+    rating: number;
+    peakRating: number;
+    rank: RankName;
+  }): Promise<void> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    await col.updateOne(
+      { steamId: input.steamId },
+      {
+        $set: {
+          rating: input.rating,
+          peakRating: input.peakRating,
+          rank: input.rank,
+          updatedAt: new Date(),
         },
       },
     );

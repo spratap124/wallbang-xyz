@@ -1,26 +1,28 @@
 import type { PremierDisplay, RankName } from "@/types/rating";
 import { RANK_NAMES } from "@/types/rating";
 
-/**
- * Starting WallBang Rating — CS2 Premier scale.
- * 15,000 lands in Purple / named rank Gold.
- */
-export const DEFAULT_RATING = 15_000;
+/** New players start at zero — scoreboard shows "// 00000". */
+export const DEFAULT_RATING = 0;
+
+/** Display width for Premier-style labels (always 5 digits). */
+export const RATING_DIGITS = 5;
+
+/** Soft ceiling so Elo cannot run away forever. */
+export const RATING_MAX = 99_999;
 
 /**
- * CS2 Premier rating bands → WallBang named ranks.
- * Color tiers match Valve Premier (5,000-point steps).
+ * CS2 Premier rating bands → WallBang named ranks (5-digit scale).
  *
- * | Color      | Range        | Named rank |
- * |------------|--------------|------------|
- * | Gray       | 0–4,999      | Iron       |
- * | Light Blue | 5,000–9,999  | Bronze     |
- * | Blue       | 10,000–14,999| Silver     |
- * | Purple     | 15,000–19,999| Gold       |
- * | Pink       | 20,000–24,999| Platinum   |
- * | Red        | 25,000–29,999| Diamond    |
- * | Gold       | 30,000+      | Master     |
- * | Gold       | 35,000+      | Global     |
+ * | Color      | Range         | Named rank |
+ * |------------|---------------|------------|
+ * | Gray       | 00000–04999   | Iron       |
+ * | Light Blue | 05000–09999   | Bronze     |
+ * | Blue       | 10000–14999   | Silver     |
+ * | Purple     | 15000–19999   | Gold       |
+ * | Pink       | 20000–24999   | Platinum   |
+ * | Red        | 25000–29999   | Diamond    |
+ * | Gold       | 30000–34999   | Master     |
+ * | Gold       | 35000+        | Global     |
  */
 export const RANK_THRESHOLDS: ReadonlyArray<{
   rank: RankName;
@@ -55,11 +57,15 @@ export const RANK_PREMIER_COLORS: Record<
 };
 
 export class RankService {
-  /** Map a numeric rating → display rank (15,000 → Gold). */
+  /** Clamp into the allowed rating range. */
+  clampRating(rating: number): number {
+    if (!Number.isFinite(rating)) return DEFAULT_RATING;
+    return Math.min(RATING_MAX, Math.max(0, Math.round(rating)));
+  }
+
+  /** Map a numeric rating → display rank (0 → Iron, 15,000 → Gold). */
   rankFromRating(rating: number): RankName {
-    const clamped = Number.isFinite(rating)
-      ? Math.max(0, Math.round(rating))
-      : 0;
+    const clamped = this.clampRating(rating);
     for (const tier of RANK_THRESHOLDS) {
       if (clamped >= tier.minRating) return tier.rank;
     }
@@ -81,21 +87,22 @@ export class RankService {
   }
 
   /**
-   * Scoreboard string in CS2 Premier style: "// 15,000"
-   * (double slash + locale-grouped digits).
+   * Scoreboard string: always 5 digits with leading zeros.
+   * Examples: "// 00000", "// 00100", "// 01500", "// 15000"
    */
   formatPremierLabel(rating: number): string {
-    const n = Number.isFinite(rating) ? Math.max(0, Math.round(rating)) : 0;
-    return `// ${n.toLocaleString("en-US")}`;
+    const n = this.clampRating(rating);
+    return `// ${n.toString().padStart(RATING_DIGITS, "0")}`;
   }
 
   /** Full Premier presentation for plugin / API consumers. */
   toPremierDisplay(rating: number, rank?: RankName): PremierDisplay {
-    const resolved = rank ?? this.rankFromRating(rating);
+    const clamped = this.clampRating(rating);
+    const resolved = rank ?? this.rankFromRating(clamped);
     const color = this.colorForRank(resolved);
     return {
-      rating: Number.isFinite(rating) ? Math.max(0, Math.round(rating)) : 0,
-      label: this.formatPremierLabel(rating),
+      rating: clamped,
+      label: this.formatPremierLabel(clamped),
       color: color.hex,
       colorRgb: { r: color.r, g: color.g, b: color.b },
     };
@@ -103,8 +110,9 @@ export class RankService {
 
   /** Convenience: rating → named rank + Premier paint in one call. */
   resolve(rating: number): { rank: RankName; premier: PremierDisplay } {
-    const rank = this.rankFromRating(rating);
-    return { rank, premier: this.toPremierDisplay(rating, rank) };
+    const clamped = this.clampRating(rating);
+    const rank = this.rankFromRating(clamped);
+    return { rank, premier: this.toPremierDisplay(clamped, rank) };
   }
 }
 
