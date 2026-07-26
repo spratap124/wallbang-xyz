@@ -1,10 +1,20 @@
 import type { MatchSide } from "@/types/rating";
+import { DEFAULT_RATING } from "@/lib/rating/RankService";
 
-/** Elo K-factor — moderate movement for retake match volume. */
-export const ELO_K = 32;
+/**
+ * Elo K-factor on Premier-scale ratings (~15k start, 5k-wide color bands).
+ * Larger than classic chess K so a match moves you within a band.
+ */
+export const ELO_K = 200;
 
-/** Soft floor so ratings never collapse to nonsense. */
-export const RATING_FLOOR = 100;
+/**
+ * Elo expected-score divisor scaled for Premier magnitudes
+ * (classic Elo uses 400 on ~1500 ratings).
+ */
+export const ELO_DIVISOR = 2_000;
+
+/** Floor matches Premier Gray band (0). */
+export const RATING_FLOOR = 0;
 
 export type RatedPlayer = {
   steamId: string;
@@ -26,11 +36,11 @@ export type RatingDelta = {
  */
 export class RatingCalculator {
   expectedScore(playerRating: number, opponentAvg: number): number {
-    return 1 / (1 + 10 ** ((opponentAvg - playerRating) / 400));
+    return 1 / (1 + 10 ** ((opponentAvg - playerRating) / ELO_DIVISOR));
   }
 
   averageRating(ratings: number[]): number {
-    if (ratings.length === 0) return 1500;
+    if (ratings.length === 0) return DEFAULT_RATING;
     return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
   }
 

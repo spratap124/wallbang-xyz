@@ -19,7 +19,7 @@ type RouteContext = {
  * Auth: X-API-Key
  *
  * Response data: { rating, rank, premier: { label, color, colorRgb } }
- * Missing players are created at 1500 / Gold ("// 1,500" purple).
+ * Missing players are created at 15,000 / Gold ("// 15,000" purple).
  */
 export async function GET(
   request: Request,

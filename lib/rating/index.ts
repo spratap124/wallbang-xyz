@@ -1,4 +1,10 @@
-export { RatingCalculator, ratingCalculator, ELO_K, RATING_FLOOR } from "@/lib/rating/RatingCalculator";
+export {
+  RatingCalculator,
+  ratingCalculator,
+  ELO_K,
+  ELO_DIVISOR,
+  RATING_FLOOR,
+} from "@/lib/rating/RatingCalculator";
 export {
   RankService,
   rankService,

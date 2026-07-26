@@ -3,7 +3,7 @@
 export const MATCH_SIDES = ["T", "CT"] as const;
 export type MatchSide = (typeof MATCH_SIDES)[number];
 
-/** Named ranks derived from rating (1500 = Gold). */
+/** Named ranks derived from CS2 Premier–scale rating (15,000 = Gold / Purple). */
 export const RANK_NAMES = [
   "Iron",
   "Bronze",

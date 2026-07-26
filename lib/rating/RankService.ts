@@ -1,30 +1,44 @@
 import type { PremierDisplay, RankName } from "@/types/rating";
 import { RANK_NAMES } from "@/types/rating";
 
-/** Starting WallBang Rating — maps to Gold. */
-export const DEFAULT_RATING = 1500;
+/**
+ * Starting WallBang Rating — CS2 Premier scale.
+ * 15,000 lands in Purple / named rank Gold.
+ */
+export const DEFAULT_RATING = 15_000;
 
 /**
- * Inclusive lower bounds for each rank (highest first for lookup).
- * 1500 lands in Gold.
+ * CS2 Premier rating bands → WallBang named ranks.
+ * Color tiers match Valve Premier (5,000-point steps).
+ *
+ * | Color      | Range        | Named rank |
+ * |------------|--------------|------------|
+ * | Gray       | 0–4,999      | Iron       |
+ * | Light Blue | 5,000–9,999  | Bronze     |
+ * | Blue       | 10,000–14,999| Silver     |
+ * | Purple     | 15,000–19,999| Gold       |
+ * | Pink       | 20,000–24,999| Platinum   |
+ * | Red        | 25,000–29,999| Diamond    |
+ * | Gold       | 30,000+      | Master     |
+ * | Gold       | 35,000+      | Global     |
  */
 export const RANK_THRESHOLDS: ReadonlyArray<{
   rank: RankName;
   minRating: number;
 }> = [
-  { rank: "Global", minRating: 2300 },
-  { rank: "Master", minRating: 2100 },
-  { rank: "Diamond", minRating: 1900 },
-  { rank: "Platinum", minRating: 1700 },
-  { rank: "Gold", minRating: 1500 },
-  { rank: "Silver", minRating: 1300 },
-  { rank: "Bronze", minRating: 1100 },
+  { rank: "Global", minRating: 35_000 },
+  { rank: "Master", minRating: 30_000 },
+  { rank: "Diamond", minRating: 25_000 },
+  { rank: "Platinum", minRating: 20_000 },
+  { rank: "Gold", minRating: 15_000 },
+  { rank: "Silver", minRating: 10_000 },
+  { rank: "Bronze", minRating: 5_000 },
   { rank: "Iron", minRating: 0 },
 ];
 
 /**
- * CS2 Premier–inspired tier colors (Valve scoreboard palette).
- * Mapped 1:1 onto WallBang named ranks so `// rating` paints like Premier.
+ * Premier scoreboard colors (Valve palette), keyed by named rank.
+ * Master + Global share the Premier gold tier (30,000+).
  */
 export const RANK_PREMIER_COLORS: Record<
   RankName,
@@ -36,12 +50,12 @@ export const RANK_PREMIER_COLORS: Record<
   Gold: { hex: "#8847FF", r: 136, g: 71, b: 255 },
   Platinum: { hex: "#D32CE6", r: 211, g: 44, b: 230 },
   Diamond: { hex: "#EB4B4B", r: 235, g: 75, b: 75 },
-  Master: { hex: "#FF6B35", r: 255, g: 107, b: 53 },
-  Global: { hex: "#FFD700", r: 255, g: 215, b: 0 },
+  Master: { hex: "#E4AE39", r: 228, g: 174, b: 57 },
+  Global: { hex: "#E4AE39", r: 228, g: 174, b: 57 },
 };
 
 export class RankService {
-  /** Map a numeric rating → display rank (1500 → Gold). */
+  /** Map a numeric rating → display rank (15,000 → Gold). */
   rankFromRating(rating: number): RankName {
     const clamped = Number.isFinite(rating)
       ? Math.max(0, Math.round(rating))
@@ -67,7 +81,7 @@ export class RankService {
   }
 
   /**
-   * Scoreboard string in CS2 Premier style: "// 1,500"
+   * Scoreboard string in CS2 Premier style: "// 15,000"
    * (double slash + locale-grouped digits).
    */
   formatPremierLabel(rating: number): string {
