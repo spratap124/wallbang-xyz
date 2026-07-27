@@ -79,8 +79,21 @@ export function OverviewDashboard({
       const peak = Number(d.peakConcurrent);
       return Number.isFinite(peak) ? peak : 0;
     }) ?? [];
+  const dailyAvgs =
+    data?.daily.map((d) => {
+      const avg = Number(d.avgConcurrent);
+      return Number.isFinite(avg) ? avg : 0;
+    }) ?? [];
   const peakAcrossDays = dailyPeaks.length > 0 ? Math.max(0, ...dailyPeaks) : 0;
-  const maxDaily = Math.max(1, peakAcrossDays);
+  const daysWithAvg = dailyAvgs.filter((n) => n > 0);
+  const rangeAvg =
+    daysWithAvg.length > 0
+      ? Math.round(
+          (daysWithAvg.reduce((sum, n) => sum + n, 0) / daysWithAvg.length) *
+            10,
+        ) / 10
+      : 0;
+  const maxDaily = Math.max(1, peakAcrossDays, ...dailyAvgs);
   const liveDenom =
     summary && summary.liveMaxPlayers > 0
       ? summary.liveMaxPlayers
@@ -293,10 +306,11 @@ export function OverviewDashboard({
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                Max peak players by day
+                Peak &amp; avg players by day
               </h2>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Highest concurrent at join per IST day — matches Sessions At join
+                Max and average concurrent at join per IST day — matches Sessions
+                At join
               </p>
             </div>
             <Link
@@ -309,26 +323,43 @@ export function OverviewDashboard({
           <div className="p-4">
             {data && data.daily.length > 0 ? (
               <div className="space-y-3 pt-2">
-                <div className="flex items-end justify-between text-[10px] text-muted-foreground">
-                  <span>Peak concurrent</span>
-                  <span>
-                    Range high · {peakAcrossDays}
+                <div className="flex items-end justify-between gap-2 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-2 rounded-[2px] bg-primary/85" />
+                      Peak
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-2 rounded-[2px] bg-sky-400/70" />
+                      Avg
+                    </span>
+                  </div>
+                  <span className="tabular-nums">
+                    High · {peakAcrossDays}
+                    {rangeAvg > 0 ? ` · Avg · ${rangeAvg}` : ""}
                   </span>
                 </div>
                 <div className="flex h-44 items-end gap-1 pt-6 sm:gap-1.5">
                   {data.daily.map((day, i) => {
                     const peak = Number(day.peakConcurrent);
                     const peakSafe = Number.isFinite(peak) ? peak : 0;
+                    const avg = Number(day.avgConcurrent);
+                    const avgSafe = Number.isFinite(avg) ? avg : 0;
                     const dayLabel = formatDay(day.date);
-                    const heightPct =
+                    const peakHeightPct =
                       peakSafe <= 0
                         ? 0
                         : Math.max(8, Math.round((peakSafe / maxDaily) * 100));
+                    const avgHeightPct =
+                      avgSafe <= 0
+                        ? 0
+                        : Math.max(8, Math.round((avgSafe / maxDaily) * 100));
                     const showLabel =
                       data.daily.length <= 8 ||
                       i === 0 ||
                       i === data.daily.length - 1 ||
                       i % Math.ceil(data.daily.length / 6) === 0;
+                    const hasActivity = peakSafe > 0 || avgSafe > 0;
                     return (
                       <div
                         key={day.date}
@@ -340,30 +371,49 @@ export function OverviewDashboard({
                         >
                           {dayLabel}
                           {peakSafe > 0 ? ` · peak ${peakSafe}` : ""}
+                          {avgSafe > 0 ? ` · avg ${avgSafe}` : ""}
                         </span>
                         <span className="h-3 text-[10px] font-medium tabular-nums text-foreground/80">
-                          {peakSafe > 0 ? peakSafe : ""}
+                          {hasActivity
+                            ? avgSafe > 0 && avgSafe !== peakSafe
+                              ? `${peakSafe}/${avgSafe}`
+                              : peakSafe > 0
+                                ? peakSafe
+                                : avgSafe
+                            : ""}
                         </span>
                         <div
-                          className="flex w-full items-end justify-center"
+                          className="flex w-full items-end justify-center gap-0.5"
                           style={{ height: "7.5rem" }}
                         >
                           <div
                             className={cn(
-                              "w-full max-w-9 rounded-t-sm transition-colors",
+                              "w-full max-w-4 rounded-t-sm transition-colors",
                               peakSafe > 0
                                 ? "bg-primary/85 group-hover:bg-primary"
                                 : "bg-border/80 group-hover:bg-border",
                             )}
                             style={{
-                              height: peakSafe > 0 ? `${heightPct}%` : "3px",
+                              height: peakSafe > 0 ? `${peakHeightPct}%` : "3px",
+                            }}
+                          />
+                          <div
+                            className={cn(
+                              "w-full max-w-4 rounded-t-sm transition-colors",
+                              avgSafe > 0
+                                ? "bg-sky-400/70 group-hover:bg-sky-400"
+                                : "bg-border/50 group-hover:bg-border/80",
+                            )}
+                            style={{
+                              height: avgSafe > 0 ? `${avgHeightPct}%` : "3px",
                             }}
                           />
                         </div>
                         <span
                           className={cn(
                             "h-3 w-full truncate text-center text-[9px] text-muted-foreground sm:text-[10px]",
-                            !showLabel && "invisible group-hover:visible group-hover:text-foreground",
+                            !showLabel &&
+                              "invisible group-hover:visible group-hover:text-foreground",
                           )}
                         >
                           {dayLabel}

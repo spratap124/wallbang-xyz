@@ -28,7 +28,11 @@ function createClient(): Promise<MongoClient> {
     serverSelectionTimeoutMS: 5000,
   });
 
-  return client.connect();
+  return client.connect().catch((err) => {
+    // Drop the cached promise so the next request can retry after Atlas recovers.
+    globalThis.__wallbangMongo = undefined;
+    throw err;
+  });
 }
 
 export function getMongoClient(): Promise<MongoClient> {
