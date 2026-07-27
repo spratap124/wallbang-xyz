@@ -307,6 +307,25 @@ function peakConcurrentAtJoinInWindow(
   return peak;
 }
 
+/** Mean At-join column value for sessions that joined during the window. */
+function avgConcurrentAtJoinInWindow(
+  sessions: PlayerSessionDoc[],
+  pool: PlayerSessionDoc[],
+  windowStartMs: number,
+  windowEndMs: number,
+): number {
+  let sum = 0;
+  let count = 0;
+  for (const session of sessions) {
+    const joinMs = session.joinedAt.getTime();
+    if (joinMs < windowStartMs || joinMs >= windowEndMs) continue;
+    sum += concurrentAtJoin(session, pool);
+    count += 1;
+  }
+  if (count === 0) return 0;
+  return Math.round((sum / count) * 10) / 10;
+}
+
 function buildDailyBuckets(
   sessions: PlayerSessionDoc[],
   range: ServerStatsRange,
@@ -348,6 +367,12 @@ function buildDailyBuckets(
       sessions: inDay.length,
       // Match Sessions "Online" column (max at join) and true overlap peak.
       peakConcurrent: Math.max(sweepPeak, joinPeak),
+      avgConcurrent: avgConcurrentAtJoinInWindow(
+        sessions,
+        sessions,
+        windowStartMs,
+        windowEndMs,
+      ),
     });
   }
   return buckets;

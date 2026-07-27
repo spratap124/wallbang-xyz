@@ -175,6 +175,8 @@ export type ServerStatsDayBucket = {
   sessions: number;
   /** Peak simultaneous players on any single server that day. */
   peakConcurrent: number;
+  /** Mean concurrent-at-join for sessions that joined that day (0 if none). */
+  avgConcurrent: number;
 };
 
 export type ServerStatsResponse = {
