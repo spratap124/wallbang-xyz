@@ -14,7 +14,7 @@ import {
   recordLifetimeSessionStart,
   getLifetimeSessionStats,
 } from "@/lib/profile/session-stats";
-import { istDayBounds, listRecentIstDayKeys } from "@/lib/time/ist";
+import { istDayBounds, istDayKey, listRecentIstDayKeys } from "@/lib/time/ist";
 import type {
   FleetOverviewRecentSession,
   FleetOverviewResponse,
@@ -27,18 +27,19 @@ import type {
 } from "@/types/profile";
 import type { Filter } from "mongodb";
 
-const RANGE_MS: Record<ServerStatsRange, number> = {
-  "1d": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-  "30d": 30 * 24 * 60 * 60 * 1000,
-};
+function rangeDayCount(range: ServerStatsRange): number {
+  return range === "1d" ? 1 : range === "7d" ? 7 : 30;
+}
 
 export function isServerStatsRange(value: string): value is ServerStatsRange {
   return value === "1d" || value === "7d" || value === "30d";
 }
 
+/** Inclusive start of the range as an IST calendar window (not rolling hours). */
 function rangeStart(range: ServerStatsRange, now = new Date()): Date {
-  return new Date(now.getTime() - RANGE_MS[range]);
+  const dayCount = rangeDayCount(range);
+  const { start: todayStart } = istDayBounds(istDayKey(now));
+  return new Date(todayStart.getTime() - (dayCount - 1) * 24 * 60 * 60 * 1000);
 }
 
 function sessionEndedAt(session: PlayerSessionDoc, now = Date.now()): Date {
@@ -333,8 +334,7 @@ function buildDailyBuckets(
 ): ServerStatsDayBucket[] {
   const rangeStartMs = rangeStart(range, now).getTime();
   const nowMs = now.getTime();
-  const dayCount = range === "1d" ? 1 : range === "7d" ? 7 : 30;
-  const dayKeys = listRecentIstDayKeys(dayCount, now);
+  const dayKeys = listRecentIstDayKeys(rangeDayCount(range), now);
 
   const buckets: ServerStatsDayBucket[] = [];
   for (const dayKey of dayKeys) {
