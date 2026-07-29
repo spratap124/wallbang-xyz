@@ -50,7 +50,7 @@ npm install
 DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... PLUGIN_API_KEY=... npm start
 ```
 
-Run the Next.js app separately. VIP is granted only after Steam login **and** Discord membership verification at `/offers`.
+Run the Next.js app separately. By default VIP is granted on **Steam login alone** (`GIVEAWAY_REQUIRE_DISCORD` unset/false). Set `GIVEAWAY_REQUIRE_DISCORD=true` to also require Discord membership verification at `/offers`. Discord bot + OAuth paths stay available either way.
 
 ### 5. Production (Docker)
 
@@ -70,6 +70,13 @@ sudo docker run --rm --network host --env-file .env \
 The bot needs **Manage Messages** in `#launch-giveaway` to pin rules. If pin fails, the script still posts the message — pin it manually in Discord.
 
 ## Player flow
+
+**Steam-only (default):**
+
+1. Visit [wallbang.xyz/offers](https://wallbang.xyz/offers) and **sign in with Steam**.
+2. VIP is granted automatically (first 100 players, 3 months). A message may be posted in `#launch-giveaway`.
+
+**With Discord required** (`GIVEAWAY_REQUIRE_DISCORD=true`):
 
 1. Visit [wallbang.xyz/offers](https://wallbang.xyz/offers) and **sign in with Steam**.
 2. **Join the Discord server**, then **Link Discord & claim VIP** on the site.

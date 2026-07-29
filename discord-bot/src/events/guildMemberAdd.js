@@ -4,9 +4,9 @@ function buildWelcomeMessage(siteUrl, offerUrl) {
     "",
     "We're giving **3 months of VIP** to the first **100 players**.",
     "",
-    "**How to claim (both steps required):**",
+    "**How to claim:**",
     "1. Sign in with Steam at the offer page",
-    "2. Join this Discord, then **Link Discord & claim VIP** on the site",
+    "2. VIP unlocks automatically after Steam login (while spots remain)",
     "",
     `Claim here: **${offerUrl}**`,
     "",
@@ -80,7 +80,7 @@ export function registerReadyLog(client, config) {
   client.once("ready", () => {
     console.log(`[bot] Logged in as ${client.user.tag}`);
     console.log(
-      `[bot] Launch VIP: Steam login + Discord membership required at ${config.siteUrl}/offers`,
+      `[bot] Launch VIP: Steam login at ${config.siteUrl}/offers (Discord membership optional unless GIVEAWAY_REQUIRE_DISCORD=true on the site)`,
     );
   });
 }
