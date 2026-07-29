@@ -15,7 +15,8 @@ const gameKnifePatchSchema = z
   .object({
     knifeId: z.string().trim().min(1).max(64),
     finishId: z.string().trim().min(1).max(128).optional(),
-    paintKit: z.number().int().min(1).max(100_000),
+    // 0 = vanilla (named knife model, no paint kit). Painted finishes use >= 1.
+    paintKit: z.number().int().min(0).max(100_000),
     patternSeed: z.number().int().min(0).max(999).optional(),
     wear: z.number().min(0).max(1).optional(),
     statTrak: z.boolean().optional(),

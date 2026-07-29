@@ -8,7 +8,11 @@ import {
   listWeapons,
 } from "@/lib/loadout/catalog";
 import { wearNameFromFloat } from "@/lib/loadout/constants";
-import { resolveSkinImage, resolveSkinImageByName } from "@/lib/loadout/images";
+import {
+  resolveDefaultWeaponImage,
+  resolveSkinImage,
+  resolveSkinImageByName,
+} from "@/lib/loadout/images";
 import { AGENTS } from "@/lib/loadout/mock-data";
 import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import type {
@@ -82,14 +86,18 @@ export async function knifePatchToEquipped(
   patch: GameKnifePatch,
 ): Promise<EquippedItem> {
   const detail = await getKnifeDetail(patch.knifeId);
+  const isVanilla = patch.paintKit <= 0;
   const finish =
     (patch.finishId
       ? detail.finishes.find((f) => f.id === patch.finishId)
       : undefined) ??
     detail.finishes.find((f) => f.paintKit === patch.paintKit);
-  const finishId = finish?.id ?? patch.finishId ?? String(patch.paintKit);
-  const skinName = finish?.displayName ?? `Finish ${patch.paintKit}`;
-  const wear = patch.wear ?? DEFAULT_WEAR;
+  const finishId =
+    finish?.id ?? patch.finishId ?? (isVanilla ? "vanilla" : String(patch.paintKit));
+  const skinName =
+    finish?.displayName ?? (isVanilla ? "Vanilla" : `Finish ${patch.paintKit}`);
+  // Vanilla has no wear float in-game; default painted wear only for real kits.
+  const wear = patch.wear ?? (isVanilla ? 0 : DEFAULT_WEAR);
   const meta = lookupSkinMetadata({
     weaponId: detail.knife.id,
     defIndex: detail.knife.defIndex,
@@ -101,13 +109,18 @@ export async function knifePatchToEquipped(
     id: detail.knife.id,
     defIndex: detail.knife.defIndex,
   };
-  const image =
-    resolveSkinImage(weaponRef, patch.paintKit) ??
-    resolveSkinImageByName(`${detail.knife.displayName}|${skinName}`);
+  const image = isVanilla
+    ? resolveDefaultWeaponImage({
+        id: detail.knife.id,
+        defIndex: detail.knife.defIndex,
+        name: detail.knife.displayName,
+      })
+    : (resolveSkinImage(weaponRef, patch.paintKit) ??
+      resolveSkinImageByName(`${detail.knife.displayName}|${skinName}`));
 
   return {
     weapon: detail.knife.id,
-    paintKit: patch.paintKit,
+    paintKit: Math.max(0, patch.paintKit),
     skinId: `${detail.knife.id}:${finishId}`,
     skinName,
     rarity: meta?.rarity ?? "Covert",
