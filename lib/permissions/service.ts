@@ -562,6 +562,16 @@ export function getLaunchGiveawayVipMonths(): number {
   return Number.isFinite(parsed) ? parsed : 3;
 }
 
+/**
+ * When true, launch VIP requires Steam login + Discord link + guild membership.
+ * When false (default), Steam login alone grants VIP. Discord claim paths stay wired.
+ */
+export function isLaunchGiveawayDiscordRequired(): boolean {
+  const raw = process.env.GIVEAWAY_REQUIRE_DISCORD?.trim().toLowerCase();
+  if (!raw) return false;
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
 function giveawayVipExpiresAt(from = new Date()): Date {
   const expiresAt = new Date(from);
   expiresAt.setMonth(expiresAt.getMonth() + getLaunchGiveawayVipMonths());
@@ -639,7 +649,7 @@ function toLegacyGiveawayResult(result: LaunchGiveawayResult): GiveawayEntryResu
   };
 }
 
-/** Grant launch VIP after Steam login + Discord membership. Idempotent. */
+/** Grant launch VIP after Steam login (and Discord when required). Idempotent. */
 export async function processLaunchGiveaway(input: {
   steamId: string;
   maxWinners?: number;
@@ -649,6 +659,7 @@ export async function processLaunchGiveaway(input: {
   await ready();
 
   const maxWinners = input.maxWinners ?? getLaunchGiveawayMaxWinners();
+  const requireDiscord = isLaunchGiveawayDiscordRequired();
   const user = await findUserBySteamId(input.steamId);
   if (!user) {
     throw new Error(
@@ -718,32 +729,35 @@ export async function processLaunchGiveaway(input: {
   const discordUsername =
     input.discordUsername?.trim() || user.discordUsername?.trim() || null;
 
-  if (!discordUserId) {
-    return {
-      steamId: user.steamId,
-      personaName: user.personaName,
-      position: 0,
-      maxWinners,
-      status: "needs_discord",
-      expiresAt: null,
-      discordUserId: null,
-      discordUsername: null,
-    };
-  }
+  // Discord gate kept intact — skipped when GIVEAWAY_REQUIRE_DISCORD is off.
+  if (requireDiscord) {
+    if (!discordUserId) {
+      return {
+        steamId: user.steamId,
+        personaName: user.personaName,
+        position: 0,
+        maxWinners,
+        status: "needs_discord",
+        expiresAt: null,
+        discordUserId: null,
+        discordUsername: null,
+      };
+    }
 
-  const { isDiscordGuildMember } = await import("@/lib/discord/guild");
-  const inGuild = await isDiscordGuildMember(discordUserId);
-  if (!inGuild) {
-    return {
-      steamId: user.steamId,
-      personaName: user.personaName,
-      position: 0,
-      maxWinners,
-      status: "not_in_guild",
-      expiresAt: null,
-      discordUserId,
-      discordUsername,
-    };
+    const { isDiscordGuildMember } = await import("@/lib/discord/guild");
+    const inGuild = await isDiscordGuildMember(discordUserId);
+    if (!inGuild) {
+      return {
+        steamId: user.steamId,
+        personaName: user.personaName,
+        position: 0,
+        maxWinners,
+        status: "not_in_guild",
+        expiresAt: null,
+        discordUserId,
+        discordUsername,
+      };
+    }
   }
 
   const winnerCount = await countActiveGiveawayVips(now);
@@ -794,13 +808,17 @@ export async function processLaunchGiveaway(input: {
 
   try {
     const { recordPlayerActivity } = await import("@/lib/profile/activity");
+    const claimHow = requireDiscord
+      ? "signing in with Steam and joining Discord"
+      : "signing in with Steam";
     await recordPlayerActivity({
       steamId: user.steamId,
       type: "won_giveaway",
       title: "Claimed launch VIP offer",
-      description: `Earned ${getLaunchGiveawayVipMonths()} months of VIP by signing in with Steam and joining Discord during the launch offer.`,
+      description: `Earned ${getLaunchGiveawayVipMonths()} months of VIP by ${claimHow} during the launch offer.`,
       metadata: {
-        discordUserId,
+        requireDiscord,
+        ...(discordUserId ? { discordUserId } : {}),
         ...(discordUsername ? { discordUsername } : {}),
         expiresAt: expiresAt.toISOString(),
       },

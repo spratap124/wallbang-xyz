@@ -14,6 +14,7 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   launchOfferIncludes,
   launchOfferRewardBenefits,
+  launchOfferSteamOnlyBlurb,
   launchOfferSteps,
 } from "@/content/offer";
 import { siteConfig } from "@/config/site";
@@ -23,6 +24,7 @@ import { isMongoConfigured } from "@/lib/mongo";
 import {
   getLaunchGiveawayStatus,
   getUserPermissions,
+  isLaunchGiveawayDiscordRequired,
   processLaunchGiveaway,
 } from "@/lib/permissions/service";
 import { announceLaunchGiveawayGrant } from "@/lib/discord/giveaway-announce";
@@ -33,7 +35,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Launch VIP",
   description:
-    "Become one of WallBang's first 100 players and unlock 3 months of Launch VIP. Sign in with Steam, join Discord, and claim your limited-time reward.",
+    "Become one of WallBang's first 100 players and unlock 3 months of Launch VIP. Sign in with Steam to claim your limited-time reward.",
   path: "/offers",
 });
 
@@ -162,6 +164,8 @@ export default async function LaunchOfferPage({
   const { discord: discordParam } = await searchParams;
   const flash = discordFlashMessage(discordParam);
   const discordReady = isDiscordLinkConfigured();
+  const requireDiscord = isLaunchGiveawayDiscordRequired();
+  const totalSteps = requireDiscord ? 2 : 1;
 
   let giveawayStatus: {
     maxWinners: number;
@@ -224,8 +228,12 @@ export default async function LaunchOfferPage({
 
   const steamDone = Boolean(session);
   const discordDone = userGiveaway?.kind === "active";
-  const stepsCompleted = (steamDone ? 1 : 0) + (discordDone ? 1 : 0);
-  const progressPercent = (stepsCompleted / 2) * 100;
+  const stepsCompleted = requireDiscord
+    ? (steamDone ? 1 : 0) + (discordDone ? 1 : 0)
+    : steamDone
+      ? 1
+      : 0;
+  const progressPercent = (stepsCompleted / totalSteps) * 100;
 
   const showRewardSuccess = userGiveaway?.kind === "active";
   const isSlotsFull = userGiveaway?.kind === "slots_full";
@@ -251,8 +259,9 @@ export default async function LaunchOfferPage({
             🎉 Become one of WallBang&apos;s first {maxWinners} players
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
-            Complete the two steps below to unlock {vipMonths} months of Launch
-            VIP. This limited-time reward is available only while spots remain.
+            {requireDiscord
+              ? `Complete the two steps below to unlock ${vipMonths} months of Launch VIP. This limited-time reward is available only while spots remain.`
+              : launchOfferSteamOnlyBlurb(vipMonths)}
           </p>
 
           <div className="mx-auto mt-10 max-w-lg rounded-2xl border border-border/80 bg-card/80 p-6 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.02)] sm:p-8">
@@ -339,7 +348,8 @@ export default async function LaunchOfferPage({
                   Progress
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {stepsCompleted} of 2 steps completed
+                  {stepsCompleted} of {totalSteps} step
+                  {totalSteps === 1 ? "" : "s"} completed
                 </p>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-white/5 ring-1 ring-border/60">
@@ -390,7 +400,9 @@ export default async function LaunchOfferPage({
                     ) : (
                       <>
                         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                          {launchOfferSteps[0].description}
+                          {requireDiscord
+                            ? launchOfferSteps[0].description
+                            : `Sign in with Steam to claim ${vipMonths} months of Launch VIP. Your Steam account links your player identity for VIP, stats, and loadouts.`}
                         </p>
                         <a
                           href="/api/auth/steam?returnTo=/offers"
@@ -409,99 +421,101 @@ export default async function LaunchOfferPage({
                 </div>
               </article>
 
-              {/* Step 2 — Discord */}
-              <article
-                className={cn(
-                  "rounded-2xl border p-6 transition-colors sm:p-7",
-                  discordDone
-                    ? "border-emerald-500/30 bg-emerald-500/[0.06]"
-                    : "border-border/80 bg-card/80",
-                )}
-              >
-                <div className="flex gap-4">
-                  <StatusIcon done={discordDone} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                        Step 2
-                      </p>
-                      {discordDone ? (
-                        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
-                          Complete
-                        </span>
-                      ) : null}
-                    </div>
-                    <h3 className="mt-1 text-lg font-semibold tracking-tight">
-                      {launchOfferSteps[1].title}
-                    </h3>
-                    {discordDone ? (
-                      <p className="mt-2 flex items-center gap-2 text-sm font-medium text-emerald-400">
-                        <Check className="size-4" />
-                        {launchOfferSteps[1].successLabel}
-                      </p>
-                    ) : (
-                      <>
-                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                          {launchOfferSteps[1].description}
+              {/* Step 2 — Discord (kept; shown only when required) */}
+              {requireDiscord ? (
+                <article
+                  className={cn(
+                    "rounded-2xl border p-6 transition-colors sm:p-7",
+                    discordDone
+                      ? "border-emerald-500/30 bg-emerald-500/[0.06]"
+                      : "border-border/80 bg-card/80",
+                  )}
+                >
+                  <div className="flex gap-4">
+                    <StatusIcon done={discordDone} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                          Step 2
                         </p>
-                        {userGiveaway?.kind === "not_in_guild" ? (
-                          <p className="mt-3 text-sm text-amber-200/90">
-                            Linked as{" "}
-                            <strong>
-                              {userGiveaway.discordUsername ??
-                                "your Discord account"}
-                            </strong>
-                            . Join the server, then verify below.
-                          </p>
+                        {discordDone ? (
+                          <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+                            Complete
+                          </span>
                         ) : null}
-                        {steamDone ? (
-                          <div className="mt-5 flex flex-wrap items-start gap-3">
-                            <a
-                              href={siteConfig.discordUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(
-                                buttonVariants({
-                                  size: "lg",
-                                  className:
-                                    "bg-red-500 hover:bg-red-500/90",
-                                }),
-                              )}
-                            >
-                              <MessageCircle />
-                              Join Discord
-                              <ExternalLink className="size-3.5 opacity-70" />
-                            </a>
-                            {userGiveaway?.kind === "not_in_guild" ? (
-                              <DiscordVerifyButton size="lg" />
-                            ) : discordReady ? (
+                      </div>
+                      <h3 className="mt-1 text-lg font-semibold tracking-tight">
+                        {launchOfferSteps[1].title}
+                      </h3>
+                      {discordDone ? (
+                        <p className="mt-2 flex items-center gap-2 text-sm font-medium text-emerald-400">
+                          <Check className="size-4" />
+                          {launchOfferSteps[1].successLabel}
+                        </p>
+                      ) : (
+                        <>
+                          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                            {launchOfferSteps[1].description}
+                          </p>
+                          {userGiveaway?.kind === "not_in_guild" ? (
+                            <p className="mt-3 text-sm text-amber-200/90">
+                              Linked as{" "}
+                              <strong>
+                                {userGiveaway.discordUsername ??
+                                  "your Discord account"}
+                              </strong>
+                              . Join the server, then verify below.
+                            </p>
+                          ) : null}
+                          {steamDone ? (
+                            <div className="mt-5 flex flex-wrap items-start gap-3">
                               <a
-                                href="/api/auth/discord?returnTo=/offers"
+                                href={siteConfig.discordUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className={cn(
                                   buttonVariants({
-                                    variant: "outline",
                                     size: "lg",
+                                    className:
+                                      "bg-red-500 hover:bg-red-500/90",
                                   }),
                                 )}
                               >
-                                I&apos;ve already joined
+                                <MessageCircle />
+                                Join Discord
+                                <ExternalLink className="size-3.5 opacity-70" />
                               </a>
-                            ) : (
-                              <p className="self-center text-sm text-muted-foreground">
-                                Discord linking is temporarily unavailable.
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="mt-4 text-sm text-muted-foreground">
-                            Sign in with Steam first to continue.
-                          </p>
-                        )}
-                      </>
-                    )}
+                              {userGiveaway?.kind === "not_in_guild" ? (
+                                <DiscordVerifyButton size="lg" />
+                              ) : discordReady ? (
+                                <a
+                                  href="/api/auth/discord?returnTo=/offers"
+                                  className={cn(
+                                    buttonVariants({
+                                      variant: "outline",
+                                      size: "lg",
+                                    }),
+                                  )}
+                                >
+                                  I&apos;ve already joined
+                                </a>
+                              ) : (
+                                <p className="self-center text-sm text-muted-foreground">
+                                  Discord linking is temporarily unavailable.
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="mt-4 text-sm text-muted-foreground">
+                              Sign in with Steam first to continue.
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </article>
+                </article>
+              ) : null}
             </section>
 
             {/* Reward section */}
@@ -529,8 +543,9 @@ export default async function LaunchOfferPage({
                     </h2>
                   </div>
                   <p className="text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-                    After both requirements are completed, your Launch VIP is
-                    activated automatically.
+                    {requireDiscord
+                      ? "After both requirements are completed, your Launch VIP is activated automatically."
+                      : "After you sign in with Steam, your Launch VIP is activated automatically."}
                   </p>
                   <p className="mt-5 text-sm font-medium text-foreground">
                     Benefits:
@@ -578,7 +593,7 @@ export default async function LaunchOfferPage({
                 >
                   Go to Dashboard
                 </Link>
-              ) : (
+              ) : requireDiscord ? (
                 <>
                   <a
                     href={siteConfig.discordUrl}
@@ -612,6 +627,19 @@ export default async function LaunchOfferPage({
                     </a>
                   ) : null}
                 </>
+              ) : (
+                <a
+                  href="/api/auth/steam?returnTo=/offers"
+                  className={cn(
+                    buttonVariants({
+                      size: "lg",
+                      className:
+                        "w-full bg-red-500 px-8 hover:bg-red-500/90 sm:w-auto",
+                    }),
+                  )}
+                >
+                  Continue with Steam
+                </a>
               )}
             </section>
           </>

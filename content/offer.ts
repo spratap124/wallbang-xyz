@@ -26,3 +26,9 @@ export const launchOfferSteps = [
     successLabel: "Discord membership verified",
   },
 ] as const;
+
+/** Copy when Discord is not required for the launch VIP claim. */
+export function launchOfferSteamOnlyBlurb(vipMonths: number): string {
+  return `Sign in with Steam below to unlock ${vipMonths} months of Launch VIP. Spots are limited — claim yours while they last.`;
+}
+
