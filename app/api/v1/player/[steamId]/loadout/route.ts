@@ -24,6 +24,7 @@ type RouteContext = {
  * {
  *   "weapons": { "ak47": { "paintKit": 302, "wear": 0.12, "statTrak": true } },
  *   "knife": { "knifeId": "karambit", "paintKit": 38 },
+ *   "knife": { "knifeId": "kukri", "paintKit": 0, "finishId": "vanilla" },
  *   "gloves": { "gloveId": "sport_gloves", "paintKit": 10006 },
  *   "agentCT": { "agentId": "agent_jamison", "faction": "CT" },
  *   "agentT": null
