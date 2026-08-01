@@ -234,37 +234,52 @@ export function AdminDashboard() {
             ) : (
               results.map((user) => (
                 <li key={user.id}>
-                  <button
-                    type="button"
-                    onClick={() => selectUser(user.steamId)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary"
-                  >
-                    {user.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={user.avatarUrl}
-                        alt=""
-                        width={32}
-                        height={32}
-                        className="size-8 rounded-full"
-                      />
-                    ) : (
-                      <span className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs">
-                        {user.personaName.slice(0, 1).toUpperCase()}
-                      </span>
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
+                  <div className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary">
+                    <button
+                      type="button"
+                      onClick={() => selectUser(user.steamId)}
+                      className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                      aria-label={`Select ${user.personaName}`}
+                    >
+                      {user.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={user.avatarUrl}
+                          alt=""
+                          width={32}
+                          height={32}
+                          className="size-8 rounded-full"
+                        />
+                      ) : (
+                        <span className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs">
+                          {user.personaName.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => selectUser(user.steamId)}
+                        className="block w-full truncate text-left text-sm font-medium"
+                      >
                         {user.personaName}
-                      </span>
-                      <span className="block truncate font-mono text-xs text-muted-foreground">
+                      </button>
+                      <a
+                        href={
+                          user.profileUrl ||
+                          `https://steamcommunity.com/profiles/${user.steamId}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block truncate font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                      >
                         {user.steamId}
-                      </span>
-                    </span>
+                      </a>
+                    </div>
                     <span className="text-xs text-muted-foreground">
                       {user.role}
                     </span>
-                  </button>
+                  </div>
                 </li>
               ))
             )}
@@ -293,9 +308,17 @@ export function AdminDashboard() {
                   <h2 className="truncate text-xl font-semibold">
                     {selected.personaName}
                   </h2>
-                  <p className="font-mono text-xs text-muted-foreground">
+                  <a
+                    href={
+                      selected.profileUrl ||
+                      `https://steamcommunity.com/profiles/${selected.steamId}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                  >
                     {selected.steamId}
-                  </p>
+                  </a>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Display role:{" "}
                     <span className="text-foreground">
