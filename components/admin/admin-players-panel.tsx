@@ -151,9 +151,17 @@ export function AdminPlayersPanel() {
                         <p className="truncate font-medium">
                           {user.personaName}
                         </p>
-                        <p className="truncate font-mono text-xs text-muted-foreground">
+                        <a
+                          href={
+                            user.profileUrl ||
+                            `https://steamcommunity.com/profiles/${user.steamId}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                        >
                           {user.steamId}
-                        </p>
+                        </a>
                       </div>
                     </div>
                   </td>

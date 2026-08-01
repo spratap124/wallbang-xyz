@@ -194,9 +194,14 @@ export function AdminSessionsPanel() {
                             </span>
                           ) : null}
                         </div>
-                        <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                        <a
+                          href={`https://steamcommunity.com/profiles/${session.steamId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                        >
                           {session.steamId}
-                        </span>
+                        </a>
                       </div>
                     </div>
                   </td>
