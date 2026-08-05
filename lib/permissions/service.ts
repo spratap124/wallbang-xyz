@@ -692,23 +692,26 @@ export async function processLaunchGiveaway(input: {
     };
   }
 
-  const existingGiveaway = await col.findOne({
+  const existingVip = await col.findOne({
     userId: user._id,
-    roleCode: "VIP",
-    source: "GIVEAWAY",
+    roleCode: { $in: ["VIP", "FOUNDING_MEMBER"] },
     active: true,
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
   });
 
-  if (existingGiveaway) {
-    // Position = how many unique winners claimed at or before this grant.
-    const earlierOrSame = await col.distinct("userId", {
-      roleCode: "VIP",
-      source: "GIVEAWAY",
-      active: true,
-      grantedAt: { $lte: existingGiveaway.grantedAt },
-      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-    });
+  if (existingVip) {
+    // Do not replace manual/founding VIP with a shorter launch grant,
+    // and do not consume a launch slot for players who already have access.
+    const earlierOrSame =
+      existingVip.roleCode === "VIP" && existingVip.source === "GIVEAWAY"
+        ? await col.distinct("userId", {
+            roleCode: "VIP",
+            source: "GIVEAWAY",
+            active: true,
+            grantedAt: { $lte: existingVip.grantedAt },
+            $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+          })
+        : [];
 
     return {
       steamId: user.steamId,
@@ -717,8 +720,10 @@ export async function processLaunchGiveaway(input: {
       maxWinners,
       status: "already_granted",
       expiresAt:
-        existingGiveaway.expiresAt ??
-        giveawayVipExpiresAt(existingGiveaway.grantedAt),
+        existingVip.expiresAt ??
+        (existingVip.source === "GIVEAWAY"
+          ? giveawayVipExpiresAt(existingVip.grantedAt)
+          : null),
       discordUserId: user.discordUserId ?? null,
       discordUsername: user.discordUsername ?? null,
     };

@@ -13,7 +13,8 @@
     "format:check": "prettier --check .",
     "seed:permissions": "node --env-file=.env.local --import tsx scripts/seed-permissions.ts",
     "seed:dummy-users": "node --env-file=.env.local --import tsx scripts/seed-dummy-users.ts",
-    "remove:dummy-users": "node --env-file=.env.local --import tsx scripts/remove-dummy-users.ts"
+    "remove:dummy-users": "node --env-file=.env.local --import tsx scripts/remove-dummy-users.ts",
+    "grant:vip": "node --env-file=.env.local --import tsx scripts/grant-vip-by-steamid.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
