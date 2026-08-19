@@ -10,6 +10,7 @@ export const featureFlags = {
   playerProfiles: true,
   vipDashboard: true,
   vipPurchase: true,
+  vipAllRetakes: false,
   inventory: false,
   statistics: false,
   adminPanel: true,
@@ -17,4 +18,6 @@ export const featureFlags = {
   matchmaking: false,
 } as const;
 
-export type FeatureFlags = typeof featureFlags;
+export type FeatureFlags = {
+  readonly [K in keyof typeof featureFlags]: boolean;
+};

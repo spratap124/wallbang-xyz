@@ -1,35 +1,18 @@
-import { featureFlags } from "@/config/features.flags";
+import { FeatureFlagsPanel } from "@/components/admin/feature-flags-panel";
+import type { FeatureFlags } from "@/config/features.flags";
 import { isMongoConfigured } from "@/lib/mongo";
 import { parseOwnerSteamIds } from "@/lib/permissions/constants";
 
-export function AdminSettingsPanel() {
+type AdminSettingsPanelProps = {
+  featureFlags: FeatureFlags;
+};
+
+export function AdminSettingsPanel({ featureFlags }: AdminSettingsPanelProps) {
   const owners = parseOwnerSteamIds();
 
   return (
     <div className="grid max-w-3xl gap-4">
-      <section className="rounded-xl border border-border bg-card/40 p-5">
-        <h2 className="text-sm font-semibold">Feature flags</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Read-only snapshot from server config. Change via deploy env / code.
-        </p>
-        <ul className="mt-4 divide-y divide-border/60 text-sm">
-          {Object.entries(featureFlags).map(([key, value]) => (
-            <li
-              key={key}
-              className="flex items-center justify-between gap-3 py-2"
-            >
-              <span className="font-mono text-xs">{key}</span>
-              <span
-                className={
-                  value ? "text-emerald-400" : "text-muted-foreground"
-                }
-              >
-                {value ? "on" : "off"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <FeatureFlagsPanel initialFlags={featureFlags} />
 
       <section className="rounded-xl border border-border bg-card/40 p-5">
         <h2 className="text-sm font-semibold">Environment</h2>

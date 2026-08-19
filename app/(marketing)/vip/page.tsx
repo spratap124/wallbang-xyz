@@ -22,6 +22,7 @@ import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
 import { getVipAccessStatus } from "@/lib/payments/service";
+import { isVipAllRetakesEnabled } from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
@@ -76,6 +77,7 @@ export default async function VipPage({ searchParams }: VipPageProps) {
   const servers = await getGameServers();
   const catalog = getVipShopCatalog(servers);
   const purchasesEnabled = isRazorpayConfigured();
+  const allRetakesEnabled = await isVipAllRetakesEnabled();
 
   let isVip = false;
   let lifetime = false;
@@ -149,6 +151,7 @@ export default async function VipPage({ searchParams }: VipPageProps) {
             catalog={catalog}
             loggedIn={Boolean(session)}
             purchasesEnabled={purchasesEnabled}
+            allRetakesEnabled={allRetakesEnabled}
             hideBuy={lifetime}
           />
         </LiveServersProvider>

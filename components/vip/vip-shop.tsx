@@ -43,6 +43,7 @@ type VipShopProps = {
   catalog: VipShopCatalog;
   loggedIn: boolean;
   purchasesEnabled: boolean;
+  allRetakesEnabled?: boolean;
   hideBuy?: boolean;
 };
 
@@ -121,10 +122,11 @@ export function VipShop({
   catalog,
   loggedIn,
   purchasesEnabled,
+  allRetakesEnabled = false,
   hideBuy = false,
 }: VipShopProps) {
   const [accessType, setAccessType] = useState<VipAccessType>(
-    catalog.quote.accessType,
+    allRetakesEnabled ? catalog.quote.accessType : "INDIVIDUAL_SERVER",
   );
   const [selectedServerId, setSelectedServerId] = useState<string | null>(
     catalog.quote.serverId ?? catalog.servers[0]?.id ?? null,
@@ -132,6 +134,12 @@ export function VipShop({
   const [durationId, setDurationId] = useState<VipPlanId>("1_month");
   const [shopQuote, setShopQuote] = useState<VipShopQuote>(catalog.quote);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!allRetakesEnabled && accessType === "ALL_RETAKES") {
+      setAccessType("INDIVIDUAL_SERVER");
+    }
+  }, [accessType, allRetakesEnabled]);
 
   useEffect(() => {
     if (accessType === "INDIVIDUAL_SERVER" && !selectedServerId) {
@@ -191,6 +199,12 @@ export function VipShop({
     accessType === "ALL_RETAKES" ||
     (accessType === "INDIVIDUAL_SERVER" && Boolean(selectedServerId));
 
+  const serverStep = allRetakesEnabled ? 2 : 1;
+  const durationStep = allRetakesEnabled ? 3 : 2;
+  const accessEditHref = allRetakesEnabled
+    ? "#choose-access"
+    : "#choose-servers";
+
   if (catalog.servers.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -205,52 +219,55 @@ export function VipShop({
       className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]"
     >
       <div className="space-y-10">
-        <section id="choose-access">
-          <h2 className="text-lg font-semibold tracking-tight">
-            <span className="text-primary">1.</span> Choose your access
-          </h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setAccessType("INDIVIDUAL_SERVER")}
-              className={cn(
-                "rounded-xl border p-4 text-left transition-colors",
-                accessType === "INDIVIDUAL_SERVER"
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-card/50 hover:border-primary/30",
-              )}
-            >
-              <p className="font-semibold">Individual Server</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Choose one premium retake server
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setAccessType("ALL_RETAKES")}
-              className={cn(
-                "relative rounded-xl border p-4 text-left transition-colors",
-                accessType === "ALL_RETAKES"
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-card/50 hover:border-primary/30",
-              )}
-            >
-              <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
-                <Sparkles className="size-3" />
-                Recommended
-              </span>
-              <p className="font-semibold">All Retakes</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Access all premium retake servers
-              </p>
-            </button>
-          </div>
-        </section>
+        {allRetakesEnabled ? (
+          <section id="choose-access">
+            <h2 className="text-lg font-semibold tracking-tight">
+              <span className="text-primary">1.</span> Choose your access
+            </h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setAccessType("INDIVIDUAL_SERVER")}
+                className={cn(
+                  "rounded-xl border p-4 text-left transition-colors",
+                  accessType === "INDIVIDUAL_SERVER"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card/50 hover:border-primary/30",
+                )}
+              >
+                <p className="font-semibold">Individual Server</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose one premium retake server
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccessType("ALL_RETAKES")}
+                className={cn(
+                  "relative rounded-xl border p-4 text-left transition-colors",
+                  accessType === "ALL_RETAKES"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card/50 hover:border-primary/30",
+                )}
+              >
+                <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
+                  <Sparkles className="size-3" />
+                  Recommended
+                </span>
+                <p className="font-semibold">All Retakes</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Access all premium retake servers
+                </p>
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         {accessType === "INDIVIDUAL_SERVER" ? (
           <section id="choose-servers">
             <h2 className="text-lg font-semibold tracking-tight">
-              <span className="text-primary">2.</span> Choose your server
+              <span className="text-primary">{serverStep}.</span> Choose your
+              server
             </h2>
             <div className="mt-4">
               <div className="space-y-2">
@@ -301,10 +318,10 @@ export function VipShop({
               </div>
             </div>
           </section>
-        ) : (
+        ) : allRetakesEnabled ? (
           <section id="choose-all-retakes">
             <h2 className="text-lg font-semibold tracking-tight">
-              <span className="text-primary">2.</span> All Retakes
+              <span className="text-primary">{serverStep}.</span> All Retakes
             </h2>
             <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
               <p className="font-semibold">All Retakes</p>
@@ -324,11 +341,12 @@ export function VipShop({
               </div>
             </div>
           </section>
-        )}
+        ) : null}
 
         <section id="choose-duration">
           <h2 className="text-lg font-semibold tracking-tight">
-            <span className="text-primary">3.</span> Choose a duration
+            <span className="text-primary">{durationStep}.</span> Choose a
+            duration
           </h2>
           <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <DurationCards
@@ -351,7 +369,7 @@ export function VipShop({
         <div className="mt-4 border-b border-border pb-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Access</span>
-            <a href="#choose-access" className="text-primary hover:underline">
+            <a href={accessEditHref} className="text-primary hover:underline">
               Edit
             </a>
           </div>

@@ -1,0 +1,84 @@
+import "server-only";
+
+import type { Collection } from "mongodb";
+
+import { featureFlags as staticFeatureFlags } from "@/config/features.flags";
+import type { FeatureFlags } from "@/config/features.flags";
+import { getDb, isMongoConfigured } from "@/lib/mongo";
+
+const COLLECTION = "platform_settings";
+const DOC_ID = "feature_flags";
+
+type FeatureFlagDoc = {
+  _id: string;
+  vipAllRetakes?: boolean;
+  updatedAt?: Date;
+  updatedBy?: string;
+};
+
+function parseEnvBoolean(
+  raw: string | undefined,
+): boolean | undefined {
+  const value = raw?.trim().toLowerCase();
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+  return undefined;
+}
+
+async function settingsCollection(): Promise<Collection<FeatureFlagDoc>> {
+  const db = await getDb();
+  return db.collection<FeatureFlagDoc>(COLLECTION);
+}
+
+async function readOverrides(): Promise<FeatureFlagDoc | null> {
+  if (!isMongoConfigured()) return null;
+
+  const col = await settingsCollection();
+  const doc = await col.findOne({ _id: DOC_ID });
+
+  return doc ?? null;
+}
+
+function resolveVipAllRetakes(overrides: FeatureFlagDoc | null): boolean {
+  const envOverride = parseEnvBoolean(process.env.FEATURE_VIP_ALL_RETAKES);
+  if (envOverride !== undefined) return envOverride;
+  if (overrides?.vipAllRetakes !== undefined) return overrides.vipAllRetakes;
+  return staticFeatureFlags.vipAllRetakes;
+}
+
+export async function getRuntimeFeatureFlags(): Promise<FeatureFlags> {
+  const overrides = await readOverrides();
+  return {
+    ...staticFeatureFlags,
+    vipAllRetakes: resolveVipAllRetakes(overrides),
+  };
+}
+
+export async function isVipAllRetakesEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.vipAllRetakes;
+}
+
+export async function setVipAllRetakesEnabled(
+  enabled: boolean,
+  updatedBy: string,
+): Promise<boolean> {
+  if (!isMongoConfigured()) {
+    throw new Error("Database is not configured.");
+  }
+
+  const col = await settingsCollection();
+  await col.updateOne(
+    { _id: DOC_ID },
+    {
+      $set: {
+        vipAllRetakes: enabled,
+        updatedAt: new Date(),
+        updatedBy,
+      },
+    },
+    { upsert: true },
+  );
+
+  return enabled;
+}

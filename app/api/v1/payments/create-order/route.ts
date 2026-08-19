@@ -5,6 +5,7 @@ import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requireSession } from "@/lib/permissions/authz";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
 import { createVipOrder } from "@/lib/payments/service";
+import { isVipAllRetakesEnabled } from "@/lib/platform/feature-flags";
 
 const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES"]);
 
@@ -70,6 +71,13 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!isVipPlanId(parsed.data.planId)) {
     return jsonError("Unknown VIP duration.", 400);
+  }
+
+  if (
+    parsed.data.accessType === "ALL_RETAKES" &&
+    !(await isVipAllRetakesEnabled())
+  ) {
+    return jsonError("All Retakes purchases are not available yet.", 400);
   }
 
   try {
