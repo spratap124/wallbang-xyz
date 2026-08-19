@@ -2,6 +2,8 @@ export {
   getUserPermissions,
   hasPermission,
   grantRole,
+  extendVipExpiry,
+  subtractVipExpiry,
   revokeRole,
   searchUsers,
   getAuditLogs,

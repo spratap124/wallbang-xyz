@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LogOut, Settings, Shield, User } from "lucide-react";
+import { ChevronDown, Crown, LogOut, Settings, Shield, User } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -121,6 +121,12 @@ export function SteamAuthControls({
                 Settings
               </DropdownMenuItem>
             ) : null}
+            {featureFlags.vipPurchase ? (
+              <DropdownMenuItem render={<Link href="/vip" />}>
+                <Crown />
+                VIP
+              </DropdownMenuItem>
+            ) : null}
             {showAdmin ? (
               <DropdownMenuItem render={<Link href="/admin" />}>
                 <Shield />
@@ -192,6 +198,15 @@ export function SteamAuthControlsMobile({
           >
             <Settings className="size-4" />
             Settings
+          </Link>
+        ) : null}
+        {featureFlags.vipPurchase ? (
+          <Link
+            href="/vip"
+            className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
+          >
+            <Crown className="size-4" />
+            VIP
           </Link>
         ) : null}
         {showAdmin ? (

@@ -327,17 +327,25 @@ export default async function LaunchOfferPage({
                   <strong>{session.personaName}</strong>
                 </>
               ) : null}
-              . Join Discord to stay updated on future VIP drops.
+              . You can buy prepaid VIP anytime, or join Discord for community updates.
             </p>
-            <a
-              href={siteConfig.discordUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(buttonVariants({ className: "mt-5" }))}
-            >
-              <MessageCircle />
-              Join Discord
-            </a>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href="/vip"
+                className={cn(buttonVariants())}
+              >
+                Buy prepaid VIP
+              </a>
+              <a
+                href={siteConfig.discordUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(buttonVariants({ variant: "outline" }))}
+              >
+                <MessageCircle />
+                Join Discord
+              </a>
+            </div>
           </div>
         ) : (
           <>

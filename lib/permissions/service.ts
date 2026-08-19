@@ -35,7 +35,17 @@ import type {
   RoleSource,
   UserRoleDoc,
 } from "@/types/permissions";
+import { durationDaysToMs } from "@/lib/payments/expiry";
 import { getGameLoadoutForPlayer } from "@/lib/loadout/service";
+
+function isDuplicateKeyError(err: unknown): boolean {
+  return Boolean(
+    err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000,
+  );
+}
 
 async function ready(): Promise<void> {
   await ensurePermissionIndexes();
@@ -354,6 +364,167 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   }
 
   return resolved;
+}
+
+export type ExtendVipExpiryInput = {
+  userId: string;
+  durationDays: number;
+  source: RoleSource;
+  grantedBy: { id: string; steamId: string } | null;
+};
+
+export type VipExtensionResult = {
+  startDate: Date;
+  endDate: Date;
+  assignmentId: string;
+  lifetime: boolean;
+};
+
+/**
+ * Stack prepaid VIP onto an active VIP expiry, or grant VIP from now if expired.
+ * Concurrent captured payments serialize on the user_roles document via pipeline $add.
+ */
+export async function extendVipExpiry(
+  input: ExtendVipExpiryInput,
+): Promise<VipExtensionResult> {
+  await ready();
+
+  const user = await findUserById(input.userId);
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  const durationMs = durationDaysToMs(input.durationDays);
+  const now = new Date();
+  const col = await userRolesCollection();
+
+  const extendActive = async (): Promise<UserRoleDoc | null> => {
+    return col.findOneAndUpdate(
+      {
+        userId: user._id,
+        roleCode: "VIP",
+        active: true,
+        expiresAt: { $gt: now },
+      },
+      [{ $set: { expiresAt: { $add: ["$expiresAt", durationMs] } } }],
+      { returnDocument: "after" },
+    );
+  };
+
+  const updated = await extendActive();
+  if (updated?.expiresAt) {
+    invalidatePermissionCache(user.steamId);
+    const startDate = new Date(updated.expiresAt.getTime() - durationMs);
+    await writeAudit({
+      adminId: input.grantedBy?.id ?? null,
+      adminSteamId: input.grantedBy?.steamId ?? null,
+      action: "GRANT_ROLE",
+      targetUserId: user._id,
+      targetSteamId: user.steamId,
+      targetPersonaName: user.personaName,
+      oldValue: {
+        roleCode: "VIP",
+        expiresAt: startDate,
+        assignmentId: updated._id,
+      },
+      newValue: {
+        roleCode: "VIP",
+        source: updated.source,
+        expiresAt: updated.expiresAt,
+        assignmentId: updated._id,
+        stacked: true,
+      },
+      timestamp: new Date(),
+    });
+    const resolved = await resolveFromUser(user);
+    await syncDisplayRole(user._id, resolved.roles);
+    return {
+      startDate,
+      endDate: updated.expiresAt,
+      assignmentId: updated._id,
+      lifetime: false,
+    };
+  }
+
+  const lifetime = await col.findOne({
+    userId: user._id,
+    roleCode: "VIP",
+    active: true,
+    expiresAt: null,
+  });
+  if (lifetime) {
+    return {
+      startDate: now,
+      endDate: new Date(now.getTime() + durationMs),
+      assignmentId: lifetime._id,
+      lifetime: true,
+    };
+  }
+
+  try {
+    const resolved = await grantRole({
+      targetUserId: user._id,
+      roleCode: "VIP",
+      source: input.source,
+      grantedBy: input.grantedBy,
+      expiresAt: new Date(now.getTime() + durationMs),
+    });
+    const assignment = resolved.activeAssignments.find(
+      (a) => a.roleCode === "VIP",
+    );
+    return {
+      startDate: now,
+      endDate: assignment?.expiresAt ?? new Date(now.getTime() + durationMs),
+      assignmentId: assignment?.id ?? resolved.userId,
+      lifetime: false,
+    };
+  } catch (err) {
+    if (!isDuplicateKeyError(err)) throw err;
+    const retried = await extendActive();
+    if (!retried?.expiresAt) throw err;
+    invalidatePermissionCache(user.steamId);
+    return {
+      startDate: new Date(retried.expiresAt.getTime() - durationMs),
+      endDate: retried.expiresAt,
+      assignmentId: retried._id,
+      lifetime: false,
+    };
+  }
+}
+
+/** Pull VIP expiry back by a captured term (refunds / lost disputes). */
+export async function subtractVipExpiry(input: {
+  userId: string;
+  durationDays: number;
+}): Promise<Date | null> {
+  await ready();
+  const durationMs = durationDaysToMs(input.durationDays);
+  const now = new Date();
+  const col = await userRolesCollection();
+  const user = await findUserById(input.userId);
+  if (!user) return null;
+
+  const updated = await col.findOneAndUpdate(
+    {
+      userId: input.userId,
+      roleCode: "VIP",
+      active: true,
+      expiresAt: { $type: "date" },
+    },
+    [{ $set: { expiresAt: { $add: ["$expiresAt", -durationMs] } } }],
+    { returnDocument: "after" },
+  );
+
+  if (!updated) return null;
+
+  if (updated.expiresAt && updated.expiresAt <= now) {
+    await col.updateOne({ _id: updated._id }, { $set: { active: false } });
+  }
+
+  invalidatePermissionCache(user.steamId);
+  const resolved = await resolveFromUser(user);
+  await syncDisplayRole(user._id, resolved.roles);
+  return updated.expiresAt;
 }
 
 export type RevokeRoleInput = {
@@ -692,23 +863,26 @@ export async function processLaunchGiveaway(input: {
     };
   }
 
-  const existingGiveaway = await col.findOne({
+  const existingVip = await col.findOne({
     userId: user._id,
-    roleCode: "VIP",
-    source: "GIVEAWAY",
+    roleCode: { $in: ["VIP", "FOUNDING_MEMBER"] },
     active: true,
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
   });
 
-  if (existingGiveaway) {
-    // Position = how many unique winners claimed at or before this grant.
-    const earlierOrSame = await col.distinct("userId", {
-      roleCode: "VIP",
-      source: "GIVEAWAY",
-      active: true,
-      grantedAt: { $lte: existingGiveaway.grantedAt },
-      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-    });
+  if (existingVip) {
+    // Do not replace manual/founding VIP with a shorter launch grant,
+    // and do not consume a launch slot for players who already have access.
+    const earlierOrSame =
+      existingVip.roleCode === "VIP" && existingVip.source === "GIVEAWAY"
+        ? await col.distinct("userId", {
+            roleCode: "VIP",
+            source: "GIVEAWAY",
+            active: true,
+            grantedAt: { $lte: existingVip.grantedAt },
+            $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+          })
+        : [];
 
     return {
       steamId: user.steamId,
@@ -717,8 +891,10 @@ export async function processLaunchGiveaway(input: {
       maxWinners,
       status: "already_granted",
       expiresAt:
-        existingGiveaway.expiresAt ??
-        giveawayVipExpiresAt(existingGiveaway.grantedAt),
+        existingVip.expiresAt ??
+        (existingVip.source === "GIVEAWAY"
+          ? giveawayVipExpiresAt(existingVip.grantedAt)
+          : null),
       discordUserId: user.discordUserId ?? null,
       discordUsername: user.discordUsername ?? null,
     };

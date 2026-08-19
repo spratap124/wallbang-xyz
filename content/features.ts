@@ -12,7 +12,7 @@ export const features: FeatureItem[] = [
     id: "vip",
     title: "VIP Membership",
     description:
-      "Support the platform and unlock cosmetic expression, priority access, and member perks — without pay-to-win advantages.",
+      "Prepaid 1-month, 3-month, 6-month, or 1-year VIP — cosmetics, reserved slot, and member perks, with no auto-renewal and no pay-to-win.",
     icon: "Crown",
   },
   {

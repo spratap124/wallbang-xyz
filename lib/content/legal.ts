@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export function getLegalDocument(slug: "privacy" | "terms"): string {
+export function getLegalDocument(slug: "privacy" | "terms" | "refund"): string {
   const fullPath = path.join(process.cwd(), "content/legal", `${slug}.md`);
   return fs.readFileSync(fullPath, "utf8");
 }

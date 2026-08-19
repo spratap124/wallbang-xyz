@@ -1,6 +1,6 @@
 # Terms of Service
 
-**Last updated:** July 11, 2026
+**Last updated:** August 19, 2026
 
 Welcome to WallBang. By using wallbang.xyz, joining our waitlist, Discord, or game servers, you agree to these terms.
 
@@ -10,15 +10,17 @@ WallBang provides Counter-Strike 2 community servers and a competitive platform 
 
 ## Accounts and Steam
 
-Future Steam-linked accounts must comply with Steam Subscriber Agreement and Valve policies. You are responsible for activity under your linked identity.
+Steam-linked accounts must comply with the Steam Subscriber Agreement and Valve policies. You are responsible for activity under your linked identity. VIP purchases apply only to the Steam account that is signed in at checkout.
 
 ## Fair play
 
-Cheating, abuse of exploits, harassment, hate speech, and disruptive behavior are prohibited. We may ban accounts or hardware identifiers at our discretion to protect competitive integrity.
+Cheating, abuse of exploits, harassment, hate speech, and disruptive behavior are prohibited. We may ban accounts or hardware identifiers at our discretion to protect competitive integrity. A ban does not automatically create a refund right.
 
 ## VIP and purchases
 
-VIP and cosmetic offerings, when available, are optional. Purchases do not guarantee competitive advantage. Refunds follow the policy published at purchase time.
+VIP is optional prepaid access sold in fixed terms (1 month, 3 months, 6 months, or 1 year). There is no automatic renewal. Purchases do not grant competitive advantage (no pay-to-win). Payments are processed by Razorpay; WallBang does not store card numbers, CVV, or UPI PINs.
+
+Refunds follow the [Refund Policy](https://wallbang.xyz/refund).
 
 ## Intellectual property
 
@@ -38,4 +40,4 @@ We may update these terms as the platform expands. Continued use after changes c
 
 ## Contact
 
-For terms questions, reach us on [Discord](https://discord.gg/KY2dRw8Yh4).
+For terms questions, reach us on [Discord](https://discord.gg/KY2dRw8Yh4) or via the [contact page](https://wallbang.xyz/contact).
