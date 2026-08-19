@@ -23,7 +23,7 @@ export const faqs: FaqItem[] = [
     id: "become-vip",
     question: "How do I become VIP?",
     answer:
-      "During the launch offer, the first 100 players who sign in with Steam and join the WallBang Discord receive 3 months of VIP. Both steps are required — Steam alone is not enough. After the launch slots fill, paid VIP details will be announced on the site and in Discord.",
+      "Buy prepaid VIP on the VIP page. Select servers, then 1 / 3 / 6 months or 1 year — paid once through Razorpay with no auto-renewal. During the launch offer, a limited number of players can also claim free VIP after signing in with Steam. A paid term extends your current expiry if VIP is still active.",
   },
   {
     id: "regions",

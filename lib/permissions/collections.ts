@@ -58,6 +58,35 @@ export async function ensurePermissionIndexes(): Promise<void> {
         audit.createIndex({ timestamp: -1 }),
         audit.createIndex({ targetUserId: 1, timestamp: -1 }),
       ]);
+
+      const duplicateActiveRoles = await userRoles
+        .aggregate<{ n: number }>([
+          { $match: { active: true } },
+          {
+            $group: {
+              _id: { userId: "$userId", roleCode: "$roleCode" },
+              n: { $sum: 1 },
+            },
+          },
+          { $match: { n: { $gt: 1 } } },
+          { $limit: 1 },
+        ])
+        .toArray();
+
+      if (duplicateActiveRoles.length === 0) {
+        await userRoles.createIndex(
+          { userId: 1, roleCode: 1 },
+          {
+            unique: true,
+            name: "userId_roleCode_active_unique",
+            partialFilterExpression: { active: true },
+          },
+        );
+      } else {
+        console.warn(
+          "[permissions] skipped unique active-role index; duplicate active assignments exist",
+        );
+      }
     })().catch((err) => {
       indexesReady = null;
       throw err;

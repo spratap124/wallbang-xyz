@@ -5,22 +5,22 @@ import { breadcrumbJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
-  title: "Privacy Policy",
+  title: "Refund Policy",
   description:
-    "WallBang privacy policy covering Steam login, VIP payments via Razorpay, Discord, and waitlist data on wallbang.xyz.",
-  path: "/privacy",
+    "WallBang prepaid VIP refund policy: 7-day requests, Razorpay payouts, and how chargebacks affect VIP access.",
+  path: "/refund",
 });
 
-export default function PrivacyPage() {
-  const html = renderSimpleMarkdown(getLegalDocument("privacy"));
+export default function RefundPage() {
+  const html = renderSimpleMarkdown(getLegalDocument("refund"));
 
   return (
     <div className="py-16 sm:py-20">
       <JsonLd
-        id="ld-privacy-breadcrumb"
+        id="ld-refund-breadcrumb"
         data={breadcrumbJsonLd([
           { name: "Home", path: "/" },
-          { name: "Privacy", path: "/privacy" },
+          { name: "Refund Policy", path: "/refund" },
         ])}
       />
       <Container>
