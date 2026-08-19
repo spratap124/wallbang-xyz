@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Lock, RefreshCcw, Shield } from "lucide-react";
+import { Lock, RefreshCcw, Shield, Zap } from "lucide-react";
 
 import { Container } from "@/components/shared/primitives";
 
@@ -15,6 +15,11 @@ const trustItems = [
     body: "Safe payments via Razorpay.",
   },
   {
+    icon: Zap,
+    title: "Instant VIP Activation",
+    body: "Access granted right after payment.",
+  },
+  {
     icon: RefreshCcw,
     title: "You're in control",
     body: "VIP ends when the term ends.",
@@ -23,61 +28,66 @@ const trustItems = [
 
 export function VipHero() {
   return (
-    <section className="relative border-b border-border bg-[#080a0c]">
-      {/* Image at 44% width, centred horizontally, fixed max height */}
-      <div
-        className="relative flex justify-center overflow-hidden"
-        style={{ height: "clamp(220px, 40vw, 300px)" }}
-      >
-        <div className="relative h-full w-[44%]">
-          <Image
-            src="/vip-hero.png"
-            alt="WallBang VIP — tactical soldier on Mirage"
-            fill
-            priority
-            sizes="44vw"
-            className="object-cover object-center"
-          />
-        </div>
-        {/* Left → center gradient keeps text readable */}
+    <div className="bg-[#080a0c]">
+      {/* ── Hero image + headline ── */}
+      <section className="relative">
         <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(8,10,12,0.97) 0%, rgba(8,10,12,0.90) 30%, rgba(8,10,12,0.60) 52%, rgba(8,10,12,0.0) 75%)",
-          }}
-          aria-hidden
-        />
-        {/* Bottom fade */}
-        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" aria-hidden />
+          className="relative flex justify-center overflow-hidden"
+          style={{ height: "clamp(220px, 40vw, 300px)" }}
+        >
+          <div className="relative h-full w-full lg:w-[44%]">
+            <Image
+              src="/vip-hero.png"
+              alt="WallBang VIP — tactical soldier on Mirage"
+              fill
+              priority
+              sizes="44vw"
+              className="object-cover object-center"
+            />
+          </div>
+          {/* Left gradient keeps text readable */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(8,10,12,0.3) 0%, rgba(8,10,12,0.75) 100%), linear-gradient(90deg, rgba(8,10,12,0.97) 0%, rgba(8,10,12,0.90) 30%, rgba(8,10,12,0.60) 52%, rgba(8,10,12,0.0) 75%)",
+            }}
+            aria-hidden
+          />
 
-        {/* Text overlay — left-aligned, vertically centred */}
-        <div className="absolute inset-0 flex items-center">
-          <Container>
-            <h1 className="max-w-lg text-4xl font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-              Unlock WallBang VIP
-            </h1>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Choose the servers you want access to, pick a duration, and pay once.
-              No auto-charge. Renew only when you want.
-            </p>
-
-            <ul className="mt-6 flex flex-col gap-3 sm:flex-row sm:gap-8">
-              {trustItems.map((item) => (
-                <li key={item.title} className="flex items-start gap-2">
-                  <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div>
-                    <p className="text-[0.68rem] font-bold tracking-[0.14em] uppercase">
-                      {item.title}
-                    </p>
-                    <p className="text-[0.68rem] text-muted-foreground">{item.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Container>
+          {/* Text overlay — left-aligned, vertically centred */}
+          <div className="absolute inset-0 flex items-center">
+            <Container>
+              <h1 className="max-w-lg text-4xl font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+                Unlock WallBang VIP
+              </h1>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Choose the servers you want access to, pick a duration, and pay once.
+                No auto-charge. Renew only when you want.
+              </p>
+            </Container>
+          </div>
         </div>
+      </section>
+
+      {/* ── Trust strip ── */}
+      <div className="bg-[#080a0c]">
+        <Container>
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-5 py-6 sm:grid-cols-4 sm:gap-x-8">
+            {trustItems.map((item) => (
+              <li key={item.title} className="flex items-start gap-3">
+                <item.icon className="mt-0.5 size-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold tracking-[0.08em] uppercase">
+                    {item.title}
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{item.body}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Container>
       </div>
-    </section>
+    </div>
   );
 }

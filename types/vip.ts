@@ -18,6 +18,7 @@ export type VipDuration = {
   durationDays: number;
   perServerPaise: number;
   allServersPaise: number;
+  badge?: "popular" | "best-value";
 };
 
 export type VipShopServer = {
