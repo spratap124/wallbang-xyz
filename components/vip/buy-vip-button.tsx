@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import type { ApiResult } from "@/lib/api/waitlist";
+import type { VipAccessType } from "@/types/vip";
 
 type RazorpayCheckoutResponse = {
   razorpay_order_id: string;
@@ -67,16 +68,18 @@ function loadRazorpayScript(): Promise<RazorpayConstructor> {
 }
 
 type BuyVipButtonProps = {
+  accessType: VipAccessType;
   planId: string;
-  serverIds: string[];
+  serverId: string | null;
   label: string;
   loggedIn: boolean;
   disabled?: boolean;
 };
 
 export function BuyVipButton({
+  accessType,
   planId,
-  serverIds,
+  serverId,
   label,
   loggedIn,
   disabled = false,
@@ -98,7 +101,11 @@ export function BuyVipButton({
       const response = await fetch("/api/v1/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, serverIds }),
+        body: JSON.stringify({
+          accessType,
+          planId,
+          ...(serverId ? { serverId } : {}),
+        }),
       });
       const payload = (await response.json()) as ApiResult<CreateOrderData>;
       if (!payload.ok) {

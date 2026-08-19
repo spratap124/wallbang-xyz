@@ -1,4 +1,4 @@
-import type { VipBundleKind, VipPlanId } from "@/types/vip";
+import type { VipAccessType, VipBundleKind, VipPlanId } from "@/types/vip";
 
 export const PAYMENT_STATUSES = [
   "created",
@@ -19,6 +19,7 @@ export type PaymentDoc = {
   razorpayPaymentId: string | null;
   bundleId: string;
   bundleKind: VipBundleKind;
+  accessType?: VipAccessType;
   serverId: string | null;
   serverIds: string[];
   plan: VipPlanId;
@@ -40,6 +41,7 @@ export type VipHistoryDoc = {
   steamId: string;
   bundleId: string;
   bundleKind: VipBundleKind;
+  accessType?: VipAccessType;
   serverId: string | null;
   serverIds: string[];
   plan: VipPlanId;

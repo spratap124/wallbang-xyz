@@ -6,10 +6,42 @@ import { jsonError, jsonOk, requireSession } from "@/lib/permissions/authz";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
 import { createVipOrder } from "@/lib/payments/service";
 
-const bodySchema = z.object({
-  planId: z.string().min(1),
-  serverIds: z.array(z.string().min(1)).min(1).max(20),
-});
+const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES"]);
+
+const bodySchema = z
+  .object({
+    accessType: accessTypeSchema,
+    planId: z.string().min(1),
+    serverId: z.string().min(1).optional(),
+    serverIds: z.array(z.string().min(1)).optional(),
+    amount: z.number().optional(),
+    price: z.number().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.serverIds && value.serverIds.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Multiple servers are not supported.",
+        path: ["serverIds"],
+      });
+    }
+
+    if (value.accessType === "INDIVIDUAL_SERVER" && !value.serverId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Select a server.",
+        path: ["serverId"],
+      });
+    }
+
+    if (value.accessType === "ALL_RETAKES" && value.serverId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "All Retakes purchases must not include a server.",
+        path: ["serverId"],
+      });
+    }
+  });
 
 export async function POST(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {
@@ -31,7 +63,9 @@ export async function POST(request: Request): Promise<Response> {
 
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
-    return jsonError("Invalid request body.", 400);
+    const message =
+      parsed.error.issues[0]?.message ?? "Invalid request body.";
+    return jsonError(message, 400);
   }
 
   if (!isVipPlanId(parsed.data.planId)) {
@@ -43,8 +77,9 @@ export async function POST(request: Request): Promise<Response> {
       userId: auth.user.id,
       steamId: auth.user.steamId,
       personaName: auth.user.personaName,
+      accessType: parsed.data.accessType,
       planId: parsed.data.planId,
-      serverIds: parsed.data.serverIds,
+      serverId: parsed.data.serverId ?? null,
     });
     return jsonOk({
       ...order,

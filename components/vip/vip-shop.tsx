@@ -1,19 +1,26 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Info, Plus, X } from "lucide-react";
+import { Check, ChevronDown, Info, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { BuyVipButton } from "@/components/vip/buy-vip-button";
 import { RazorpayLogo, RazorpaySecuredBadge } from "@/components/vip/razorpay-brand";
-import { useLiveServers } from "@/components/servers/live-servers-provider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { getMapImage } from "@/config/servers";
 import { vipPerks } from "@/content/vip";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { formatInrFromPaise } from "@/lib/payments/format";
-import { countryFlagEmoji } from "@/lib/profile/format";
 import { cn } from "@/lib/utils";
 import type {
+  VipAccessType,
   VipDurationOption,
   VipPlanId,
   VipShopCatalog,
@@ -21,21 +28,16 @@ import type {
   VipShopServer,
 } from "@/types/vip";
 
-
 function serverLabel(server: VipShopServer): string {
   return server.shortName;
 }
 
-function regionFlag(region: string): string {
-  if (/india/i.test(region)) return countryFlagEmoji("IN") ?? "";
-  return "";
+function serverMonthlyHint(server: VipShopServer): string {
+  const oneMonth = server.durationOptions.find((item) => item.id === "1_month");
+  return oneMonth
+    ? ` — from ${formatInrFromPaise(oneMonth.amountPaise)}/mo`
+    : "";
 }
-
-function regionCountry(region: string): string {
-  const parts = region.split(",").map((part) => part.trim()).filter(Boolean);
-  return parts[parts.length - 1] || region;
-}
-
 
 type VipShopProps = {
   catalog: VipShopCatalog;
@@ -51,24 +53,93 @@ const durationLabels: Record<VipPlanId, string> = {
   "1_year": "1 Year",
 };
 
+function DurationCards({
+  durations,
+  durationId,
+  onSelect,
+  disabled,
+}: {
+  durations: VipDurationOption[];
+  durationId: VipPlanId;
+  onSelect: (id: VipPlanId) => void;
+  disabled?: boolean;
+}) {
+  if (durations.length === 0) {
+    return (
+      <p className="col-span-full text-sm text-muted-foreground">
+        Pricing is unavailable right now.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      {durations.map((item) => {
+        const checked = item.id === durationId;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            disabled={disabled}
+            className={cn(
+              "relative flex flex-col rounded-xl border px-3 py-4 text-left transition-colors",
+              checked
+                ? "border-primary bg-primary/5"
+                : "border-border bg-card/50 hover:border-primary/30",
+              disabled && "cursor-not-allowed opacity-60",
+            )}
+          >
+            {item.badge === "popular" ? (
+              <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
+                Popular
+              </span>
+            ) : item.badge === "best-value" ? (
+              <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
+                Best value
+              </span>
+            ) : null}
+            <span className="text-sm font-medium">{item.name}</span>
+            <span className="mt-2 text-2xl font-semibold tracking-tight">
+              {formatInrFromPaise(item.amountPaise)}
+            </span>
+            {item.perMonthPaise ? (
+              <span className="mt-1 text-xs text-muted-foreground">
+                {formatInrFromPaise(item.perMonthPaise)}/month
+              </span>
+            ) : (
+              <span className="mt-1 min-h-4" aria-hidden />
+            )}
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
 export function VipShop({
   catalog,
   loggedIn,
   purchasesEnabled,
   hideBuy = false,
 }: VipShopProps) {
-  const live = useLiveServers();
-  const liveIds = catalog.servers.map((server) => server.id);
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    catalog.quote.serverIds.length ? catalog.quote.serverIds : liveIds.slice(0, 1),
+  const [accessType, setAccessType] = useState<VipAccessType>(
+    catalog.quote.accessType,
+  );
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(
+    catalog.quote.serverId ?? catalog.servers[0]?.id ?? null,
   );
   const [durationId, setDurationId] = useState<VipPlanId>("1_month");
   const [shopQuote, setShopQuote] = useState<VipShopQuote>(catalog.quote);
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (selectedIds.length === 0) {
-      setShopQuote((prev) => ({ serverIds: [], durations: prev.durations }));
+    if (accessType === "INDIVIDUAL_SERVER" && !selectedServerId) {
+      setShopQuote((prev) => ({
+        ...prev,
+        accessType: "INDIVIDUAL_SERVER",
+        serverId: null,
+      }));
       return;
     }
 
@@ -80,7 +151,12 @@ export function VipShop({
         const response = await fetch("/api/v1/payments/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ serverIds: selectedIds }),
+          body: JSON.stringify({
+            accessType,
+            ...(accessType === "INDIVIDUAL_SERVER" && selectedServerId
+              ? { serverId: selectedServerId }
+              : {}),
+          }),
         });
         const payload = (await response.json()) as ApiResult<VipShopQuote>;
         if (cancelled) return;
@@ -99,31 +175,21 @@ export function VipShop({
     return () => {
       cancelled = true;
     };
-  }, [selectedIds]);
+  }, [accessType, selectedServerId]);
 
-  const hasSelection = selectedIds.length > 0;
   const duration =
     shopQuote.durations.find((item) => item.id === durationId) ??
     shopQuote.durations[0] ??
     null;
 
-  const selected = catalog.servers.filter((server) =>
-    selectedIds.includes(server.id),
-  );
-  const serverAmountMap = new Map(
-    (duration?.serverAmounts ?? []).map((row) => [row.serverId, row.amountPaise]),
-  );
-  const nextUnselected = catalog.servers.find(
-    (server) => !selectedIds.includes(server.id),
-  );
-  function toggleServer(id: string) {
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-  }
+  const selectedServer =
+    accessType === "INDIVIDUAL_SERVER" && selectedServerId
+      ? catalog.servers.find((server) => server.id === selectedServerId) ?? null
+      : null;
 
+  const checkoutReady =
+    accessType === "ALL_RETAKES" ||
+    (accessType === "INDIVIDUAL_SERVER" && Boolean(selectedServerId));
 
   if (catalog.servers.length === 0) {
     return (
@@ -134,172 +200,143 @@ export function VipShop({
   }
 
   return (
-    <div id="vip-shop" className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div
+      id="vip-shop"
+      className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]"
+    >
       <div className="space-y-10">
-        <section id="choose-servers">
+        <section id="choose-access">
           <h2 className="text-lg font-semibold tracking-tight">
-            <span className="text-primary">1.</span> Choose your servers
+            <span className="text-primary">1.</span> Choose your access
           </h2>
-          <div className="mt-4 flex gap-6 border-b border-border text-xs font-medium tracking-[0.16em] uppercase">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              className="border-b-2 border-primary pb-3 text-foreground"
+              onClick={() => setAccessType("INDIVIDUAL_SERVER")}
+              className={cn(
+                "rounded-xl border p-4 text-left transition-colors",
+                accessType === "INDIVIDUAL_SERVER"
+                  ? "border-primary bg-primary/5"
+                  : "border-border bg-card/50 hover:border-primary/30",
+              )}
             >
-              Servers
-            </button>
-          </div>
-
-          <ul className="mt-4 space-y-3">
-              {catalog.servers.map((server) => {
-                const checked = selectedIds.includes(server.id);
-                const liveRow = live.servers.find((item) => item.id === server.id);
-                const online = liveRow?.online ?? server.status === "live";
-                const map = liveRow?.map ?? server.map;
-                const players = liveRow?.players ?? 0;
-                const maxPlayers = liveRow?.maxPlayers ?? server.maxPlayers;
-                const flag = regionFlag(server.region);
-                return (
-                  <li key={server.id}>
-                    <button
-                      type="button"
-                      onClick={() => toggleServer(server.id)}
-                      className={cn(
-                        "flex w-full items-center gap-4 rounded-xl border p-3 text-left transition-colors",
-                        checked
-                          ? "border-primary bg-primary/5"
-                          : "border-border bg-card/50 hover:border-primary/30",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex size-5 shrink-0 items-center justify-center rounded border",
-                          checked
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border",
-                        )}
-                        aria-hidden
-                      >
-                        {checked ? <Check className="size-3.5" /> : null}
-                      </span>
-                      <span className="relative size-14 shrink-0 overflow-hidden rounded-lg">
-                        <Image
-                          src={getMapImage(map)}
-                          alt=""
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold">
-                            {serverLabel(server)}
-                          </span>
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 text-xs",
-                              online ? "text-emerald-400" : "text-muted-foreground",
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "size-1.5 rounded-full",
-                                online ? "bg-emerald-400" : "bg-muted-foreground",
-                              )}
-                            />
-                            {online ? "Live" : "Offline"}
-                          </span>
-                        </span>
-                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          <span>
-                            {flag ? `${flag} ` : null}
-                            {regionCountry(server.region)}
-                          </span>
-                          <span>
-                            {players} / {maxPlayers} Players
-                          </span>
-                          {server.pingMs > 0 ? (
-                            <span>{server.pingMs}ms</span>
-                          ) : null}
-                        </span>
-                        <span className="mt-1.5 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-medium text-primary">
-                          + Premium {server.mode.replace(/s$/i, "")} Server
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <button
-              type="button"
-              disabled={!nextUnselected}
-              onClick={() => nextUnselected && toggleServer(nextUnselected.id)}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus className="size-4" />
-              Add another server
-            </button>
-            {!nextUnselected ? (
-              <p className="text-xs text-muted-foreground">
-                More servers will appear here as they go live.
+              <p className="font-semibold">Individual Server</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Choose one premium retake server
               </p>
-            ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccessType("ALL_RETAKES")}
+              className={cn(
+                "relative rounded-xl border p-4 text-left transition-colors",
+                accessType === "ALL_RETAKES"
+                  ? "border-primary bg-primary/5"
+                  : "border-border bg-card/50 hover:border-primary/30",
+              )}
+            >
+              <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
+                <Sparkles className="size-3" />
+                Recommended
+              </span>
+              <p className="font-semibold">All Retakes</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Access all premium retake servers
+              </p>
+            </button>
           </div>
         </section>
 
+        {accessType === "INDIVIDUAL_SERVER" ? (
+          <section id="choose-servers">
+            <h2 className="text-lg font-semibold tracking-tight">
+              <span className="text-primary">2.</span> Choose your server
+            </h2>
+            <div className="mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="vip-server-select">Server</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    id="vip-server-select"
+                    className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:ring-2 data-popup-open:ring-ring/50"
+                  >
+                    <span className="truncate text-left">
+                      {selectedServer
+                        ? `${serverLabel(selectedServer)}${serverMonthlyHint(selectedServer)}`
+                        : "Select a server"}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 opacity-60" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-64">
+                    <DropdownMenuRadioGroup
+                      value={selectedServerId ?? ""}
+                      onValueChange={(value) =>
+                        setSelectedServerId(value || null)
+                      }
+                    >
+                      {catalog.servers.map((server) => {
+                        const oneMonth = server.durationOptions.find(
+                          (item) => item.id === "1_month",
+                        );
+                        return (
+                          <DropdownMenuRadioItem
+                            key={server.id}
+                            value={server.id}
+                            className="gap-3"
+                          >
+                            <span className="min-w-0 flex-1 truncate">
+                              {serverLabel(server)}
+                            </span>
+                            {oneMonth ? (
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                from {formatInrFromPaise(oneMonth.amountPaise)}/mo
+                              </span>
+                            ) : null}
+                          </DropdownMenuRadioItem>
+                        );
+                      })}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section id="choose-all-retakes">
+            <h2 className="text-lg font-semibold tracking-tight">
+              <span className="text-primary">2.</span> All Retakes
+            </h2>
+            <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+              <p className="font-semibold">All Retakes</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Access all currently available premium retake servers during your
+                active VIP period.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {catalog.allRetakes.durations.map((option) => (
+                  <span key={option.id}>
+                    {option.name}:{" "}
+                    <span className="font-medium text-foreground">
+                      {formatInrFromPaise(option.amountPaise)}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         <section id="choose-duration">
           <h2 className="text-lg font-semibold tracking-tight">
-            <span className="text-primary">2.</span> Choose a duration
+            <span className="text-primary">3.</span> Choose a duration
           </h2>
           <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {shopQuote.durations.length > 0 ? (
-              shopQuote.durations.map((item: VipDurationOption) => {
-              const checked = item.id === durationId;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setDurationId(item.id)}
-                  disabled={!hasSelection}
-                  className={cn(
-                    "relative flex flex-col rounded-xl border px-3 py-4 text-left transition-colors",
-                    checked
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-card/50 hover:border-primary/30",
-                    !hasSelection && "cursor-not-allowed opacity-60",
-                  )}
-                >
-                  {item.badge === "popular" ? (
-                    <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
-                      Popular
-                    </span>
-                  ) : item.badge === "best-value" ? (
-                    <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
-                      Best value
-                    </span>
-                  ) : null}
-                  <span className="text-sm font-medium">{item.name}</span>
-                  <span className="mt-2 text-2xl font-semibold tracking-tight">
-                    {formatInrFromPaise(item.amountPaise)}
-                  </span>
-                  {item.perMonthPaise ? (
-                    <span className="mt-1 text-xs text-muted-foreground">
-                      {formatInrFromPaise(item.perMonthPaise)}/month
-                    </span>
-                  ) : (
-                    <span className="mt-1 min-h-4" aria-hidden />
-                  )}
-                </button>
-              );
-            })
-            ) : (
-              <p className="col-span-full text-sm text-muted-foreground">
-                Select at least one server to see pricing.
-              </p>
-            )}
+            <DurationCards
+              durations={shopQuote.durations}
+              durationId={durationId}
+              onSelect={setDurationId}
+              disabled={!checkoutReady}
+            />
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -313,50 +350,44 @@ export function VipShop({
 
         <div className="mt-4 border-b border-border pb-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Servers ({selected.length})</span>
-            <a href="#choose-servers" className="text-primary hover:underline">
+            <span>Access</span>
+            <a href="#choose-access" className="text-primary hover:underline">
               Edit
             </a>
           </div>
-          {selected.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">No server selected.</p>
+          {accessType === "ALL_RETAKES" ? (
+            <div className="mt-2">
+              <p className="text-sm font-medium">All Retakes</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Access all premium retake servers
+              </p>
+            </div>
+          ) : selectedServer ? (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="relative size-8 overflow-hidden rounded-md">
+                <Image
+                  src={getMapImage(selectedServer.map)}
+                  alt=""
+                  fill
+                  sizes="32px"
+                  className="object-cover"
+                />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {serverLabel(selectedServer)}
+                </span>
+                {duration ? (
+                  <span className="text-xs font-medium text-foreground">
+                    {formatInrFromPaise(duration.amountPaise)}
+                  </span>
+                ) : null}
+              </span>
+            </div>
           ) : (
-            <ul className="mt-2 space-y-2">
-              {selected.map((server) => (
-                <li key={server.id} className="flex items-center gap-2">
-                  <span className="relative size-8 overflow-hidden rounded-md">
-                    <Image
-                      src={getMapImage(server.map)}
-                      alt=""
-                      fill
-                      sizes="32px"
-                      className="object-cover"
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {serverLabel(server)}
-                    </span>
-                    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                      {serverAmountMap.get(server.id) ? (
-                        <span className="font-medium text-foreground">
-                          {formatInrFromPaise(serverAmountMap.get(server.id)!)}
-                        </span>
-                      ) : null}
-                      {server.pingMs > 0 ? <span>{server.pingMs}ms</span> : null}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleServer(server.id)}
-                    className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    aria-label={`Remove ${serverLabel(server)}`}
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-2 text-sm text-muted-foreground">
+              No server selected.
+            </p>
           )}
         </div>
 
@@ -375,7 +406,7 @@ export function VipShop({
         <div className="py-4">
           <p className="text-xs text-muted-foreground">Total</p>
           <p className="mt-1 text-3xl font-semibold tracking-tight">
-            {hasSelection && duration
+            {checkoutReady && duration
               ? formatInrFromPaise(duration.amountPaise)
               : "—"}
           </p>
@@ -407,10 +438,13 @@ export function VipShop({
           ) : purchasesEnabled ? (
             <div>
               <BuyVipButton
+                accessType={accessType}
                 planId={durationId}
-                serverIds={shopQuote.serverIds}
+                serverId={
+                  accessType === "INDIVIDUAL_SERVER" ? selectedServerId : null
+                }
                 loggedIn={loggedIn}
-                disabled={!hasSelection || shopQuote.serverIds.length === 0}
+                disabled={!checkoutReady || !duration}
                 label={loggedIn ? "Continue to Payment" : "Sign in to continue"}
               />
               <RazorpaySecuredBadge />
