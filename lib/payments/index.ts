@@ -1,6 +1,6 @@
 import "server-only";
 
-export { getVipShopCatalog, quoteVipOrder } from "@/config/vip-plans";
+export { getVipShopCatalog, buildVipShopQuote, quoteVipOrder } from "@/config/vip-plans";
 export { formatInrFromPaise } from "@/lib/payments/format";
 export { isVipPlanId, quoteVipSelection } from "@/lib/payments/quote";
 export {

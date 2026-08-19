@@ -17,6 +17,16 @@ export type { GameServerAdminView };
 const COLLECTION = "game_servers";
 const CACHE_TTL_MS = 20_000;
 
+function isProduction(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
+function seedFallback(includeDisabled: boolean): RegisteredServer[] {
+  if (isProduction()) return [];
+  const seed = seedAsRegistered();
+  return includeDisabled ? seed : seed.filter((s) => s.enabled);
+}
+
 let indexesReady: Promise<void> | null = null;
 let cache:
   | { at: number; includeDisabled: boolean; servers: RegisteredServer[] }
@@ -62,6 +72,7 @@ function seedToDoc(seed: GameServer, now: Date): GameServerDoc {
     status: seed.status,
     featured: Boolean(seed.featured),
     enabled: true,
+    vipPricingByPlan: seed.vipPricingByPlan ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -87,6 +98,7 @@ function docToRegistered(doc: GameServerDoc): RegisteredServer {
     status: doc.status,
     featured: doc.featured,
     enabled: doc.enabled,
+    vipPricingByPlan: doc.vipPricingByPlan ?? undefined,
   };
 }
 
@@ -102,9 +114,9 @@ export function invalidateGameServersCache(): void {
   cache = null;
 }
 
-/** Insert seed config rows only when the collection is empty. */
+/** Insert seed config rows only when the collection is empty (dev bootstrap). */
 export async function ensureGameServersSeeded(): Promise<void> {
-  if (!isMongoConfigured()) return;
+  if (!isMongoConfigured() || isProduction()) return;
   await ensureIndexes();
   const col = await collection();
   const count = await col.countDocuments({}, { limit: 1 });
@@ -128,9 +140,7 @@ async function loadFromDb(
     : { enabled: true };
   const docs = await col.find(filter).sort({ featured: -1, id: 1 }).toArray();
   if (docs.length === 0) {
-    // Seed somehow empty — fall back to static config for enabled-only reads.
-    const seed = seedAsRegistered();
-    return includeDisabled ? seed : seed.filter((s) => s.enabled);
+    return seedFallback(includeDisabled);
   }
   return docs.map(docToRegistered);
 }
@@ -149,15 +159,25 @@ export async function getGameServers(options?: {
   }
 
   let servers: RegisteredServer[];
-  if (!isMongoConfigured()) {
-    const seed = seedAsRegistered();
-    servers = includeDisabled ? seed : seed.filter((s) => s.enabled);
+  if (isProduction()) {
+    if (!isMongoConfigured()) {
+      console.error("[servers] Production requires MONGODB_URI for fleet registry.");
+      servers = [];
+    } else {
+      try {
+        servers = await loadFromDb(includeDisabled);
+      } catch (err) {
+        console.error("[servers] Failed to load game_servers from MongoDB.", err);
+        servers = [];
+      }
+    }
+  } else if (!isMongoConfigured()) {
+    servers = seedFallback(includeDisabled);
   } else {
     try {
       servers = await loadFromDb(includeDisabled);
     } catch {
-      const seed = seedAsRegistered();
-      servers = includeDisabled ? seed : seed.filter((s) => s.enabled);
+      servers = seedFallback(includeDisabled);
     }
   }
 
@@ -175,17 +195,17 @@ export async function getGameServerById(
   return list.find((s) => s.id === id) ?? null;
 }
 
-export async function getFeaturedRegisteredServer(): Promise<RegisteredServer> {
+export async function getFeaturedRegisteredServer(): Promise<RegisteredServer | null> {
   const list = await getGameServers();
-  return list.find((s) => s.featured) ?? list[0] ?? seedAsRegistered()[0]!;
+  return list.find((s) => s.featured) ?? list[0] ?? null;
 }
 
 export async function getPrimaryRegisteredServer(
   live: { id: string; online: boolean; players?: number | null }[] = [],
-): Promise<RegisteredServer> {
+): Promise<RegisteredServer | null> {
   const list = await getGameServers();
-  const featured =
-    list.find((s) => s.featured) ?? list[0] ?? seedAsRegistered()[0]!;
+  const featured = list.find((s) => s.featured) ?? list[0] ?? null;
+  if (!featured) return null;
   if (live.length === 0) return featured;
 
   const liveById = new Map(live.map((s) => [s.id, s]));
@@ -264,6 +284,7 @@ export async function createGameServer(
     status: input.status ?? "live",
     featured,
     enabled: input.enabled ?? true,
+    vipPricingByPlan: input.vipPricingByPlan ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -311,6 +332,9 @@ export async function updateGameServer(
   if (input.status !== undefined) $set.status = input.status;
   if (input.featured !== undefined) $set.featured = input.featured;
   if (input.enabled !== undefined) $set.enabled = input.enabled;
+  if (input.vipPricingByPlan !== undefined) {
+    $set.vipPricingByPlan = input.vipPricingByPlan;
+  }
 
   await col.updateOne({ id }, { $set });
   invalidateGameServersCache();
@@ -329,4 +353,83 @@ export async function disableGameServer(
   id: string,
 ): Promise<GameServerAdminView | null> {
   return updateGameServer(id, { enabled: false, featured: false });
+}
+
+async function remapServerIdInCollection(
+  col: Collection,
+  fromId: string,
+  toId: string,
+): Promise<void> {
+  await col.updateMany({ serverId: fromId }, { $set: { serverId: toId } });
+  await col.updateMany({ targetServerId: fromId }, { $set: { targetServerId: toId } });
+
+  const cursor = col.find({ serverIds: fromId });
+  for await (const doc of cursor) {
+    const serverIds = (doc.serverIds as string[]).map((sid) =>
+      sid === fromId ? toId : sid,
+    );
+    await col.updateOne({ _id: doc._id }, { $set: { serverIds } });
+  }
+}
+
+/** Rename a fleet row and cascade the id to historical references. */
+export async function renameGameServer(
+  fromId: string,
+  toId: string,
+): Promise<GameServerAdminView | null> {
+  if (!isValidServerId(toId)) {
+    throw new Error(
+      "Invalid server id. Use lowercase letters, numbers, and hyphens.",
+    );
+  }
+  if (fromId === toId) {
+    throw new Error("New id must differ from the current id.");
+  }
+
+  await ensureIndexes();
+  const col = await collection();
+  const existing = await col.findOne({ id: fromId });
+  if (!existing) return null;
+
+  const conflict = await col.findOne({ id: toId });
+  if (conflict) {
+    throw new Error("A server with the new id already exists.");
+  }
+
+  const now = new Date();
+  const newDoc: GameServerDoc = {
+    ...existing,
+    _id: toId,
+    id: toId,
+    updatedAt: now,
+  };
+
+  await col.insertOne(newDoc);
+  await col.deleteOne({ id: fromId });
+
+  const db = await getDb();
+  const statusCol = db.collection("serverStatus");
+  const statusDoc = await statusCol.findOne({ _id: fromId });
+  if (statusDoc) {
+    const { _id, ...rest } = statusDoc;
+    await statusCol.insertOne({ ...rest, _id: toId });
+    await statusCol.deleteOne({ _id: fromId });
+  }
+
+  await Promise.all([
+    remapServerIdInCollection(db.collection("player_sessions"), fromId, toId),
+    remapServerIdInCollection(db.collection("player_presence"), fromId, toId),
+    remapServerIdInCollection(db.collection("rating_history"), fromId, toId),
+    remapServerIdInCollection(db.collection("payments"), fromId, toId),
+    remapServerIdInCollection(db.collection("vip_history"), fromId, toId),
+    remapServerIdInCollection(db.collection("audit_logs"), fromId, toId),
+  ]);
+
+  invalidateGameServersCache();
+
+  return {
+    ...newDoc,
+    createdAt: newDoc.createdAt.toISOString(),
+    updatedAt: newDoc.updatedAt.toISOString(),
+  };
 }

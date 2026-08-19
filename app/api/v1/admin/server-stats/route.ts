@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 /**
  * Admin-only connection stats.
- * GET /api/v1/admin/server-stats?serverId=retake-1&range=1d|7d|30d|all
+ * GET /api/v1/admin/server-stats?serverId=retake-1-mumbai&range=1d|7d|30d|all
  */
 export async function GET(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {

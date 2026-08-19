@@ -5,10 +5,8 @@ import { HeroConnectActions } from "@/components/home/hero-connect-actions";
 import { HeroFleetStats } from "@/components/home/hero-fleet-stats";
 import { LiveServerCard } from "@/components/home/live-server-card";
 import { BrandMark } from "@/components/shared/primitives";
-import { getFeaturedServer, getMapImage } from "@/config/servers";
-
-/** SSR backdrop uses config seed featured map until live poll loads. */
-const featuredSeed = getFeaturedServer();
+import { getMapImage } from "@/config/servers";
+import { getFeaturedRegisteredServer } from "@/lib/servers/registry";
 
 const featurePills = [
   { icon: Sparkles, label: "Instant Skin Changer" },
@@ -17,13 +15,16 @@ const featurePills = [
   { icon: MapPin, label: "India Hosted" },
 ];
 
-export function HeroSection() {
+export async function HeroSection() {
+  const featured = await getFeaturedRegisteredServer();
+  const backdropMap = featured?.map ?? "de_mirage";
+
   return (
     <section className="relative overflow-hidden border-b border-border">
       {/* Cinematic CS2 backdrop */}
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <Image
-          src={getMapImage(featuredSeed.map)}
+          src={getMapImage(backdropMap)}
           alt=""
           fill
           priority
@@ -82,7 +83,7 @@ export function HeroSection() {
 
         {/* Right — live server card */}
         <div className="animate-rise max-w-full justify-self-center overflow-x-clip lg:justify-self-end [animation-delay:180ms]">
-          <LiveServerCard serverId={featuredSeed.id} />
+          <LiveServerCard serverId={featured?.id} />
         </div>
       </div>
     </section>

@@ -6,6 +6,7 @@ export const VIP_PLAN_IDS = [
 ] as const;
 
 export type VipPlanId = (typeof VIP_PLAN_IDS)[number];
+export type VipPricingByPlan = Partial<Record<VipPlanId, number>>;
 
 export const VIP_BUNDLE_KINDS = ["all", "server"] as const;
 
@@ -21,6 +22,22 @@ export type VipDuration = {
   badge?: "popular" | "best-value";
 };
 
+/** Display-only duration row — amounts computed server-side. */
+export type VipDurationOption = {
+  id: VipPlanId;
+  name: string;
+  months: number;
+  badge?: "popular" | "best-value";
+  amountPaise: number;
+  perMonthPaise: number | null;
+  serverAmounts: Array<{ serverId: string; amountPaise: number }>;
+};
+
+export type VipShopQuote = {
+  serverIds: string[];
+  durations: VipDurationOption[];
+};
+
 export type VipShopServer = {
   id: string;
   name: string;
@@ -32,11 +49,12 @@ export type VipShopServer = {
   maxPlayers: number;
   pingMs: number;
   status: "live" | "offline" | "maintenance";
+  vipPricingByPlan?: VipPricingByPlan;
 };
 
 export type VipShopCatalog = {
   servers: VipShopServer[];
-  durations: VipDuration[];
+  quote: VipShopQuote;
 };
 
 export type VipQuote = {

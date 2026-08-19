@@ -75,7 +75,7 @@ export default async function VipPage({ searchParams }: VipPageProps) {
   const session = await getSession();
   const servers = await getGameServers();
   const catalog = getVipShopCatalog(servers);
-  const purchasesEnabled = isRazorpayConfigured() && isMongoConfigured();
+  const purchasesEnabled = isRazorpayConfigured();
 
   let isVip = false;
   let lifetime = false;
