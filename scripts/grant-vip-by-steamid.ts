@@ -9,7 +9,7 @@
  * Requires MONGODB_URI, MONGODB_DB, STEAM_API_KEY (via --env-file=.env.local).
  * To target production Atlas: MONGODB_DB=wallbang npm run grant:vip -- ...
  */
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 import { ROLE_PRIORITY } from "../lib/permissions/constants";
 import type { RoleCode, RoleSource } from "../types/permissions";
@@ -353,7 +353,7 @@ async function main() {
       );
 
       await audit.insertOne({
-        _id: crypto.randomUUID(),
+        _id: new ObjectId(),
         adminId: null,
         adminSteamId: null,
         action: "GRANT_ROLE",
@@ -377,7 +377,7 @@ async function main() {
       });
       if (!existingBadge) {
         await badges.insertOne({
-          _id: crypto.randomUUID(),
+          _id: new ObjectId(),
           steamId,
           badgeType: "VIP",
           grantedAt: now,
@@ -385,7 +385,7 @@ async function main() {
           metadata: { sourceRole: "VIP", source: options.source },
         });
         await activity.insertOne({
-          _id: crypto.randomUUID(),
+          _id: new ObjectId(),
           steamId,
           type: "got_vip",
           title: "Got VIP",
