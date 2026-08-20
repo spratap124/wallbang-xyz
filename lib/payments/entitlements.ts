@@ -19,6 +19,7 @@ export {
   entitlementKeyFromPurchase,
   entitlementKeyFromRecord,
   furthestEntitlementExpiry,
+  hasActiveVipEntitlementForServer,
   isAllRetakesRecord,
   serverIdsFromRecord,
 } from "@/lib/payments/entitlements-logic";

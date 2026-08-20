@@ -95,6 +95,14 @@ const VIP_PERMS: PermissionCode[] = [
   "priority_queue",
 ];
 
+/** In-game VIP perks that must be scoped to entitled servers for purchases. */
+export const GAME_VIP_PERMISSIONS: PermissionCode[] = [
+  "reserved_slot",
+  "vip_chat_tag",
+  "colored_chat",
+  "priority_queue",
+];
+
 const MOD_PERMS: PermissionCode[] = ["kick", "mute", "slay", "change_map"];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, PermissionCode[]> = {

@@ -139,6 +139,33 @@ export function furthestEntitlementExpiry(
   return furthest;
 }
 
+/**
+ * True when purchase history grants VIP on this game server right now:
+ * active All Retakes bundle, or an active individual entitlement for serverId.
+ */
+export function hasActiveVipEntitlementForServer(input: {
+  history: VipHistoryDoc[];
+  serverId: string;
+  now?: Date;
+}): boolean {
+  const serverId = input.serverId.trim();
+  if (!serverId) return false;
+  const now = input.now ?? new Date();
+
+  const bundleExpiry = computeEntitlementExpiry(
+    input.history.filter(isAllRetakesRecord),
+  );
+  if (bundleExpiry && bundleExpiry.getTime() > now.getTime()) {
+    return true;
+  }
+
+  const serverRecords = input.history.filter((record) =>
+    serverIdsFromRecord(record).includes(serverId),
+  );
+  const serverExpiry = computeEntitlementExpiry(serverRecords);
+  return Boolean(serverExpiry && serverExpiry.getTime() > now.getTime());
+}
+
 function serverName(
   serverId: string,
   serversById: Map<string, VipMembershipServer>,

@@ -5,6 +5,7 @@ import {
   buildEntitlementsFromHistory,
   computeEntitlementExpiry,
   furthestEntitlementExpiry,
+  hasActiveVipEntitlementForServer,
 } from "@/lib/payments/entitlements-logic";
 import { computeVipExtension } from "@/lib/payments/expiry";
 import type { VipHistoryDoc } from "@/types/payments";
@@ -125,6 +126,53 @@ describe("VIP entitlement expiry rules", () => {
     assert.equal(
       furthestEntitlementExpiry(historyDocs)?.toISOString(),
       "2027-09-10T10:00:00.000Z",
+    );
+  });
+
+  it("All Retakes covers every server; individual only covers that server", () => {
+    const purchasedAt = new Date("2026-08-20T10:00:00.000Z");
+    const individual = [
+      history({
+        bundleId: "retake-1-mumbai",
+        serverId: "retake-1-mumbai",
+        accessType: "INDIVIDUAL_SERVER",
+        durationDays: 90,
+        createdAt: purchasedAt,
+      }),
+    ];
+    assert.equal(
+      hasActiveVipEntitlementForServer({
+        history: individual,
+        serverId: "retake-1-mumbai",
+        now: purchasedAt,
+      }),
+      true,
+    );
+    assert.equal(
+      hasActiveVipEntitlementForServer({
+        history: individual,
+        serverId: "retake-2-mumbai",
+        now: purchasedAt,
+      }),
+      false,
+    );
+
+    const bundle = [
+      history({
+        bundleId: "all_retakes",
+        bundleKind: "all",
+        accessType: "ALL_RETAKES",
+        durationDays: 365,
+        createdAt: purchasedAt,
+      }),
+    ];
+    assert.equal(
+      hasActiveVipEntitlementForServer({
+        history: bundle,
+        serverId: "retake-2-mumbai",
+        now: purchasedAt,
+      }),
+      true,
     );
   });
 });

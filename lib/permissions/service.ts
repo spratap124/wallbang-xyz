@@ -12,6 +12,8 @@ import {
   userRolesCollection,
 } from "@/lib/permissions/collections";
 import {
+  DEFAULT_ROLE_PERMISSIONS,
+  GAME_VIP_PERMISSIONS,
   isRoleCode,
   parseOwnerSteamIds,
   ROLE_PRIORITY,
@@ -1155,6 +1157,7 @@ export async function getAuditLogs(params?: {
 
 export async function getPlayerPermissions(
   steamId: string,
+  options?: { serverId?: string | null },
 ): Promise<PlayerPermissionsResponse | null> {
   const [resolved, loadout] = await Promise.all([
     getUserPermissions({ steamId }),
@@ -1170,14 +1173,87 @@ export async function getPlayerPermissions(
     };
   }
 
+  const scoped = options?.serverId
+    ? await scopePermissionsForGameServer(resolved, options.serverId)
+    : resolved;
+
   return {
     player: {
-      steamId: resolved.steamId,
-      username: resolved.personaName,
+      steamId: scoped.steamId,
+      username: scoped.personaName,
     },
-    roles: resolved.roles,
-    permissions: resolved.permissions,
+    roles: scoped.roles,
+    permissions: scoped.permissions,
     loadout,
+  };
+}
+
+/**
+ * Purchase VIP is per-server / All Retakes. Without serverId the plugin still
+ * gets global VIP (legacy). With serverId, PURCHASE VIP only applies when
+ * vip_history entitles that server (or All Retakes). Manual/giveaway VIP and
+ * staff / founding stay global.
+ */
+async function scopePermissionsForGameServer(
+  resolved: ResolvedPermissions,
+  serverId: string,
+): Promise<ResolvedPermissions> {
+  const trimmed = serverId.trim();
+  if (!trimmed) return resolved;
+
+  const hasPurchaseVip = resolved.activeAssignments.some(
+    (a) => a.roleCode === "VIP" && a.source === "PURCHASE",
+  );
+  if (!hasPurchaseVip) return resolved;
+
+  const hasGlobalVipAccess =
+    resolved.roles.includes("FOUNDING_MEMBER") ||
+    resolved.roles.includes("OWNER") ||
+    resolved.roles.includes("ADMIN") ||
+    resolved.roles.includes("MODERATOR") ||
+    resolved.activeAssignments.some(
+      (a) => a.roleCode === "VIP" && a.source !== "PURCHASE",
+    );
+
+  if (hasGlobalVipAccess) return resolved;
+
+  const { vipHistoryCollection } = await import("@/lib/payments/collections");
+  const { hasActiveVipEntitlementForServer } = await import(
+    "@/lib/payments/entitlements-logic"
+  );
+  const history = await vipHistoryCollection().then((col) =>
+    col.find({ userId: resolved.userId }).toArray(),
+  );
+
+  const entitled = hasActiveVipEntitlementForServer({
+    history,
+    serverId: trimmed,
+  });
+  if (entitled) return resolved;
+
+  const roles = resolved.roles.filter((role) => role !== "VIP");
+  const activeAssignments = resolved.activeAssignments.filter(
+    (a) => a.roleCode !== "VIP",
+  );
+  const grantedByRemaining = new Set<PermissionCode>();
+  for (const role of roles) {
+    for (const code of DEFAULT_ROLE_PERMISSIONS[role] ?? []) {
+      grantedByRemaining.add(code);
+    }
+  }
+  const permissions = resolved.permissions.filter(
+    (code) =>
+      !GAME_VIP_PERMISSIONS.includes(code) || grantedByRemaining.has(code),
+  );
+
+  return {
+    ...resolved,
+    roles,
+    permissions,
+    activeAssignments,
+    displayRole: highestRole(
+      roles.length > 0 ? roles : (["USER"] as RoleCode[]),
+    ),
   };
 }
 

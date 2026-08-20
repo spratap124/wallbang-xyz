@@ -13,7 +13,7 @@ Persisted loadouts live in MongoDB (`player_loadouts`). The website loadout UI a
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | `/api/v1/player/:steamId` | `X-API-Key` | Permissions + **game loadout** on join |
+| GET | `/api/v1/player/:steamId` | `X-API-Key` | Permissions + **game loadout** on join. Optional `?serverId=` scopes **purchase** VIP to that server (or All Retakes). |
 | PATCH | `/api/v1/player/:steamId/loadout` | `X-API-Key` | Merge in-game selections from `!skins` / `!knife` / `!gloves` / agent menus |
 
 Header: `X-API-Key: <PLUGIN_API_KEY>` (same as presence and permissions routes).
