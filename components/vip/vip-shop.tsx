@@ -28,6 +28,11 @@ import type {
   VipShopServer,
 } from "@/types/vip";
 
+export type VipShopRenewTarget = {
+  accessType: VipAccessType;
+  serverId: string | null;
+};
+
 function serverLabel(server: VipShopServer): string {
   return server.shortName;
 }
@@ -45,6 +50,7 @@ type VipShopProps = {
   purchasesEnabled: boolean;
   allRetakesEnabled?: boolean;
   hideBuy?: boolean;
+  renewTarget?: VipShopRenewTarget | null;
 };
 
 const durationLabels: Record<VipPlanId, string> = {
@@ -124,6 +130,7 @@ export function VipShop({
   purchasesEnabled,
   allRetakesEnabled = false,
   hideBuy = false,
+  renewTarget = null,
 }: VipShopProps) {
   const [accessType, setAccessType] = useState<VipAccessType>(
     allRetakesEnabled ? catalog.quote.accessType : "INDIVIDUAL_SERVER",
@@ -140,6 +147,21 @@ export function VipShop({
       setAccessType("INDIVIDUAL_SERVER");
     }
   }, [accessType, allRetakesEnabled]);
+
+  useEffect(() => {
+    if (!renewTarget) return;
+    if (
+      renewTarget.accessType === "ALL_RETAKES" &&
+      allRetakesEnabled
+    ) {
+      setAccessType("ALL_RETAKES");
+      return;
+    }
+    if (renewTarget.serverId) {
+      setAccessType("INDIVIDUAL_SERVER");
+      setSelectedServerId(renewTarget.serverId);
+    }
+  }, [renewTarget, allRetakesEnabled]);
 
   useEffect(() => {
     if (accessType === "INDIVIDUAL_SERVER" && !selectedServerId) {

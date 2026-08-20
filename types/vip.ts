@@ -77,3 +77,63 @@ export type VipQuote = {
   bundleKind: VipBundleKind;
   bundleId: string;
 };
+
+export type VipEntitlementStatus = "active" | "expired";
+
+export type VipServerRef = {
+  id: string;
+  name: string;
+};
+
+export type VipIndividualEntitlement = {
+  kind: "individual";
+  serverId: string;
+  serverName: string;
+  expiresAt: string | null;
+  status: VipEntitlementStatus;
+};
+
+export type VipBundleEntitlement = {
+  kind: "bundle";
+  bundleId: string;
+  label: string;
+  expiresAt: string | null;
+  status: VipEntitlementStatus;
+  includedServers: VipServerRef[];
+};
+
+export type VipLifetimeEntitlement = {
+  kind: "lifetime";
+  label: string;
+  expiresAt: null;
+  status: "active";
+};
+
+export type VipGeneralEntitlement = {
+  kind: "general";
+  label: string;
+  expiresAt: string | null;
+  status: VipEntitlementStatus;
+};
+
+export type VipEntitlement =
+  | VipIndividualEntitlement
+  | VipBundleEntitlement
+  | VipLifetimeEntitlement
+  | VipGeneralEntitlement;
+
+export type VipMembershipSummary = {
+  activeCount: number;
+  serverCount: number;
+  headline: string;
+  subline: string | null;
+};
+
+export type VipMembershipView = {
+  hasActiveVip: boolean;
+  lifetime: boolean;
+  overallExpiresAt: string | null;
+  lastExpiredAt: string | null;
+  entitlements: VipEntitlement[];
+  summary: VipMembershipSummary | null;
+};
