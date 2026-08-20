@@ -15,6 +15,7 @@
     "seed:dummy-users": "node --env-file=.env.local --import tsx scripts/seed-dummy-users.ts",
     "remove:dummy-users": "node --env-file=.env.local --import tsx scripts/remove-dummy-users.ts",
     "grant:vip": "node --env-file=.env.local --import tsx scripts/grant-vip-by-steamid.ts",
+    "migrate:vip-server": "node --env-file=.env.local --import tsx scripts/migrate-global-vip-to-server.ts",
     "rename:server": "node --env-file=.env.local --import tsx scripts/rename-server-id.ts",
     "test:vip-pricing": "node --import tsx --test lib/payments/vip-pricing.test.ts",
     "test:vip-entitlements": "node --import tsx --test lib/payments/entitlements.test.ts"

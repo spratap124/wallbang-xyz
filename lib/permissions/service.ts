@@ -1189,10 +1189,9 @@ export async function getPlayerPermissions(
 }
 
 /**
- * Purchase VIP is per-server / All Retakes. Without serverId the plugin still
- * gets global VIP (legacy). With serverId, PURCHASE VIP only applies when
- * vip_history entitles that server (or All Retakes). Manual/giveaway VIP and
- * staff / founding stay global.
+ * When the game server passes serverId, VIP perks require an active entitlement
+ * for that server (individual or All Retakes). Staff and founding stay global.
+ * Manual / giveaway / purchase VIP are all scoped the same way.
  */
 async function scopePermissionsForGameServer(
   resolved: ResolvedPermissions,
@@ -1201,19 +1200,13 @@ async function scopePermissionsForGameServer(
   const trimmed = serverId.trim();
   if (!trimmed) return resolved;
 
-  const hasPurchaseVip = resolved.activeAssignments.some(
-    (a) => a.roleCode === "VIP" && a.source === "PURCHASE",
-  );
-  if (!hasPurchaseVip) return resolved;
+  if (!resolved.roles.includes("VIP")) return resolved;
 
   const hasGlobalVipAccess =
     resolved.roles.includes("FOUNDING_MEMBER") ||
     resolved.roles.includes("OWNER") ||
     resolved.roles.includes("ADMIN") ||
-    resolved.roles.includes("MODERATOR") ||
-    resolved.activeAssignments.some(
-      (a) => a.roleCode === "VIP" && a.source !== "PURCHASE",
-    );
+    resolved.roles.includes("MODERATOR");
 
   if (hasGlobalVipAccess) return resolved;
 
