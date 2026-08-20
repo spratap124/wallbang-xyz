@@ -1,22 +1,18 @@
 import { z } from "zod";
 
-import { isVipPlanId } from "@/lib/payments/quote";
-import { isMongoConfigured } from "@/lib/mongo";
-import { jsonError, jsonOk, requireSession } from "@/lib/permissions/authz";
-import { isRazorpayConfigured } from "@/lib/payments/razorpay";
-import { createVipOrder } from "@/lib/payments/service";
+import { buildVipShopQuote } from "@/config/vip-plans";
+import { jsonError, jsonOk } from "@/lib/permissions/authz";
 import { isVipAllRetakesEnabled } from "@/lib/platform/feature-flags";
+import { getGameServers } from "@/lib/servers/registry";
+import type { VipShopQuote } from "@/types/vip";
 
 const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES"]);
 
 const bodySchema = z
   .object({
     accessType: accessTypeSchema,
-    planId: z.string().min(1),
     serverId: z.string().min(1).optional(),
     serverIds: z.array(z.string().min(1)).optional(),
-    amount: z.number().optional(),
-    price: z.number().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.serverIds && value.serverIds.length > 0) {
@@ -45,16 +41,6 @@ const bodySchema = z
   });
 
 export async function POST(request: Request): Promise<Response> {
-  if (!isMongoConfigured()) {
-    return jsonError("Database is not configured.", 503);
-  }
-  if (!isRazorpayConfigured()) {
-    return jsonError("VIP purchases are not available yet.", 503);
-  }
-
-  const auth = await requireSession();
-  if ("response" in auth) return auth.response;
-
   let json: unknown;
   try {
     json = await request.json();
@@ -69,10 +55,6 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError(message, 400);
   }
 
-  if (!isVipPlanId(parsed.data.planId)) {
-    return jsonError("Unknown VIP duration.", 400);
-  }
-
   if (
     parsed.data.accessType === "ALL_RETAKES" &&
     !(await isVipAllRetakesEnabled())
@@ -80,23 +62,34 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError("All Retakes purchases are not available yet.", 400);
   }
 
-  try {
-    const order = await createVipOrder({
-      userId: auth.user.id,
-      steamId: auth.user.steamId,
-      personaName: auth.user.personaName,
-      accessType: parsed.data.accessType,
-      planId: parsed.data.planId,
-      serverId: parsed.data.serverId ?? null,
-    });
-    return jsonOk({
-      ...order,
-      prefill: { name: auth.user.personaName },
-    });
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Unable to start checkout.";
-    const status = message.includes("Too many") ? 429 : 400;
-    return jsonError(message, status);
+  const servers = await getGameServers();
+  const shopServers = servers.map((server) => ({
+    id: server.id,
+    name: server.name,
+    shortName: server.shortName || server.name,
+    mode: server.mode,
+    city: server.city,
+    region: server.region,
+    map: server.map,
+    maxPlayers: server.maxPlayersOverride ?? server.maxPlayers,
+    pingMs: server.pingMs,
+    status: server.status,
+    vipPricingByPlan: server.vipPricingByPlan ?? undefined,
+  }));
+
+  const quote = buildVipShopQuote({
+    accessType: parsed.data.accessType,
+    serverId: parsed.data.serverId,
+    servers: shopServers,
+  });
+
+  if (
+    quote.accessType === "INDIVIDUAL_SERVER" &&
+    (!quote.serverId ||
+      !shopServers.some((server) => server.id === quote.serverId))
+  ) {
+    return jsonError("Unknown server.", 400);
   }
+
+  return jsonOk<VipShopQuote>(quote);
 }

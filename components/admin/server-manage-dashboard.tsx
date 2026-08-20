@@ -23,6 +23,25 @@ async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
 }
 
+function formatPaiseToInrInput(paise: number | undefined): string {
+  if (!paise || paise <= 0) return "";
+  const value = (paise / 100).toFixed(2);
+  return value.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+}
+
+function parseInrToPaise(input: string): number | undefined {
+  const trimmed = input.trim();
+  if (!trimmed) return undefined;
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return Number.NaN;
+  }
+  const rupees = Number(trimmed);
+  if (!Number.isFinite(rupees) || rupees <= 0) {
+    return Number.NaN;
+  }
+  return Math.round(rupees * 100);
+}
+
 type FormState = {
   id: string;
   name: string;
@@ -34,6 +53,10 @@ type FormState = {
   host: string;
   port: string;
   maxPlayers: string;
+  vipPrice1Month: string;
+  vipPrice3Months: string;
+  vipPrice6Months: string;
+  vipPrice1Year: string;
   featured: boolean;
   enabled: boolean;
 };
@@ -49,6 +72,10 @@ const emptyForm = (): FormState => ({
   host: "",
   port: "27015",
   maxPlayers: "10",
+  vipPrice1Month: "",
+  vipPrice3Months: "",
+  vipPrice6Months: "",
+  vipPrice1Year: "",
   featured: false,
   enabled: true,
 });
@@ -65,6 +92,10 @@ function fromServer(s: GameServerAdminView): FormState {
     host: s.host,
     port: String(s.port),
     maxPlayers: String(s.maxPlayersOverride ?? s.maxPlayers),
+    vipPrice1Month: formatPaiseToInrInput(s.vipPricingByPlan?.["1_month"]),
+    vipPrice3Months: formatPaiseToInrInput(s.vipPricingByPlan?.["3_months"]),
+    vipPrice6Months: formatPaiseToInrInput(s.vipPricingByPlan?.["6_months"]),
+    vipPrice1Year: formatPaiseToInrInput(s.vipPricingByPlan?.["1_year"]),
     featured: s.featured,
     enabled: s.enabled,
   };
@@ -168,10 +199,41 @@ export function ServerManageDashboard({
     setMessage(null);
     const port = Number(form.port);
     const maxPlayers = Number(form.maxPlayers);
+    const vipPricingByPlan = {
+      "1_month": parseInrToPaise(form.vipPrice1Month),
+      "3_months": parseInrToPaise(form.vipPrice3Months),
+      "6_months": parseInrToPaise(form.vipPrice6Months),
+      "1_year": parseInrToPaise(form.vipPrice1Year),
+    };
     if (!form.host.trim() || !Number.isFinite(port) || !Number.isFinite(maxPlayers)) {
       setError("Host, port, and max players are required.");
       return;
     }
+    for (const [plan, price] of Object.entries(vipPricingByPlan)) {
+      if (price !== undefined && (!Number.isInteger(price) || price <= 0)) {
+        setError(`${plan} VIP price must be a positive INR value (up to 2 decimals).`);
+        return;
+      }
+    }
+
+    const vipPricingByPlanInr = {
+      "1_month":
+        vipPricingByPlan["1_month"] !== undefined
+          ? vipPricingByPlan["1_month"] / 100
+          : undefined,
+      "3_months":
+        vipPricingByPlan["3_months"] !== undefined
+          ? vipPricingByPlan["3_months"] / 100
+          : undefined,
+      "6_months":
+        vipPricingByPlan["6_months"] !== undefined
+          ? vipPricingByPlan["6_months"] / 100
+          : undefined,
+      "1_year":
+        vipPricingByPlan["1_year"] !== undefined
+          ? vipPricingByPlan["1_year"] / 100
+          : undefined,
+    };
 
     startTransition(async () => {
       if (editingId) {
@@ -191,6 +253,7 @@ export function ServerManageDashboard({
               port,
               maxPlayers,
               maxPlayersOverride: maxPlayers,
+              vipPricingByPlanInr,
               featured: form.featured,
               enabled: form.enabled,
             }),
@@ -229,6 +292,7 @@ export function ServerManageDashboard({
           port,
           maxPlayers,
           maxPlayersOverride: maxPlayers,
+          vipPricingByPlanInr,
           featured: form.featured,
           enabled: form.enabled,
         }),
@@ -528,6 +592,42 @@ export function ServerManageDashboard({
                 id="srv-region"
                 value={form.region}
                 onChange={(e) => setField("region", e.target.value)}
+              />
+            </Field>
+            <Field label="VIP 1M (INR)" htmlFor="srv-vip-1m">
+              <Input
+                id="srv-vip-1m"
+                value={form.vipPrice1Month}
+                onChange={(e) => setField("vipPrice1Month", e.target.value)}
+                placeholder="99"
+                className="font-mono"
+              />
+            </Field>
+            <Field label="VIP 3M (INR)" htmlFor="srv-vip-3m">
+              <Input
+                id="srv-vip-3m"
+                value={form.vipPrice3Months}
+                onChange={(e) => setField("vipPrice3Months", e.target.value)}
+                placeholder="279"
+                className="font-mono"
+              />
+            </Field>
+            <Field label="VIP 6M (INR)" htmlFor="srv-vip-6m">
+              <Input
+                id="srv-vip-6m"
+                value={form.vipPrice6Months}
+                onChange={(e) => setField("vipPrice6Months", e.target.value)}
+                placeholder="549"
+                className="font-mono"
+              />
+            </Field>
+            <Field label="VIP 1Y (INR)" htmlFor="srv-vip-1y">
+              <Input
+                id="srv-vip-1y"
+                value={form.vipPrice1Year}
+                onChange={(e) => setField("vipPrice1Year", e.target.value)}
+                placeholder="999"
+                className="font-mono"
               />
             </Field>
           </div>

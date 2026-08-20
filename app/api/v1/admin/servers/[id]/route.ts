@@ -28,7 +28,36 @@ const updateSchema = z.object({
   status: z.enum(["live", "offline", "maintenance"]).optional(),
   featured: z.boolean().optional(),
   enabled: z.boolean().optional(),
+  vipPricingByPlanInr: z
+    .object({
+      "1_month": z.number().positive().optional(),
+      "3_months": z.number().positive().optional(),
+      "6_months": z.number().positive().optional(),
+      "1_year": z.number().positive().optional(),
+    })
+    .optional(),
 });
+
+function toPaiseMap(
+  inr: {
+    "1_month"?: number;
+    "3_months"?: number;
+    "6_months"?: number;
+    "1_year"?: number;
+  } | undefined,
+): { "1_month"?: number; "3_months"?: number; "6_months"?: number; "1_year"?: number } {
+  if (!inr) return {};
+  return {
+    "1_month":
+      inr["1_month"] !== undefined ? Math.round(inr["1_month"] * 100) : undefined,
+    "3_months":
+      inr["3_months"] !== undefined ? Math.round(inr["3_months"] * 100) : undefined,
+    "6_months":
+      inr["6_months"] !== undefined ? Math.round(inr["6_months"] * 100) : undefined,
+    "1_year":
+      inr["1_year"] !== undefined ? Math.round(inr["1_year"] * 100) : undefined,
+  };
+}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -65,7 +94,10 @@ export async function PATCH(
   const before = await getGameServerById(id, { includeDisabled: true });
   if (!before) return jsonError("Server not found.", 404);
 
-  const updated = await updateGameServer(id, parsed.data);
+  const updated = await updateGameServer(id, {
+    ...parsed.data,
+    vipPricingByPlan: toPaiseMap(parsed.data.vipPricingByPlanInr),
+  });
   if (!updated) return jsonError("Server not found.", 404);
 
   await recordAuditLog({

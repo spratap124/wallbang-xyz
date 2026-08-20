@@ -19,6 +19,10 @@ export type GameServer = {
   status: "live" | "offline" | "maintenance";
   /** Hero / Play Now primary when multiple servers exist. */
   featured?: boolean;
+  /** Optional per-server VIP pricing overrides in paise by plan id. */
+  vipPricingByPlan?: Partial<
+    Record<"1_month" | "3_months" | "6_months" | "1_year", number>
+  >;
 };
 
 /** Minimal live row used to pick a connect target from fleet status. */
@@ -33,13 +37,19 @@ const RETAKE_1_DEFAULT_HOST =
     ? "200.97.169.27" // prod game server (Hostinger)
     : "129.159.232.212"; // staging server
 
+const LEGACY_SERVER_HOST_ALIASES: Record<string, string> = {
+  "retake-1": "retake-1-mumbai",
+  "server-1": "retake-1-mumbai",
+  "server-1-mumbai": "retake-1-mumbai",
+};
+
 /**
  * Resolve a public connect host for a configured server id.
  *
  * Precedence:
  *   1. NEXT_PUBLIC_SERVER_HOST_<ID>  (id uppercased, `-` → `_`)
- *   2. NEXT_PUBLIC_RETAKE_HOST       (legacy alias for `retake-1` only)
- *   3. Built-in prod/staging default for `retake-1`
+ *   2. NEXT_PUBLIC_RETAKE_HOST       (legacy alias for `retake-1-mumbai`)
+ *   3. Built-in prod/staging default for `retake-1-mumbai`
  *   4. empty string (caller must supply a real host for new servers)
  *
  * NEXT_PUBLIC_ so client seed and server API bake the same host.
@@ -49,13 +59,14 @@ export function resolveServerHost(
   serverId: string,
   fallback = "",
 ): string {
-  const envKey = `NEXT_PUBLIC_SERVER_HOST_${serverId
+  const canonicalId = LEGACY_SERVER_HOST_ALIASES[serverId] ?? serverId;
+  const envKey = `NEXT_PUBLIC_SERVER_HOST_${canonicalId
     .toUpperCase()
     .replace(/-/g, "_")}`;
   const perServer = process.env[envKey]?.trim();
   if (perServer) return perServer;
 
-  if (serverId === "retake-1") {
+  if (canonicalId === "retake-1-mumbai") {
     const legacy = process.env.NEXT_PUBLIC_RETAKE_HOST?.trim();
     if (legacy) return legacy;
     return RETAKE_1_DEFAULT_HOST;
@@ -70,14 +81,14 @@ export function resolveServerHost(
  */
 export const servers: GameServer[] = [
   {
-    id: "retake-1",
+    id: "retake-1-mumbai",
     name: "[WallBang] Retake #1 | [Mumbai]",
     shortName: "Retake Mumbai #1",
     mode: "Retakes",
     map: "de_mirage",
     region: "Mumbai, India",
     city: "Mumbai",
-    host: resolveServerHost("retake-1"),
+    host: resolveServerHost("retake-1-mumbai"),
     port: 27015,
     tickRate: 128,
     players: 0,

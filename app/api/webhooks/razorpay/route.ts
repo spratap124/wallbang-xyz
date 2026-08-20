@@ -89,12 +89,17 @@ export async function POST(request: Request): Promise<Response> {
       if (paymentId) {
         await markPaymentRefunded({ razorpayPaymentId: paymentId });
       }
-    } else if (event === "dispute.created" || event === "dispute.lost") {
+    } else if (
+      event === "dispute.created" ||
+      event === "dispute.lost" ||
+      event === "payment.dispute.created" ||
+      event === "payment.dispute.lost"
+    ) {
       const dispute = entity(payload, "dispute");
       const paymentId = dispute?.payment_id;
       if (paymentId) {
         await markPaymentDisputed({ razorpayPaymentId: paymentId });
-        if (event === "dispute.lost") {
+        if (event === "dispute.lost" || event === "payment.dispute.lost") {
           await markPaymentRefunded({ razorpayPaymentId: paymentId });
         }
       }

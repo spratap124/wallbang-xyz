@@ -1,6 +1,9 @@
 import type { GameServer } from "@/config/servers";
 
 export type GameServerStatus = GameServer["status"];
+export type VipPlanServerPricing = Partial<
+  Record<"1_month" | "3_months" | "6_months" | "1_year", number>
+>;
 
 /** Persisted fleet row in Mongo `game_servers`. */
 export type GameServerDoc = {
@@ -21,6 +24,7 @@ export type GameServerDoc = {
   status: GameServerStatus;
   featured: boolean;
   enabled: boolean;
+  vipPricingByPlan?: VipPlanServerPricing | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -48,6 +52,7 @@ export type CreateGameServerInput = {
   status?: GameServerStatus;
   featured?: boolean;
   enabled?: boolean;
+  vipPricingByPlan?: VipPlanServerPricing;
 };
 
 export type UpdateGameServerInput = Partial<

@@ -1,84 +1,211 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Info, Plus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, ChevronDown, Info, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { BuyVipButton } from "@/components/vip/buy-vip-button";
-import { useLiveServers } from "@/components/servers/live-servers-provider";
+import { RazorpayLogo, RazorpaySecuredBadge } from "@/components/vip/razorpay-brand";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { getMapImage } from "@/config/servers";
 import { vipPerks } from "@/content/vip";
+import type { ApiResult } from "@/lib/api/waitlist";
 import { formatInrFromPaise } from "@/lib/payments/format";
-import { quoteVipSelection } from "@/lib/payments/quote";
-import { countryFlagEmoji } from "@/lib/profile/format";
 import { cn } from "@/lib/utils";
-import type { VipPlanId, VipShopCatalog, VipShopServer } from "@/types/vip";
-
+import type {
+  VipAccessType,
+  VipDurationOption,
+  VipPlanId,
+  VipShopCatalog,
+  VipShopQuote,
+  VipShopServer,
+} from "@/types/vip";
 
 function serverLabel(server: VipShopServer): string {
-  return `${server.city} ${server.mode.replace(/s$/i, "")}`;
+  return server.shortName;
 }
 
-function regionFlag(region: string): string {
-  if (/india/i.test(region)) return countryFlagEmoji("IN") ?? "";
-  return "";
+function serverMonthlyHint(server: VipShopServer): string {
+  const oneMonth = server.durationOptions.find((item) => item.id === "1_month");
+  return oneMonth
+    ? ` — from ${formatInrFromPaise(oneMonth.amountPaise)}/mo`
+    : "";
 }
-
-function regionCountry(region: string): string {
-  const parts = region.split(",").map((part) => part.trim()).filter(Boolean);
-  return parts[parts.length - 1] || region;
-}
-
 
 type VipShopProps = {
   catalog: VipShopCatalog;
   loggedIn: boolean;
   purchasesEnabled: boolean;
+  allRetakesEnabled?: boolean;
   hideBuy?: boolean;
 };
+
+const durationLabels: Record<VipPlanId, string> = {
+  "1_month": "1 Month",
+  "3_months": "3 Months",
+  "6_months": "6 Months",
+  "1_year": "1 Year",
+};
+
+function DurationCards({
+  durations,
+  durationId,
+  onSelect,
+  disabled,
+}: {
+  durations: VipDurationOption[];
+  durationId: VipPlanId;
+  onSelect: (id: VipPlanId) => void;
+  disabled?: boolean;
+}) {
+  if (durations.length === 0) {
+    return (
+      <p className="col-span-full text-sm text-muted-foreground">
+        Pricing is unavailable right now.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      {durations.map((item) => {
+        const checked = item.id === durationId;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            disabled={disabled}
+            className={cn(
+              "relative flex flex-col rounded-xl border px-3 py-4 text-left transition-colors",
+              checked
+                ? "border-primary bg-primary/5"
+                : "border-border bg-card/50 hover:border-primary/30",
+              disabled && "cursor-not-allowed opacity-60",
+            )}
+          >
+            {item.badge === "popular" ? (
+              <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
+                Popular
+              </span>
+            ) : item.badge === "best-value" ? (
+              <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
+                Best value
+              </span>
+            ) : null}
+            <span className="text-sm font-medium">{item.name}</span>
+            <span className="mt-2 text-2xl font-semibold tracking-tight">
+              {formatInrFromPaise(item.amountPaise)}
+            </span>
+            {item.perMonthPaise ? (
+              <span className="mt-1 text-xs text-muted-foreground">
+                {formatInrFromPaise(item.perMonthPaise)}/month
+              </span>
+            ) : (
+              <span className="mt-1 min-h-4" aria-hidden />
+            )}
+          </button>
+        );
+      })}
+    </>
+  );
+}
 
 export function VipShop({
   catalog,
   loggedIn,
   purchasesEnabled,
+  allRetakesEnabled = false,
   hideBuy = false,
 }: VipShopProps) {
-  const live = useLiveServers();
-  const liveIds = catalog.servers.map((server) => server.id);
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    liveIds.slice(0, 1),
+  const [accessType, setAccessType] = useState<VipAccessType>(
+    allRetakesEnabled ? catalog.quote.accessType : "INDIVIDUAL_SERVER",
+  );
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(
+    catalog.quote.serverId ?? catalog.servers[0]?.id ?? null,
   );
   const [durationId, setDurationId] = useState<VipPlanId>("1_month");
+  const [shopQuote, setShopQuote] = useState<VipShopQuote>(catalog.quote);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!allRetakesEnabled && accessType === "ALL_RETAKES") {
+      setAccessType("INDIVIDUAL_SERVER");
+    }
+  }, [accessType, allRetakesEnabled]);
+
+  useEffect(() => {
+    if (accessType === "INDIVIDUAL_SERVER" && !selectedServerId) {
+      setShopQuote((prev) => ({
+        ...prev,
+        accessType: "INDIVIDUAL_SERVER",
+        serverId: null,
+      }));
+      return;
+    }
+
+    let cancelled = false;
+    setQuoteError(null);
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/v1/payments/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accessType,
+            ...(accessType === "INDIVIDUAL_SERVER" && selectedServerId
+              ? { serverId: selectedServerId }
+              : {}),
+          }),
+        });
+        const payload = (await response.json()) as ApiResult<VipShopQuote>;
+        if (cancelled) return;
+        if (!payload.ok) {
+          setQuoteError(payload.error);
+          return;
+        }
+        setShopQuote(payload.data);
+      } catch {
+        if (!cancelled) {
+          setQuoteError("Unable to load pricing.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessType, selectedServerId]);
 
   const duration =
-    catalog.durations.find((item) => item.id === durationId) ??
-    catalog.durations[0];
+    shopQuote.durations.find((item) => item.id === durationId) ??
+    shopQuote.durations[0] ??
+    null;
 
-  const quote = useMemo(() => {
-    if (!duration) return null;
-    return quoteVipSelection({
-      selectedServerIds: selectedIds,
-      liveServerIds: liveIds,
-      duration,
-    });
-  }, [duration, liveIds, selectedIds]);
+  const selectedServer =
+    accessType === "INDIVIDUAL_SERVER" && selectedServerId
+      ? catalog.servers.find((server) => server.id === selectedServerId) ?? null
+      : null;
 
-  const selected = catalog.servers.filter((server) =>
-    selectedIds.includes(server.id),
-  );
-  const nextUnselected = catalog.servers.find(
-    (server) => !selectedIds.includes(server.id),
-  );
-  function toggleServer(id: string) {
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-  }
+  const checkoutReady =
+    accessType === "ALL_RETAKES" ||
+    (accessType === "INDIVIDUAL_SERVER" && Boolean(selectedServerId));
 
+  const serverStep = allRetakesEnabled ? 2 : 1;
+  const durationStep = allRetakesEnabled ? 3 : 2;
+  const accessEditHref = allRetakesEnabled
+    ? "#choose-access"
+    : "#choose-servers";
 
-  if (catalog.servers.length === 0 || !duration || !quote) {
+  if (catalog.servers.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         No VIP servers are listed yet.
@@ -87,172 +214,147 @@ export function VipShop({
   }
 
   return (
-    <div id="vip-shop" className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div
+      id="vip-shop"
+      className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]"
+    >
       <div className="space-y-10">
-        <section id="choose-servers">
-          <h2 className="text-lg font-semibold tracking-tight">
-            <span className="text-primary">1.</span> Choose your servers
-          </h2>
-          <div className="mt-4 flex gap-6 border-b border-border text-xs font-medium tracking-[0.16em] uppercase">
-            <button
-              type="button"
-              className="border-b-2 border-primary pb-3 text-foreground"
-            >
-              Servers
-            </button>
-          </div>
+        {allRetakesEnabled ? (
+          <section id="choose-access">
+            <h2 className="text-lg font-semibold tracking-tight">
+              <span className="text-primary">1.</span> Choose your access
+            </h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setAccessType("INDIVIDUAL_SERVER")}
+                className={cn(
+                  "rounded-xl border p-4 text-left transition-colors",
+                  accessType === "INDIVIDUAL_SERVER"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card/50 hover:border-primary/30",
+                )}
+              >
+                <p className="font-semibold">Individual Server</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose one premium retake server
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccessType("ALL_RETAKES")}
+                className={cn(
+                  "relative rounded-xl border p-4 text-left transition-colors",
+                  accessType === "ALL_RETAKES"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card/50 hover:border-primary/30",
+                )}
+              >
+                <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
+                  <Sparkles className="size-3" />
+                  Recommended
+                </span>
+                <p className="font-semibold">All Retakes</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Access all premium retake servers
+                </p>
+              </button>
+            </div>
+          </section>
+        ) : null}
 
-          <ul className="mt-4 space-y-3">
-              {catalog.servers.map((server) => {
-                const checked = selectedIds.includes(server.id);
-                const liveRow = live.servers.find((item) => item.id === server.id);
-                const online = liveRow?.online ?? server.status === "live";
-                const map = liveRow?.map ?? server.map;
-                const players = liveRow?.players ?? 0;
-                const maxPlayers = liveRow?.maxPlayers ?? server.maxPlayers;
-                const flag = regionFlag(server.region);
-                return (
-                  <li key={server.id}>
-                    <button
-                      type="button"
-                      onClick={() => toggleServer(server.id)}
-                      className={cn(
-                        "flex w-full items-center gap-4 rounded-xl border p-3 text-left transition-colors",
-                        checked
-                          ? "border-primary bg-primary/5"
-                          : "border-border bg-card/50 hover:border-primary/30",
-                      )}
+        {accessType === "INDIVIDUAL_SERVER" ? (
+          <section id="choose-servers">
+            <h2 className="text-lg font-semibold tracking-tight">
+              <span className="text-primary">{serverStep}.</span> Choose your
+              server
+            </h2>
+            <div className="mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="vip-server-select">Server</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    id="vip-server-select"
+                    className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:ring-2 data-popup-open:ring-ring/50"
+                  >
+                    <span className="truncate text-left">
+                      {selectedServer
+                        ? `${serverLabel(selectedServer)}${serverMonthlyHint(selectedServer)}`
+                        : "Select a server"}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 opacity-60" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-64">
+                    <DropdownMenuRadioGroup
+                      value={selectedServerId ?? ""}
+                      onValueChange={(value) =>
+                        setSelectedServerId(value || null)
+                      }
                     >
-                      <span
-                        className={cn(
-                          "flex size-5 shrink-0 items-center justify-center rounded border",
-                          checked
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border",
-                        )}
-                        aria-hidden
-                      >
-                        {checked ? <Check className="size-3.5" /> : null}
-                      </span>
-                      <span className="relative size-14 shrink-0 overflow-hidden rounded-lg">
-                        <Image
-                          src={getMapImage(map)}
-                          alt=""
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold">
-                            {serverLabel(server)}
-                          </span>
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 text-xs",
-                              online ? "text-emerald-400" : "text-muted-foreground",
-                            )}
+                      {catalog.servers.map((server) => {
+                        const oneMonth = server.durationOptions.find(
+                          (item) => item.id === "1_month",
+                        );
+                        return (
+                          <DropdownMenuRadioItem
+                            key={server.id}
+                            value={server.id}
+                            className="gap-3"
                           >
-                            <span
-                              className={cn(
-                                "size-1.5 rounded-full",
-                                online ? "bg-emerald-400" : "bg-muted-foreground",
-                              )}
-                            />
-                            {online ? "Live" : "Offline"}
-                          </span>
-                        </span>
-                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          <span>
-                            {flag ? `${flag} ` : null}
-                            {regionCountry(server.region)}
-                          </span>
-                          <span>
-                            {players} / {maxPlayers} Players
-                          </span>
-                          {server.pingMs > 0 ? (
-                            <span>{server.pingMs}ms</span>
-                          ) : null}
-                        </span>
-                        <span className="mt-1.5 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-medium text-primary">
-                          + Premium {server.mode.replace(/s$/i, "")} Server
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <button
-              type="button"
-              disabled={!nextUnselected}
-              onClick={() => nextUnselected && toggleServer(nextUnselected.id)}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus className="size-4" />
-              Add another server
-            </button>
-            {!nextUnselected ? (
-              <p className="text-xs text-muted-foreground">
-                More servers will appear here as they go live.
+                            <span className="min-w-0 flex-1 truncate">
+                              {serverLabel(server)}
+                            </span>
+                            {oneMonth ? (
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                from {formatInrFromPaise(oneMonth.amountPaise)}/mo
+                              </span>
+                            ) : null}
+                          </DropdownMenuRadioItem>
+                        );
+                      })}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </section>
+        ) : allRetakesEnabled ? (
+          <section id="choose-all-retakes">
+            <h2 className="text-lg font-semibold tracking-tight">
+              <span className="text-primary">{serverStep}.</span> All Retakes
+            </h2>
+            <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+              <p className="font-semibold">All Retakes</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Access all currently available premium retake servers during your
+                active VIP period.
               </p>
-            ) : null}
-          </div>
-        </section>
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {catalog.allRetakes.durations.map((option) => (
+                  <span key={option.id}>
+                    {option.name}:{" "}
+                    <span className="font-medium text-foreground">
+                      {formatInrFromPaise(option.amountPaise)}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section id="choose-duration">
           <h2 className="text-lg font-semibold tracking-tight">
-            <span className="text-primary">2.</span> Choose a duration
+            <span className="text-primary">{durationStep}.</span> Choose a
+            duration
           </h2>
           <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {catalog.durations.map((item) => {
-              const checked = item.id === duration.id;
-              const priced = quoteVipSelection({
-                selectedServerIds: selectedIds.length ? selectedIds : liveIds.slice(0, 1),
-                liveServerIds: liveIds,
-                duration: item,
-              });
-              const perMonthPaise = item.months > 1
-                ? Math.round(priced.amountPaise / item.months)
-                : null;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setDurationId(item.id)}
-                  className={cn(
-                    "relative flex flex-col rounded-xl border px-3 py-4 text-left transition-colors",
-                    checked
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-card/50 hover:border-primary/30",
-                  )}
-                >
-                  {item.badge === "popular" ? (
-                    <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
-                      Popular
-                    </span>
-                  ) : item.badge === "best-value" ? (
-                    <span className="absolute -top-2.5 right-3 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
-                      Best value
-                    </span>
-                  ) : null}
-                  <span className="text-sm font-medium">{item.name}</span>
-                  <span className="mt-2 text-2xl font-semibold tracking-tight">
-                    {formatInrFromPaise(priced.amountPaise)}
-                  </span>
-                  {perMonthPaise ? (
-                    <span className="mt-1 text-xs text-muted-foreground">
-                      {formatInrFromPaise(perMonthPaise)}/month
-                    </span>
-                  ) : (
-                    <span className="mt-1 min-h-4" aria-hidden />
-                  )}
-                </button>
-              );
-            })}
+            <DurationCards
+              durations={shopQuote.durations}
+              durationId={durationId}
+              onSelect={setDurationId}
+              disabled={!checkoutReady}
+            />
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -266,47 +368,44 @@ export function VipShop({
 
         <div className="mt-4 border-b border-border pb-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Servers ({selected.length})</span>
-            <a href="#choose-servers" className="text-primary hover:underline">
+            <span>Access</span>
+            <a href={accessEditHref} className="text-primary hover:underline">
               Edit
             </a>
           </div>
-          {selected.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">No server selected.</p>
+          {accessType === "ALL_RETAKES" ? (
+            <div className="mt-2">
+              <p className="text-sm font-medium">All Retakes</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Access all premium retake servers
+              </p>
+            </div>
+          ) : selectedServer ? (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="relative size-8 overflow-hidden rounded-md">
+                <Image
+                  src={getMapImage(selectedServer.map)}
+                  alt=""
+                  fill
+                  sizes="32px"
+                  className="object-cover"
+                />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {serverLabel(selectedServer)}
+                </span>
+                {duration ? (
+                  <span className="text-xs font-medium text-foreground">
+                    {formatInrFromPaise(duration.amountPaise)}
+                  </span>
+                ) : null}
+              </span>
+            </div>
           ) : (
-            <ul className="mt-2 space-y-2">
-              {selected.map((server) => (
-                <li key={server.id} className="flex items-center gap-2">
-                  <span className="relative size-8 overflow-hidden rounded-md">
-                    <Image
-                      src={getMapImage(server.map)}
-                      alt=""
-                      fill
-                      sizes="32px"
-                      className="object-cover"
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {serverLabel(server)}
-                    </span>
-                    {server.pingMs > 0 ? (
-                      <span className="text-xs text-muted-foreground">
-                        {server.pingMs}ms
-                      </span>
-                    ) : null}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleServer(server.id)}
-                    className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    aria-label={`Remove ${serverLabel(server)}`}
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-2 text-sm text-muted-foreground">
+              No server selected.
+            </p>
           )}
         </div>
 
@@ -317,15 +416,22 @@ export function VipShop({
               Edit
             </a>
           </div>
-          <p className="mt-2 text-sm font-medium">{duration.name}</p>
+          <p className="mt-2 text-sm font-medium">
+            {duration?.name ?? durationLabels[durationId]}
+          </p>
         </div>
 
         <div className="py-4">
           <p className="text-xs text-muted-foreground">Total</p>
           <p className="mt-1 text-3xl font-semibold tracking-tight">
-            {formatInrFromPaise(quote.amountPaise)}
+            {checkoutReady && duration
+              ? formatInrFromPaise(duration.amountPaise)
+              : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Incl. taxes</p>
+          {quoteError ? (
+            <p className="mt-1 text-xs text-destructive">{quoteError}</p>
+          ) : null}
         </div>
 
         <div className="rounded-xl bg-secondary/60 p-4">
@@ -348,13 +454,19 @@ export function VipShop({
               You already have lifetime VIP access.
             </p>
           ) : purchasesEnabled ? (
-            <BuyVipButton
-              planId={duration.id}
-              serverIds={quote.serverIds}
-              loggedIn={loggedIn}
-              disabled={quote.serverCount === 0}
-              label={loggedIn ? "Continue to Payment" : "Sign in to continue"}
-            />
+            <div>
+              <BuyVipButton
+                accessType={accessType}
+                planId={durationId}
+                serverId={
+                  accessType === "INDIVIDUAL_SERVER" ? selectedServerId : null
+                }
+                loggedIn={loggedIn}
+                disabled
+                label="Checkout coming soon"
+              />
+              <RazorpaySecuredBadge />
+            </div>
           ) : (
             <div className="rounded-lg border border-border bg-secondary/50 px-4 py-3 text-center">
               <p className="text-sm font-semibold text-foreground">
@@ -364,10 +476,7 @@ export function VipShop({
                 Secure payments powered by
               </p>
               <div className="mt-2 flex items-center justify-center">
-                <svg width="116" height="24" viewBox="0 0 116 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Razorpay">
-                  <path d="M7.49374 6.48973L6.53128 10.0322L12.0402 6.46956L8.43726 19.9123L12.0964 19.9153L17.419 0.0598755" fill="#3395FF"/>
-                  <path d="M1.56438 14.264L0.0488892 19.9153H7.54876L10.6176 8.41895L1.56438 14.264ZM27.6162 9.28853C27.4329 9.96989 27.0797 10.4704 26.5529 10.79C26.0274 11.109 25.2898 11.2691 24.3378 11.2691H21.3129L22.3749 7.30922H25.3998C26.3507 7.30922 27.0039 7.4681 27.3584 7.79198C27.7128 8.11585 27.7983 8.61083 27.6162 9.29525V9.28853ZM30.7481 9.2097C31.133 7.77976 30.9742 6.6798 30.2702 5.90983C29.5674 5.14597 28.3343 4.76099 26.5743 4.76099H19.8237L15.7599 19.9221H19.0396L20.6773 13.8112H22.8284C23.3111 13.8112 23.6912 13.8906 23.9687 14.0434C24.2467 14.2023 24.4099 14.4773 24.46 14.8745L25.0454 19.9221H28.5591L27.9896 15.2167C27.8735 14.1656 27.3926 13.5484 26.5474 13.3651C27.6248 13.0534 28.5274 12.534 29.2546 11.8129C29.9767 11.0971 30.4926 10.2 30.7481 9.21581V9.2097ZM38.7203 14.4956C38.4453 15.5222 38.0237 16.2983 37.4535 16.8422C36.8828 17.386 36.2008 17.6549 35.4052 17.6549C34.5949 17.6549 34.0455 17.3922 33.7552 16.8605C33.4643 16.3289 33.4546 15.5589 33.7247 14.5506C33.9948 13.5423 34.4256 12.754 35.0183 12.1857C35.6111 11.6174 36.3041 11.3332 37.0997 11.3332C37.8941 11.3332 38.438 11.6082 38.713 12.1539C38.9941 12.7021 39.0002 13.4861 38.7252 14.5066L38.7203 14.4956ZM40.1576 9.13026L39.7469 10.6641C39.5697 10.1141 39.2257 9.67412 38.7172 9.34414C38.2076 9.02026 37.577 8.85527 36.8247 8.85527C35.902 8.85527 35.0159 9.09359 34.1665 9.57024C33.3171 10.0469 32.5715 10.7191 31.936 11.5868C31.3005 12.4546 30.8361 13.4384 30.5366 14.5445C30.2433 15.6567 30.1822 16.6283 30.3594 17.4716C30.5427 18.321 30.9277 18.9688 31.5205 19.421C32.1193 19.8793 32.8832 20.1054 33.8182 20.1054C34.5611 20.1091 35.2957 19.9485 35.9692 19.6348C36.6351 19.3345 37.2274 18.8924 37.7047 18.3393L37.2769 19.9379H40.4485L43.3444 9.13576H40.1667L40.1576 9.13026ZM54.7412 9.13026H45.518L44.8733 11.5379H50.2399L43.1452 17.6671L42.539 19.9282H52.0597L52.7044 17.5205H46.9541L54.1576 11.2996L54.7412 9.13026ZM62.8595 14.4773C62.5741 15.5406 62.1506 16.3399 61.5914 16.8605C61.0323 17.386 60.3552 17.6488 59.5602 17.6488C57.898 17.6488 57.3517 16.5916 57.9188 14.4773C58.1999 13.4262 58.6252 12.6361 59.1935 12.1038C59.7619 11.5697 60.4505 11.3033 61.2602 11.3033C62.0546 11.3033 62.5912 11.5679 62.8674 12.1007C63.1436 12.6324 63.1412 13.425 62.8595 14.476V14.4773ZM64.7159 9.53663C63.9857 9.08198 63.0538 8.85466 61.9172 8.85466C60.7665 8.85466 59.7014 9.08076 58.7212 9.53296C57.7451 9.98234 56.8872 10.6531 56.2157 11.4921C55.5252 12.3415 55.0284 13.3376 54.7234 14.4742C54.424 15.6066 54.3873 16.6008 54.6196 17.452C54.8518 18.3014 55.3406 18.9553 56.0739 19.4075C56.8134 19.8634 57.7544 20.0901 58.9094 20.0901C60.046 20.0901 61.1032 19.8616 62.0748 19.4069C63.0464 18.9498 63.8775 18.3008 64.568 17.4453C65.2586 16.5935 65.7536 15.5998 66.0591 14.4632C66.3646 13.3266 66.4013 12.3342 66.1691 11.4811C65.9369 10.6317 65.4541 9.97783 64.7269 9.52257L64.7159 9.53663ZM76.0382 12.0158L76.8509 9.07648C76.5759 8.93593 76.2154 8.8626 75.7632 8.8626C75.036 8.8626 74.3393 9.04226 73.6671 9.40647C73.089 9.71568 72.5977 10.152 72.1822 10.6983L72.6038 9.11559L71.6829 9.11926H69.4219L66.507 19.9172H69.7232L71.2356 14.2726C71.4556 13.4519 71.8516 12.8059 72.423 12.3476C72.9913 11.8875 73.7001 11.6571 74.5557 11.6571C75.0812 11.6571 75.5701 11.7775 76.0345 12.0176L76.0382 12.0158ZM84.9869 14.5292C84.7119 15.5375 84.2964 16.3075 83.7281 16.8391C83.1598 17.3732 82.4753 17.6396 81.6809 17.6396C80.8865 17.6396 80.3426 17.3708 80.0554 16.833C79.7621 16.2922 79.756 15.5131 80.031 14.4889C80.306 13.4653 80.7276 12.6801 81.3082 12.1362C81.8887 11.588 82.5731 11.3143 83.3675 11.3143C84.1497 11.3143 84.6752 11.5954 84.9564 12.1637C85.2374 12.732 85.2436 13.5203 84.9735 14.5286L84.9869 14.5292ZM87.2223 9.55435C86.6264 9.0777 85.8656 8.83938 84.9429 8.83938C84.1344 8.83938 83.3639 9.02271 82.633 9.39302C81.9027 9.76273 81.31 10.2669 80.8547 10.9049L80.8657 10.8315L81.4053 9.11437H78.2643L77.4638 12.1026L77.4394 12.2065L74.1395 24.5162H77.3599L79.0221 18.3198C79.1871 18.871 79.5232 19.3036 80.0365 19.6165C80.5498 19.9282 81.1835 20.0828 81.937 20.0828C82.8719 20.0828 83.7641 19.8567 84.6105 19.4045C85.4599 18.951 86.1932 18.2984 86.8165 17.4551C87.4398 16.6118 87.9024 15.6341 88.1976 14.528C88.497 13.4201 88.5581 12.432 88.387 11.5673C88.2128 10.7014 87.8272 10.031 87.232 9.5568L87.2223 9.55435ZM97.9047 14.4852C97.6297 15.5057 97.208 16.2879 96.6397 16.8257C96.0714 17.3671 95.387 17.6366 94.5926 17.6366C93.7798 17.6366 93.2299 17.3738 92.9426 16.8422C92.6493 16.3105 92.6432 15.5406 92.9121 14.5323C93.181 13.524 93.61 12.7357 94.2027 12.1674C94.7955 11.599 95.489 11.3155 96.2847 11.3155C97.0791 11.3155 97.6169 11.5905 97.8979 12.1344C98.179 12.6801 98.1809 13.4641 97.9071 14.487L97.9047 14.4852ZM99.3407 9.11681L98.9295 10.6506C98.7523 10.0976 98.41 9.65763 97.9028 9.33069C97.3895 9.00437 96.7601 8.84182 96.0085 8.84182C95.0857 8.84182 94.1948 9.08015 93.3441 9.5568C92.4947 10.0334 91.7492 10.702 91.1137 11.5673C90.4781 12.4326 90.0137 13.4189 89.7143 14.5249C89.4179 15.6353 89.3598 16.6087 89.5371 17.4557C89.7161 18.299 90.1017 18.9504 90.6981 19.4051C91.2933 19.8573 92.0609 20.0858 92.9958 20.0858C93.7475 20.0858 94.4655 19.9294 95.1468 19.6153C95.8112 19.3135 96.4019 18.8709 96.878 18.3179L96.4503 19.9178H99.6218L102.517 9.11987H99.3456L99.3407 9.11681ZM115.832 9.12048L115.834 9.11742H113.885C113.822 9.11742 113.767 9.12048 113.71 9.1217H112.699L112.18 9.84278L112.051 10.0139L111.996 10.0994L107.887 15.8241L107.037 9.12048H103.671L105.376 19.3073L101.612 24.5199H104.967L105.878 23.2286C105.903 23.1908 105.926 23.159 105.957 23.1186L107.02 21.6093L107.051 21.5665L111.813 14.814L115.828 9.13087L115.834 9.1272H115.832V9.12048Z" fill="#FFFFFF"/>
-                </svg>
+                <RazorpayLogo className="h-6 w-auto" />
               </div>
             </div>
           )}

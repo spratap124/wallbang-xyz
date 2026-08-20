@@ -1,7 +1,7 @@
 import "server-only";
 
 import { quoteVipOrder } from "@/config/vip-plans";
-import type { VipPlanId } from "@/types/vip";
+import type { VipAccessType, VipPlanId } from "@/types/vip";
 import { findUserById } from "@/lib/auth/users";
 import {
   ensurePaymentIndexes,
@@ -73,8 +73,9 @@ export type CreateVipOrderResult = {
   amount: number;
   currency: "INR";
   plan: VipPlanId;
+  accessType: VipAccessType;
   bundleId: string;
-  serverIds: string[];
+  serverId: string | null;
   keyId: string;
   name: string;
   description: string;
@@ -85,8 +86,9 @@ export async function createVipOrder(input: {
   userId: string;
   steamId: string;
   personaName: string;
+  accessType: VipAccessType;
   planId: string;
-  serverIds: string[];
+  serverId: string | null;
 }): Promise<CreateVipOrderResult> {
   await ready();
 
@@ -95,10 +97,25 @@ export async function createVipOrder(input: {
   }
 
   const servers = await getGameServers();
+  const shopServers = servers.map((server) => ({
+    id: server.id,
+    name: server.name,
+    shortName: server.shortName || server.name,
+    mode: server.mode,
+    city: server.city,
+    region: server.region,
+    map: server.map,
+    maxPlayers: server.maxPlayersOverride ?? server.maxPlayers,
+    pingMs: server.pingMs,
+    status: server.status,
+    vipPricingByPlan: server.vipPricingByPlan ?? undefined,
+  }));
+
   const quote = quoteVipOrder({
-    servers,
-    selectedServerIds: input.serverIds,
+    accessType: input.accessType,
+    serverId: input.serverId,
     planId: input.planId,
+    servers: shopServers,
   });
 
   const limited = rateLimit(`vip-order:${input.userId}`, 8, 60_000);
@@ -111,20 +128,23 @@ export async function createVipOrder(input: {
     throw new Error("VIP purchases are not configured yet.");
   }
 
-  const bundleId = quote.fleetRate ? "all" : quote.serverIds.join("+");
-  const bundleKind = quote.fleetRate ? "all" : "server";
-  const serverId =
-    quote.serverIds.length === 1 ? quote.serverIds[0]! : null;
+  const bundleId = quote.bundleId;
+  const bundleKind = quote.bundleKind;
+  const serverId = quote.serverId;
+  const serverIds =
+    quote.accessType === "INDIVIDUAL_SERVER" && serverId ? [serverId] : [];
   const checkoutName = "WallBang VIP";
-  const checkoutDescription = quote.fleetRate
-    ? `${quote.durationDays} days · all servers`
-    : `${quote.durationDays} days · ${quote.serverCount} server${quote.serverCount === 1 ? "" : "s"}`;
+  const checkoutDescription =
+    quote.accessType === "ALL_RETAKES"
+      ? `${quote.durationDays} days · All Retakes`
+      : `${quote.durationDays} days · ${serverId ?? "server"}`;
 
   const payments = await paymentsCollection();
   const reuseAfter = new Date(Date.now() - REUSE_ORDER_MS);
   const existing = await payments.findOne({
     userId: input.userId,
     plan: quote.durationId,
+    accessType: quote.accessType,
     bundleId,
     status: "created",
     razorpayPaymentId: null,
@@ -137,8 +157,9 @@ export async function createVipOrder(input: {
       amount: existing.amount,
       currency: "INR",
       plan: quote.durationId,
+      accessType: quote.accessType,
       bundleId,
-      serverIds: quote.serverIds,
+      serverId: existing.serverId,
       keyId,
       name: checkoutName,
       description: checkoutDescription,
@@ -155,7 +176,8 @@ export async function createVipOrder(input: {
       steam_id: input.steamId,
       plan: quote.durationId,
       bundle: bundleId,
-      server_ids: quote.serverIds.join(","),
+      access_type: quote.accessType,
+      ...(serverId ? { server_id: serverId } : {}),
     },
     idempotencyKey: `${input.userId}:${bundleId}:${quote.durationId}:${receipt}`,
   });
@@ -169,8 +191,9 @@ export async function createVipOrder(input: {
     razorpayPaymentId: null,
     bundleId,
     bundleKind,
+    accessType: quote.accessType,
     serverId,
-    serverIds: quote.serverIds,
+    serverIds,
     plan: quote.durationId,
     durationDays: quote.durationDays,
     amount: quote.amountPaise,
@@ -195,8 +218,9 @@ export async function createVipOrder(input: {
       amount: raced.amount,
       currency: "INR",
       plan: quote.durationId,
+      accessType: quote.accessType,
       bundleId,
-      serverIds: quote.serverIds,
+      serverId: raced.serverId,
       keyId,
       name: checkoutName,
       description: checkoutDescription,
@@ -209,8 +233,9 @@ export async function createVipOrder(input: {
     amount: quote.amountPaise,
     currency: "INR",
     plan: quote.durationId,
+    accessType: quote.accessType,
     bundleId,
-    serverIds: quote.serverIds,
+    serverId,
     keyId,
     name: checkoutName,
     description: checkoutDescription,
@@ -314,8 +339,9 @@ export async function fulfillCapturedPayment(input: {
       _id: crypto.randomUUID(),
       userId: claimed.userId,
       steamId: claimed.steamId,
-      bundleId: claimed.bundleId ?? "all",
+      bundleId: claimed.bundleId ?? "all_retakes",
       bundleKind: claimed.bundleKind ?? "all",
+      accessType: claimed.accessType,
       serverId: claimed.serverId ?? null,
       serverIds: claimed.serverIds ?? [],
       plan: claimed.plan,
