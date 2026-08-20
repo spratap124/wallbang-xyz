@@ -1,16 +1,23 @@
 import { z } from "zod";
 
-import { featureFlags as staticFeatureFlags } from "@/config/features.flags";
 import {
   getRuntimeFeatureFlags,
   setVipAllRetakesEnabled,
+  setVipCheckoutEnabled,
 } from "@/lib/platform/feature-flags";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 
-const patchSchema = z.object({
-  vipAllRetakes: z.boolean(),
-});
+const patchSchema = z
+  .object({
+    vipAllRetakes: z.boolean().optional(),
+    vipCheckout: z.boolean().optional(),
+  })
+  .refine(
+    (value) =>
+      value.vipAllRetakes !== undefined || value.vipCheckout !== undefined,
+    { message: "Provide at least one feature flag to update." },
+  );
 
 export async function GET(): Promise<Response> {
   const auth = await requirePermission("admin_panel");
@@ -37,11 +44,22 @@ export async function PATCH(request: Request): Promise<Response> {
 
   const parsed = patchSchema.safeParse(json);
   if (!parsed.success) {
-    return jsonError("Invalid request body.", 400);
+    return jsonError(
+      parsed.error.issues[0]?.message ?? "Invalid request body.",
+      400,
+    );
   }
 
   try {
-    await setVipAllRetakesEnabled(parsed.data.vipAllRetakes, auth.user.steamId);
+    if (parsed.data.vipAllRetakes !== undefined) {
+      await setVipAllRetakesEnabled(
+        parsed.data.vipAllRetakes,
+        auth.user.steamId,
+      );
+    }
+    if (parsed.data.vipCheckout !== undefined) {
+      await setVipCheckoutEnabled(parsed.data.vipCheckout, auth.user.steamId);
+    }
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Unable to update feature flags.";
@@ -49,8 +67,5 @@ export async function PATCH(request: Request): Promise<Response> {
   }
 
   const flags = await getRuntimeFeatureFlags();
-  return jsonOk({
-    ...staticFeatureFlags,
-    vipAllRetakes: flags.vipAllRetakes,
-  });
+  return jsonOk(flags);
 }

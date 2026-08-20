@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { ApiResult } from "@/lib/api/waitlist";
 import type { VipAccessType } from "@/types/vip";
 
@@ -33,7 +35,7 @@ type CreateOrderData = {
   keyId: string;
   name: string;
   description: string;
-  prefill: { name: string };
+  prefill: { name: string; email: string; contact: string };
 };
 
 function loadRazorpayScript(): Promise<RazorpayConstructor> {
@@ -67,6 +69,14 @@ function loadRazorpayScript(): Promise<RazorpayConstructor> {
   });
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidIndianPhone(value: string): boolean {
+  return /^[6-9]\d{9}$/.test(value);
+}
+
 type BuyVipButtonProps = {
   accessType: VipAccessType;
   planId: string;
@@ -74,6 +84,7 @@ type BuyVipButtonProps = {
   label: string;
   loggedIn: boolean;
   disabled?: boolean;
+  collectContact?: boolean;
 };
 
 export function BuyVipButton({
@@ -83,16 +94,43 @@ export function BuyVipButton({
   label,
   loggedIn,
   disabled = false,
+  collectContact = true,
 }: BuyVipButtonProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [collectingContact, setCollectingContact] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
-  async function startCheckout(): Promise<void> {
+  function beginCheckout(): void {
     setError(null);
     if (!loggedIn) {
       window.location.href = `/api/auth/steam?returnTo=${encodeURIComponent("/vip")}`;
       return;
+    }
+    if (collectContact) {
+      setCollectingContact(true);
+      return;
+    }
+    void openRazorpayCheckout();
+  }
+
+  async function openRazorpayCheckout(): Promise<void> {
+    setError(null);
+
+    const trimmedEmail = email.trim();
+    const trimmedPhone = phone.trim().replace(/\s+/g, "");
+
+    if (collectContact) {
+      if (!isValidEmail(trimmedEmail)) {
+        setError("Enter a valid email address.");
+        return;
+      }
+      if (!isValidIndianPhone(trimmedPhone)) {
+        setError("Enter a valid 10-digit Indian mobile number.");
+        return;
+      }
     }
 
     setBusy(true);
@@ -105,6 +143,8 @@ export function BuyVipButton({
           accessType,
           planId,
           ...(serverId ? { serverId } : {}),
+          email: trimmedEmail,
+          phone: trimmedPhone,
         }),
       });
       const payload = (await response.json()) as ApiResult<CreateOrderData>;
@@ -137,6 +177,9 @@ export function BuyVipButton({
             if (!verified.ok) {
               throw new Error(verified.error);
             }
+            setBusy(false);
+            setCollectingContact(false);
+            setError(null);
             router.push("/vip?paid=1");
             router.refresh();
           } catch (err) {
@@ -151,10 +194,78 @@ export function BuyVipButton({
       });
 
       checkout.open();
+      // Modal is open; keep busy until dismiss or handler finishes.
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start checkout.");
       setBusy(false);
     }
+  }
+
+  if (collectingContact && loggedIn && collectContact && !disabled) {
+    return (
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="vip-checkout-email">Email</Label>
+          <Input
+            id="vip-checkout-email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={busy}
+            className="h-10"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="vip-checkout-phone">Mobile number</Label>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-10 items-center rounded-lg border border-input px-2.5 text-sm text-muted-foreground">
+              +91
+            </span>
+            <Input
+              id="vip-checkout-phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              placeholder="9876543210"
+              maxLength={10}
+              value={phone}
+              onChange={(event) =>
+                setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))
+              }
+              disabled={busy}
+              className="h-10"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 flex-1"
+            size="lg"
+            disabled={busy}
+            onClick={() => {
+              setCollectingContact(false);
+              setError(null);
+            }}
+          >
+            Back
+          </Button>
+          <Button
+            type="button"
+            className="h-11 flex-[1.4]"
+            size="lg"
+            disabled={busy}
+            onClick={() => void openRazorpayCheckout()}
+          >
+            {busy ? "Opening checkout…" : "Continue to Payment"}
+          </Button>
+        </div>
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+    );
   }
 
   return (
@@ -163,7 +274,7 @@ export function BuyVipButton({
         className="h-11 w-full"
         size="lg"
         disabled={disabled || busy}
-        onClick={() => void startCheckout()}
+        onClick={beginCheckout}
       >
         {busy ? "Opening checkout…" : label}
       </Button>

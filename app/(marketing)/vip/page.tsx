@@ -22,7 +22,7 @@ import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
-import { isVipAllRetakesEnabled } from "@/lib/platform/feature-flags";
+import { isVipAllRetakesEnabled, isVipCheckoutEnabled } from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
@@ -77,7 +77,10 @@ export default async function VipPage({ searchParams }: VipPageProps) {
   const servers = await getGameServers();
   const catalog = getVipShopCatalog(servers);
   const purchasesEnabled = isRazorpayConfigured();
-  const allRetakesEnabled = await isVipAllRetakesEnabled();
+  const [allRetakesEnabled, checkoutEnabled] = await Promise.all([
+    isVipAllRetakesEnabled(),
+    isVipCheckoutEnabled(),
+  ]);
 
   let membership = null;
   let lifetime = false;
@@ -157,6 +160,7 @@ export default async function VipPage({ searchParams }: VipPageProps) {
             catalog={catalog}
             loggedIn={Boolean(session)}
             purchasesEnabled={purchasesEnabled}
+            checkoutEnabled={checkoutEnabled}
             allRetakesEnabled={allRetakesEnabled}
             hideBuy={lifetime}
             membership={membership}

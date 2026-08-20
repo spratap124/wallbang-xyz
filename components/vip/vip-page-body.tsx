@@ -13,6 +13,7 @@ type VipPageBodyProps = {
   catalog: VipShopCatalog;
   loggedIn: boolean;
   purchasesEnabled: boolean;
+  checkoutEnabled: boolean;
   allRetakesEnabled: boolean;
   hideBuy?: boolean;
   membership: VipMembershipView | null;
@@ -23,6 +24,7 @@ export function VipPageBody({
   catalog,
   loggedIn,
   purchasesEnabled,
+  checkoutEnabled,
   allRetakesEnabled,
   hideBuy = false,
   membership,
@@ -62,6 +64,7 @@ export function VipPageBody({
         catalog={catalog}
         loggedIn={loggedIn}
         purchasesEnabled={purchasesEnabled}
+        checkoutEnabled={checkoutEnabled}
         allRetakesEnabled={allRetakesEnabled}
         hideBuy={hideBuy}
         renewTarget={renewTarget}

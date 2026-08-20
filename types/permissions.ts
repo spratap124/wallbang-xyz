@@ -72,6 +72,7 @@ export type UserRoleDoc = {
 export type AuditAction =
   | "GRANT_ROLE"
   | "REVOKE_ROLE"
+  | "REVOKE_VIP_ACCESS"
   | "GRANT_BADGE"
   | "CREATE_SERVER"
   | "UPDATE_SERVER"

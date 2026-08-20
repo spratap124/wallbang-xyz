@@ -48,6 +48,7 @@ type VipShopProps = {
   catalog: VipShopCatalog;
   loggedIn: boolean;
   purchasesEnabled: boolean;
+  checkoutEnabled?: boolean;
   allRetakesEnabled?: boolean;
   hideBuy?: boolean;
   renewTarget?: VipShopRenewTarget | null;
@@ -128,6 +129,7 @@ export function VipShop({
   catalog,
   loggedIn,
   purchasesEnabled,
+  checkoutEnabled = false,
   allRetakesEnabled = false,
   hideBuy = false,
   renewTarget = null,
@@ -484,8 +486,17 @@ export function VipShop({
                   accessType === "INDIVIDUAL_SERVER" ? selectedServerId : null
                 }
                 loggedIn={loggedIn}
-                disabled
-                label="Checkout coming soon"
+                disabled={
+                  !checkoutEnabled || !checkoutReady || !duration
+                }
+                collectContact={checkoutEnabled}
+                label={
+                  checkoutEnabled
+                    ? loggedIn
+                      ? "Continue to Payment"
+                      : "Sign in to continue"
+                    : "Checkout coming soon"
+                }
               />
               <RazorpaySecuredBadge />
             </div>

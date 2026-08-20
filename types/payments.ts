@@ -17,6 +17,8 @@ export type PaymentDoc = {
   steamId: string;
   razorpayOrderId: string;
   razorpayPaymentId: string | null;
+  email?: string | null;
+  phone?: string | null;
   bundleId: string;
   bundleKind: VipBundleKind;
   accessType?: VipAccessType;
