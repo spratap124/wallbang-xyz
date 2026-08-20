@@ -462,8 +462,8 @@ export function VipShop({
                   accessType === "INDIVIDUAL_SERVER" ? selectedServerId : null
                 }
                 loggedIn={loggedIn}
-                disabled={!checkoutReady || !duration}
-                label={loggedIn ? "Continue to Payment" : "Sign in to continue"}
+                disabled
+                label="Checkout coming soon"
               />
               <RazorpaySecuredBadge />
             </div>
