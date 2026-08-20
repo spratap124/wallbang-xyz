@@ -1,6 +1,32 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
+
+export const brandLogoSrc = "/logo.png";
+
+type BrandLogoProps = {
+  className?: string;
+  alt?: string;
+  priority?: boolean;
+};
+
+export function BrandLogo({
+  className,
+  alt = "WallBang",
+  priority = false,
+}: BrandLogoProps) {
+  return (
+    <Image
+      src={brandLogoSrc}
+      alt={alt}
+      width={1024}
+      height={1024}
+      className={cn("rounded-md", className)}
+      priority={priority}
+    />
+  );
+}
 
 type ContainerProps = {
   children: React.ReactNode;
@@ -70,17 +96,24 @@ export function BrandMark({
   return <Comp className={cn("brand-mark", className)}>{children}</Comp>;
 }
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({
+  className,
+  priority = false,
+}: {
+  className?: string;
+  priority?: boolean;
+}) {
   return (
     <Link
       href="/"
       className={cn(
-        "brand-mark inline-block text-xl text-foreground transition-colors hover:text-primary",
+        "inline-flex items-center gap-2.5 text-foreground transition-colors hover:text-primary",
         className,
       )}
       aria-label="WallBang home"
     >
-      WallBang
+      <BrandLogo alt="" className="size-8" priority={priority} />
+      <span className="brand-mark text-xl">WallBang</span>
     </Link>
   );
 }

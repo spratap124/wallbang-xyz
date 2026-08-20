@@ -8,7 +8,7 @@ import {
   SteamAuthControls,
   SteamAuthControlsMobile,
 } from "@/components/auth/steam-auth-controls";
-import { BrandMark, Logo } from "@/components/shared/primitives";
+import { Logo } from "@/components/shared/primitives";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -37,7 +37,7 @@ export function SiteHeader({
   return (
     <header className="sticky top-0 z-50 overflow-visible border-b border-border/80 bg-background/80 backdrop-blur-md">
       <div className="container-wb flex h-16 items-center justify-between gap-4 overflow-visible">
-        <Logo />
+        <Logo priority />
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
           {mainNav.map((item) => {
@@ -81,7 +81,7 @@ export function SiteHeader({
             <SheetContent side="right" className="w-[min(100%,20rem)]">
               <SheetHeader>
                 <SheetTitle className="text-left">
-                  <BrandMark className="text-lg" />
+                  <Logo />
                 </SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-1" aria-label="Mobile">

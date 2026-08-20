@@ -8,6 +8,7 @@ export function organizationJsonLd() {
     "@id": `${siteConfig.url}/#organization`,
     name: siteConfig.name,
     url: siteConfig.url,
+    logo: `${siteConfig.url}/logo.png`,
     description: siteConfig.description,
     sameAs: [siteConfig.discordUrl],
     areaServed: {
@@ -67,6 +68,7 @@ export function articleJsonLd(input: {
       "@type": "Organization",
       name: siteConfig.name,
       url: siteConfig.url,
+      logo: `${siteConfig.url}/logo.png`,
     },
     mainEntityOfPage: `${siteConfig.url}/blog/${input.slug}`,
   };
