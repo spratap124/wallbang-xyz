@@ -408,11 +408,10 @@ export async function renameGameServer(
   await col.deleteOne({ id: fromId });
 
   const db = await getDb();
-  const statusCol = db.collection("serverStatus");
+  const statusCol = db.collection<{ _id: string }>("serverStatus");
   const statusDoc = await statusCol.findOne({ _id: fromId });
   if (statusDoc) {
-    const { _id, ...rest } = statusDoc;
-    await statusCol.insertOne({ ...rest, _id: toId });
+    await statusCol.insertOne({ ...statusDoc, _id: toId });
     await statusCol.deleteOne({ _id: fromId });
   }
 

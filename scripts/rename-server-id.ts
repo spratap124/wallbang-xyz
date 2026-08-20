@@ -7,6 +7,8 @@
  */
 import { MongoClient, type Collection, type Document } from "mongodb";
 
+import type { GameServerDoc } from "@/types/servers";
+
 const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 type Args = {
@@ -89,7 +91,7 @@ async function main(): Promise<void> {
   const db = client.db(dbName);
 
   try {
-    const col = db.collection("game_servers");
+    const col = db.collection<GameServerDoc>("game_servers");
     const existing = await col.findOne({ id: fromId });
     if (!existing) {
       throw new Error(`Server not found: ${fromId}`);
@@ -111,13 +113,12 @@ async function main(): Promise<void> {
       await col.deleteOne({ id: fromId });
     }
 
-    const statusCol = db.collection("serverStatus");
+    const statusCol = db.collection<{ _id: string }>("serverStatus");
     const statusDoc = await statusCol.findOne({ _id: fromId });
     if (statusDoc) {
       console.log("serverStatus: 1");
       if (!dryRun) {
-        const { _id, ...rest } = statusDoc;
-        await statusCol.insertOne({ ...rest, _id: toId });
+        await statusCol.insertOne({ ...statusDoc, _id: toId });
         await statusCol.deleteOne({ _id: fromId });
       }
     }
