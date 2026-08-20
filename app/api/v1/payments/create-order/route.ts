@@ -5,7 +5,10 @@ import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requireSession } from "@/lib/permissions/authz";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
 import { createVipOrder } from "@/lib/payments/service";
-import { isVipAllRetakesEnabled } from "@/lib/platform/feature-flags";
+import {
+  isVipAllRetakesEnabled,
+  isVipCheckoutEnabled,
+} from "@/lib/platform/feature-flags";
 
 const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES"]);
 
@@ -15,6 +18,11 @@ const bodySchema = z
     planId: z.string().min(1),
     serverId: z.string().min(1).optional(),
     serverIds: z.array(z.string().min(1)).optional(),
+    email: z.string().trim().email("Enter a valid email."),
+    phone: z
+      .string()
+      .trim()
+      .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number."),
     amount: z.number().optional(),
     price: z.number().optional(),
   })
@@ -50,6 +58,9 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (!isRazorpayConfigured()) {
     return jsonError("VIP purchases are not available yet.", 503);
+  }
+  if (!(await isVipCheckoutEnabled())) {
+    return jsonError("VIP checkout is not available yet.", 503);
   }
 
   const auth = await requireSession();
@@ -88,10 +99,16 @@ export async function POST(request: Request): Promise<Response> {
       accessType: parsed.data.accessType,
       planId: parsed.data.planId,
       serverId: parsed.data.serverId ?? null,
+      email: parsed.data.email,
+      phone: parsed.data.phone,
     });
     return jsonOk({
       ...order,
-      prefill: { name: auth.user.personaName },
+      prefill: {
+        name: auth.user.personaName,
+        email: parsed.data.email,
+        contact: `+91${parsed.data.phone}`,
+      },
     });
   } catch (err) {
     const message =

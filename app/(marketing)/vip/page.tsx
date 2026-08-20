@@ -8,10 +8,10 @@ import {
   ExternalLink,
   Timer,
 } from "lucide-react";
+import Image from "next/image";
 
 import { VipHero } from "@/components/vip/vip-hero";
-import { VipShop } from "@/components/vip/vip-shop";
-import { VipStatusPanel } from "@/components/vip/vip-status-panel";
+import { VipPageBody } from "@/components/vip/vip-page-body";
 import { LiveServersProvider } from "@/components/servers/live-servers-provider";
 import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
@@ -20,9 +20,9 @@ import { getVipShopCatalog } from "@/config/vip-plans";
 import { siteConfig } from "@/config/site";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
+import { getUserVipMembership } from "@/lib/payments/entitlements";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
-import { getVipAccessStatus } from "@/lib/payments/service";
-import { isVipAllRetakesEnabled } from "@/lib/platform/feature-flags";
+import { isVipAllRetakesEnabled, isVipCheckoutEnabled } from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
@@ -77,17 +77,24 @@ export default async function VipPage({ searchParams }: VipPageProps) {
   const servers = await getGameServers();
   const catalog = getVipShopCatalog(servers);
   const purchasesEnabled = isRazorpayConfigured();
-  const allRetakesEnabled = await isVipAllRetakesEnabled();
+  const [allRetakesEnabled, checkoutEnabled] = await Promise.all([
+    isVipAllRetakesEnabled(),
+    isVipCheckoutEnabled(),
+  ]);
 
-  let isVip = false;
+  let membership = null;
   let lifetime = false;
-  let expiresAt: Date | null = null;
 
   if (session && isMongoConfigured()) {
-    const status = await getVipAccessStatus(session.id);
-    isVip = status.isVip;
-    lifetime = status.lifetime;
-    expiresAt = status.expiresAt;
+    membership = await getUserVipMembership({
+      userId: session.id,
+      eligibleServers: servers.map((server) => ({
+        id: server.id,
+        shortName: server.shortName || server.name,
+        name: server.name,
+      })),
+    });
+    lifetime = membership.lifetime;
   }
 
   return (
@@ -105,10 +112,23 @@ export default async function VipPage({ searchParams }: VipPageProps) {
         {session ? (
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/70 px-5 py-4">
             <div className="flex items-center gap-3">
-              <SteamMark className="size-8 text-foreground" />
+              {session.avatarUrl ? (
+                <Image
+                  src={session.avatarUrl}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="size-8 rounded-full border border-border object-cover"
+                  unoptimized
+                />
+              ) : (
+                <SteamMark className="size-8 text-foreground" />
+              )}
               <p className="text-sm text-muted-foreground">
                 Signed in as{" "}
-                <span className="font-medium text-foreground">{session.personaName}</span>
+                <span className="font-medium text-foreground">
+                  {session.personaName}
+                </span>
                 . VIP will be applied to this Steam account.
               </p>
             </div>
@@ -135,24 +155,16 @@ export default async function VipPage({ searchParams }: VipPageProps) {
           </div>
         )}
 
-        {session && (isVip || paid) ? (
-          <div className="mb-8">
-            <VipStatusPanel
-              isVip={isVip}
-              lifetime={lifetime}
-              expiresAt={expiresAt}
-              paid={paid}
-            />
-          </div>
-        ) : null}
-
         <LiveServersProvider>
-          <VipShop
+          <VipPageBody
             catalog={catalog}
             loggedIn={Boolean(session)}
             purchasesEnabled={purchasesEnabled}
+            checkoutEnabled={checkoutEnabled}
             allRetakesEnabled={allRetakesEnabled}
             hideBuy={lifetime}
+            membership={membership}
+            paid={paid}
           />
         </LiveServersProvider>
 

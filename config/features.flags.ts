@@ -10,6 +10,8 @@ export const featureFlags = {
   playerProfiles: true,
   vipDashboard: true,
   vipPurchase: true,
+  /** Razorpay checkout CTA. Default on in local/dev; off in production builds. */
+  vipCheckout: process.env.NODE_ENV !== "production",
   vipAllRetakes: false,
   inventory: false,
   statistics: false,

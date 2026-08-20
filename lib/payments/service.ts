@@ -14,7 +14,14 @@ import {
   isRazorpayConfigured,
 } from "@/lib/payments/razorpay";
 import {
-  extendVipExpiry,
+  computeEntitlementExpiry,
+  entitlementKeyFromPurchase,
+  entitlementKeyFromRecord,
+  furthestEntitlementExpiry,
+} from "@/lib/payments/entitlements-logic";
+import { computeVipExtension } from "@/lib/payments/expiry";
+import {
+  ensureVipCoversUntil,
   getUserPermissions,
   subtractVipExpiry,
 } from "@/lib/permissions/service";
@@ -24,6 +31,7 @@ import type {
   PaymentDoc,
   PaymentStatus,
   VipAccessStatus,
+  VipHistoryDoc,
 } from "@/types/payments";
 
 const REUSE_ORDER_MS = 30 * 60 * 1000;
@@ -89,6 +97,8 @@ export async function createVipOrder(input: {
   accessType: VipAccessType;
   planId: string;
   serverId: string | null;
+  email: string;
+  phone: string;
 }): Promise<CreateVipOrderResult> {
   await ready();
 
@@ -152,6 +162,16 @@ export async function createVipOrder(input: {
   });
 
   if (existing) {
+    await payments.updateOne(
+      { _id: existing._id },
+      {
+        $set: {
+          email: input.email,
+          phone: input.phone,
+          updatedAt: new Date(),
+        },
+      },
+    );
     return {
       orderId: existing.razorpayOrderId,
       amount: existing.amount,
@@ -189,6 +209,8 @@ export async function createVipOrder(input: {
     steamId: input.steamId,
     razorpayOrderId: order.id,
     razorpayPaymentId: null,
+    email: input.email,
+    phone: input.phone,
     bundleId,
     bundleKind,
     accessType: quote.accessType,
@@ -326,54 +348,106 @@ export async function fulfillCapturedPayment(input: {
     throw new Error(`Payment user ${claimed.userId} not found.`);
   }
 
-  const extension = await extendVipExpiry({
-    userId: claimed.userId,
+  const purchasedAt = new Date();
+  const history = await vipHistoryCollection();
+  const priorHistory = await history
+    .find({ userId: claimed.userId })
+    .sort({ createdAt: 1 })
+    .toArray();
+
+  const accessType =
+    claimed.accessType ??
+    (claimed.serverId || (claimed.serverIds?.length ?? 0) > 0
+      ? "INDIVIDUAL_SERVER"
+      : claimed.bundleKind === "all" ||
+          claimed.bundleId === "all" ||
+          claimed.bundleId === "all_retakes"
+        ? "ALL_RETAKES"
+        : undefined);
+  const bundleId =
+    claimed.bundleId ?? claimed.serverId ?? "all_retakes";
+  const bundleKind =
+    claimed.bundleKind ??
+    (claimed.serverId || claimed.accessType === "INDIVIDUAL_SERVER"
+      ? "server"
+      : "all");
+  const serverId = claimed.serverId ?? null;
+  const serverIds = claimed.serverIds ?? [];
+
+  const purchaseKey = entitlementKeyFromPurchase({
+    accessType,
+    serverId,
+    serverIds,
+    bundleId,
+    bundleKind,
+  });
+  const priorForKey = purchaseKey
+    ? priorHistory.filter(
+        (record) => entitlementKeyFromRecord(record) === purchaseKey,
+      )
+    : [];
+  const priorExpiry = computeEntitlementExpiry(priorForKey);
+  const extension = computeVipExtension({
+    currentExpiresAt: priorExpiry,
+    now: purchasedAt,
     durationDays: claimed.durationDays,
-    source: "PURCHASE",
-    grantedBy: null,
   });
 
+  const historyDoc: VipHistoryDoc = {
+    _id: crypto.randomUUID(),
+    userId: claimed.userId,
+    steamId: claimed.steamId,
+    bundleId,
+    bundleKind,
+    accessType,
+    serverId,
+    serverIds,
+    plan: claimed.plan,
+    amount: claimed.amount,
+    durationDays: claimed.durationDays,
+    startDate: extension.startDate,
+    endDate: extension.endDate,
+    paymentId: claimed._id,
+    createdAt: purchasedAt,
+  };
+
   try {
-    const history = await vipHistoryCollection();
-    await history.insertOne({
-      _id: crypto.randomUUID(),
-      userId: claimed.userId,
-      steamId: claimed.steamId,
-      bundleId: claimed.bundleId ?? "all_retakes",
-      bundleKind: claimed.bundleKind ?? "all",
-      accessType: claimed.accessType,
-      serverId: claimed.serverId ?? null,
-      serverIds: claimed.serverIds ?? [],
-      plan: claimed.plan,
-      amount: claimed.amount,
-      durationDays: claimed.durationDays,
-      startDate: extension.startDate,
-      endDate: extension.endDate,
-      paymentId: claimed._id,
-      createdAt: new Date(),
-    });
+    await history.insertOne(historyDoc);
   } catch (err) {
     if (!isDuplicateKeyError(err)) throw err;
   }
+
+  // Global VIP covers the furthest per-entitlement end — never sum all purchases.
+  const coversUntil =
+    furthestEntitlementExpiry([...priorHistory, historyDoc]) ??
+    extension.endDate;
+  const vipRole = await ensureVipCoversUntil({
+    userId: claimed.userId,
+    coversUntil,
+    source: "PURCHASE",
+    grantedBy: null,
+  });
 
   console.info("[payments] VIP granted", {
     userId: claimed.userId,
     steamId: claimed.steamId,
     plan: claimed.plan,
     bundleId: claimed.bundleId,
+    entitlementKey: purchaseKey,
     amount: claimed.amount,
     razorpayOrderId: claimed.razorpayOrderId,
     razorpayPaymentId: claimed.razorpayPaymentId,
     startDate: extension.startDate.toISOString(),
     endDate: extension.endDate.toISOString(),
-    lifetime: extension.lifetime,
+    vipCoversUntil: vipRole.expiresAt?.toISOString() ?? null,
+    lifetime: vipRole.lifetime,
   });
 
   return {
     alreadyFulfilled: false,
     paymentId: claimed._id,
-    expiresAt: extension.lifetime ? null : extension.endDate,
-    lifetime: extension.lifetime,
+    expiresAt: vipRole.lifetime ? null : (vipRole.expiresAt ?? extension.endDate),
+    lifetime: vipRole.lifetime,
   };
 }
 

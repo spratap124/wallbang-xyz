@@ -5,8 +5,9 @@ export function durationDaysToMs(durationDays: number): number {
 }
 
 /**
- * If VIP is still active, stack the new term onto the existing expiry.
- * If expired or never VIP, start from `now`.
+ * Stack a purchased term onto one entitlement's current expiry.
+ * - Active remaining time → end = remaining end + duration (e.g. 20d left + 180d)
+ * - Expired / none → end = now + duration
  */
 export function computeVipExtension(input: {
   currentExpiresAt: Date | null | undefined;

@@ -26,6 +26,9 @@ export async function GET(
     return jsonError("Invalid SteamID64.", 400);
   }
 
-  const data = await getPlayerPermissions(steamId);
+  const url = new URL(request.url);
+  const serverId = url.searchParams.get("serverId")?.trim() || null;
+
+  const data = await getPlayerPermissions(steamId, { serverId });
   return jsonOk(data);
 }

@@ -12,6 +12,7 @@ const DOC_ID = "feature_flags";
 type FeatureFlagDoc = {
   _id: string;
   vipAllRetakes?: boolean;
+  vipCheckout?: boolean;
   updatedAt?: Date;
   updatedBy?: string;
 };
@@ -39,18 +40,31 @@ async function readOverrides(): Promise<FeatureFlagDoc | null> {
   return doc ?? null;
 }
 
-function resolveVipAllRetakes(overrides: FeatureFlagDoc | null): boolean {
-  const envOverride = parseEnvBoolean(process.env.FEATURE_VIP_ALL_RETAKES);
+function resolveFlag(
+  envName: string,
+  mongoValue: boolean | undefined,
+  fallback: boolean,
+): boolean {
+  const envOverride = parseEnvBoolean(process.env[envName]);
   if (envOverride !== undefined) return envOverride;
-  if (overrides?.vipAllRetakes !== undefined) return overrides.vipAllRetakes;
-  return staticFeatureFlags.vipAllRetakes;
+  if (mongoValue !== undefined) return mongoValue;
+  return fallback;
 }
 
 export async function getRuntimeFeatureFlags(): Promise<FeatureFlags> {
   const overrides = await readOverrides();
   return {
     ...staticFeatureFlags,
-    vipAllRetakes: resolveVipAllRetakes(overrides),
+    vipAllRetakes: resolveFlag(
+      "FEATURE_VIP_ALL_RETAKES",
+      overrides?.vipAllRetakes,
+      staticFeatureFlags.vipAllRetakes,
+    ),
+    vipCheckout: resolveFlag(
+      "FEATURE_VIP_CHECKOUT",
+      overrides?.vipCheckout,
+      staticFeatureFlags.vipCheckout,
+    ),
   };
 }
 
@@ -59,7 +73,27 @@ export async function isVipAllRetakesEnabled(): Promise<boolean> {
   return flags.vipAllRetakes;
 }
 
+export async function isVipCheckoutEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.vipCheckout;
+}
+
 export async function setVipAllRetakesEnabled(
+  enabled: boolean,
+  updatedBy: string,
+): Promise<boolean> {
+  return setFeatureFlag("vipAllRetakes", enabled, updatedBy);
+}
+
+export async function setVipCheckoutEnabled(
+  enabled: boolean,
+  updatedBy: string,
+): Promise<boolean> {
+  return setFeatureFlag("vipCheckout", enabled, updatedBy);
+}
+
+async function setFeatureFlag(
+  key: "vipAllRetakes" | "vipCheckout",
   enabled: boolean,
   updatedBy: string,
 ): Promise<boolean> {
@@ -72,7 +106,7 @@ export async function setVipAllRetakesEnabled(
     { _id: DOC_ID },
     {
       $set: {
-        vipAllRetakes: enabled,
+        [key]: enabled,
         updatedAt: new Date(),
         updatedBy,
       },

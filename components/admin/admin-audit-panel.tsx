@@ -30,6 +30,23 @@ function auditDetailLabel(entry: AuditLogDoc): string {
         stringField(entry.oldValue, "roleCode");
       return code ?? "—";
     }
+    case "REVOKE_VIP_ACCESS": {
+      const scope = stringField(entry.oldValue, "scope");
+      if (scope === "entitlement") {
+        const key = stringField(entry.oldValue, "entitlementKey") ?? "entitlement";
+        const history = entry.newValue?.deletedHistoryRows;
+        return typeof history === "number"
+          ? `${key} · ${history} history`
+          : key;
+      }
+      const roles = entry.newValue?.deactivatedVipRoles;
+      const history = entry.newValue?.deletedHistoryRows;
+      const rolePart =
+        typeof roles === "number" ? `${roles} VIP role(s)` : "all VIP";
+      const historyPart =
+        typeof history === "number" ? `${history} history` : null;
+      return historyPart ? `${rolePart} · ${historyPart}` : rolePart;
+    }
     case "GRANT_BADGE": {
       const type = stringField(entry.newValue, "badgeType");
       if (!type) return "—";

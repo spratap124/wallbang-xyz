@@ -28,6 +28,11 @@ import type {
   VipShopServer,
 } from "@/types/vip";
 
+export type VipShopRenewTarget = {
+  accessType: VipAccessType;
+  serverId: string | null;
+};
+
 function serverLabel(server: VipShopServer): string {
   return server.shortName;
 }
@@ -43,8 +48,10 @@ type VipShopProps = {
   catalog: VipShopCatalog;
   loggedIn: boolean;
   purchasesEnabled: boolean;
+  checkoutEnabled?: boolean;
   allRetakesEnabled?: boolean;
   hideBuy?: boolean;
+  renewTarget?: VipShopRenewTarget | null;
 };
 
 const durationLabels: Record<VipPlanId, string> = {
@@ -122,8 +129,10 @@ export function VipShop({
   catalog,
   loggedIn,
   purchasesEnabled,
+  checkoutEnabled = false,
   allRetakesEnabled = false,
   hideBuy = false,
+  renewTarget = null,
 }: VipShopProps) {
   const [accessType, setAccessType] = useState<VipAccessType>(
     allRetakesEnabled ? catalog.quote.accessType : "INDIVIDUAL_SERVER",
@@ -140,6 +149,21 @@ export function VipShop({
       setAccessType("INDIVIDUAL_SERVER");
     }
   }, [accessType, allRetakesEnabled]);
+
+  useEffect(() => {
+    if (!renewTarget) return;
+    if (
+      renewTarget.accessType === "ALL_RETAKES" &&
+      allRetakesEnabled
+    ) {
+      setAccessType("ALL_RETAKES");
+      return;
+    }
+    if (renewTarget.serverId) {
+      setAccessType("INDIVIDUAL_SERVER");
+      setSelectedServerId(renewTarget.serverId);
+    }
+  }, [renewTarget, allRetakesEnabled]);
 
   useEffect(() => {
     if (accessType === "INDIVIDUAL_SERVER" && !selectedServerId) {
@@ -462,8 +486,17 @@ export function VipShop({
                   accessType === "INDIVIDUAL_SERVER" ? selectedServerId : null
                 }
                 loggedIn={loggedIn}
-                disabled
-                label="Checkout coming soon"
+                disabled={
+                  !checkoutEnabled || !checkoutReady || !duration
+                }
+                collectContact={checkoutEnabled}
+                label={
+                  checkoutEnabled
+                    ? loggedIn
+                      ? "Continue to Payment"
+                      : "Sign in to continue"
+                    : "Checkout coming soon"
+                }
               />
               <RazorpaySecuredBadge />
             </div>

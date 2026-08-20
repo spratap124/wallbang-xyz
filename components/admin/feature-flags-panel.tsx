@@ -11,7 +11,7 @@ type FeatureFlagsPanelProps = {
   initialFlags: FeatureFlags;
 };
 
-const writableFlags = new Set(["vipAllRetakes"]);
+const writableFlags = new Set(["vipAllRetakes", "vipCheckout"]);
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
@@ -22,15 +22,15 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function toggleVipAllRetakes() {
-    const next = !flags.vipAllRetakes;
+  function toggleFlag(key: "vipAllRetakes" | "vipCheckout") {
+    const next = !flags[key];
     setError(null);
 
     startTransition(async () => {
       const response = await fetch("/api/v1/admin/feature-flags", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vipAllRetakes: next }),
+        body: JSON.stringify({ [key]: next }),
       });
       const payload = await readJson<FeatureFlags>(response);
       if (!payload.ok) {
@@ -45,7 +45,8 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
     <section className="rounded-xl border border-border bg-card/40 p-5">
       <h2 className="text-sm font-semibold">Feature flags</h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Most flags are code/env only. VIP All Retakes can be toggled here.
+        Most flags are code/env only. VIP All Retakes and VIP Checkout can be
+        toggled here.
       </p>
       {error ? (
         <p className="mt-3 text-xs text-destructive">{error}</p>
@@ -66,7 +67,9 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
                   size="sm"
                   variant={value ? "default" : "outline"}
                   disabled={pending}
-                  onClick={toggleVipAllRetakes}
+                  onClick={() =>
+                    toggleFlag(key as "vipAllRetakes" | "vipCheckout")
+                  }
                   className={cn(
                     "h-7 min-w-14 px-3 text-xs",
                     value && "bg-emerald-600 hover:bg-emerald-600/90",

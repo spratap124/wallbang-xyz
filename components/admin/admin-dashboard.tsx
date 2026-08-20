@@ -28,6 +28,13 @@ type SearchUser = {
   createdAt: string;
 };
 
+type VipEntitlementAdminRow = {
+  key: string;
+  label: string;
+  purchaseCount: number;
+  expiresAt: string | null;
+};
+
 const GRANTABLE_ROLES: RoleCode[] = [
   "VIP",
   "FOUNDING_MEMBER",
@@ -68,22 +75,46 @@ export function AdminDashboard() {
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("never");
   const [customExpiry, setCustomExpiry] = useState("");
   const [badgeType, setBadgeType] = useState<BadgeType>("VIP");
+  const [vipEntitlements, setVipEntitlements] = useState<
+    VipEntitlementAdminRow[]
+  >([]);
 
-  const selectUser = useCallback((steamId: string) => {
-    setError(null);
-    setMessage(null);
+  const loadVipEntitlements = useCallback((userId: string) => {
     startTransition(async () => {
       const res = await fetch(
-        `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
+        `/api/v1/admin/vip-membership?userId=${encodeURIComponent(userId)}`,
       );
-      const payload = await readJson<ResolvedPermissions>(res);
+      const payload = await readJson<{
+        entitlements: VipEntitlementAdminRow[];
+      }>(res);
       if (!payload.ok) {
-        setError(payload.error);
+        setVipEntitlements([]);
         return;
       }
-      setSelected(payload.data);
+      setVipEntitlements(payload.data.entitlements);
     });
   }, []);
+
+  const selectUser = useCallback(
+    (steamId: string) => {
+      setError(null);
+      setMessage(null);
+      setVipEntitlements([]);
+      startTransition(async () => {
+        const res = await fetch(
+          `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
+        );
+        const payload = await readJson<ResolvedPermissions>(res);
+        if (!payload.ok) {
+          setError(payload.error);
+          return;
+        }
+        setSelected(payload.data);
+        loadVipEntitlements(payload.data.userId);
+      });
+    },
+    [loadVipEntitlements],
+  );
 
   useEffect(() => {
     if (initialSteamId) {
@@ -164,6 +195,78 @@ export function AdminDashboard() {
       }
       setSelected(payload.data);
       setMessage(`Revoked ${code}.`);
+    });
+  }
+
+  function revokeAllVip() {
+    if (!selected) return;
+    const ok = window.confirm(
+      `Revoke all VIP access for ${selected.personaName}?\n\nThis clears the VIP role and purchase history (membership cards). Payments are not refunded. Use for testing.`,
+    );
+    if (!ok) return;
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const res = await fetch("/api/v1/admin/revoke-vip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUserId: selected.userId,
+        }),
+      });
+      const payload = await readJson<{
+        scope: "all";
+        permissions: ResolvedPermissions;
+        deactivatedVipRoles: number;
+        deletedHistoryRows: number;
+      }>(res);
+      if (!payload.ok) {
+        setError(payload.error);
+        return;
+      }
+      setSelected(payload.data.permissions);
+      setVipEntitlements([]);
+      setMessage(
+        `Revoked all VIP · ${payload.data.deactivatedVipRoles} role(s), ${payload.data.deletedHistoryRows} history row(s) cleared.`,
+      );
+    });
+  }
+
+  function revokeVipEntitlement(row: VipEntitlementAdminRow) {
+    if (!selected) return;
+    const ok = window.confirm(
+      `Revoke ${row.label} for ${selected.personaName}?\n\nRemoves ${row.purchaseCount} purchase history row(s) for this entitlement only. Payments are not refunded.`,
+    );
+    if (!ok) return;
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const res = await fetch("/api/v1/admin/revoke-vip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUserId: selected.userId,
+          entitlementKey: row.key,
+        }),
+      });
+      const payload = await readJson<{
+        scope: "entitlement";
+        permissions: ResolvedPermissions;
+        entitlementKey: string;
+        deletedHistoryRows: number;
+        vipDeactivated: boolean;
+      }>(res);
+      if (!payload.ok) {
+        setError(payload.error);
+        return;
+      }
+      setSelected(payload.data.permissions);
+      loadVipEntitlements(selected.userId);
+      setMessage(
+        `Revoked ${row.label} · ${payload.data.deletedHistoryRows} history row(s)${
+          payload.data.vipDeactivated ? " · VIP role cleared" : ""
+        }.`,
+      );
     });
   }
 
@@ -359,6 +462,58 @@ export function AdminDashboard() {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-3 space-y-3 rounded-md border border-border/80 bg-muted/20 px-3 py-3">
+                  <div>
+                    <h4 className="text-sm font-medium">VIP entitlements</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Revoke one server/bundle or clear everything. Does not
+                      refund payments.
+                    </p>
+                  </div>
+                  {vipEntitlements.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No purchase history entitlements.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {vipEntitlements.map((row) => (
+                        <li
+                          key={row.key}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border bg-background/40 px-3 py-2 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{row.label}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {row.purchaseCount} purchase
+                              {row.purchaseCount === 1 ? "" : "s"}
+                              {row.expiresAt
+                                ? ` · expires ${formatDate(row.expiresAt)}`
+                                : ""}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={pending}
+                            onClick={() => revokeVipEntitlement(row)}
+                          >
+                            Revoke
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={pending}
+                    onClick={revokeAllVip}
+                  >
+                    Revoke all VIP access
+                  </Button>
+                </div>
               </div>
 
               <div>
