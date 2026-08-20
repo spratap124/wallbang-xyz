@@ -333,6 +333,15 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   await col.insertOne(assignment);
   invalidatePermissionCache(user.steamId);
 
+  if (input.roleCode === "VIP" && input.source !== "PURCHASE") {
+    await syncComplimentaryVipEntitlement({
+      userId: user._id,
+      steamId: user.steamId,
+      expiresAt,
+      assignmentId: assignment._id,
+    });
+  }
+
   await writeAudit({
     adminId: input.grantedBy?.id ?? null,
     adminSteamId: input.grantedBy?.steamId ?? null,
@@ -1214,14 +1223,37 @@ async function scopePermissionsForGameServer(
   const { hasActiveVipEntitlementForServer } = await import(
     "@/lib/payments/entitlements-logic"
   );
-  const history = await vipHistoryCollection().then((col) =>
-    col.find({ userId: resolved.userId }).toArray(),
-  );
+  const loadHistory = () =>
+    vipHistoryCollection().then((col) =>
+      col.find({ userId: resolved.userId }).toArray(),
+    );
 
-  const entitled = hasActiveVipEntitlementForServer({
+  let history = await loadHistory();
+  let entitled = hasActiveVipEntitlementForServer({
     history,
     serverId: trimmed,
   });
+
+  if (!entitled) {
+    const vipAssignment = resolved.activeAssignments.find(
+      (assignment) =>
+        assignment.roleCode === "VIP" && assignment.source !== "PURCHASE",
+    );
+    if (vipAssignment) {
+      await syncComplimentaryVipEntitlement({
+        userId: resolved.userId,
+        steamId: resolved.steamId,
+        expiresAt: vipAssignment.expiresAt,
+        assignmentId: vipAssignment.id,
+      });
+      history = await loadHistory();
+      entitled = hasActiveVipEntitlementForServer({
+        history,
+        serverId: trimmed,
+      });
+    }
+  }
+
   if (entitled) return resolved;
 
   const roles = resolved.roles.filter((role) => role !== "VIP");
@@ -1369,6 +1401,31 @@ export async function getLaunchGiveawayStatus(): Promise<{
   };
 }
 
+/**
+ * Giveaway / admin VIP must write `vip_history` or in-game `?serverId=`
+ * scoping treats the player as unentitled. Purchases already insert history.
+ */
+async function syncComplimentaryVipEntitlement(input: {
+  userId: string;
+  steamId: string;
+  expiresAt: Date | null;
+  assignmentId: string;
+}): Promise<void> {
+  try {
+    const { ensureComplimentaryVipEntitlement } = await import(
+      "@/lib/payments/entitlements"
+    );
+    await ensureComplimentaryVipEntitlement({
+      userId: input.userId,
+      steamId: input.steamId,
+      expiresAt: input.expiresAt,
+      paymentId: `complimentary:${input.assignmentId}`,
+    });
+  } catch (err) {
+    console.error("[vip] complimentary vip_history sync failed", err);
+  }
+}
+
 function toLegacyGiveawayResult(result: LaunchGiveawayResult): GiveawayEntryResult {
   return {
     steamId: result.steamId,
@@ -1443,6 +1500,19 @@ export async function processLaunchGiveaway(input: {
             $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
           })
         : [];
+
+    if (existingVip.roleCode === "VIP" && existingVip.source !== "PURCHASE") {
+      await syncComplimentaryVipEntitlement({
+        userId: user._id,
+        steamId: user.steamId,
+        expiresAt:
+          existingVip.expiresAt ??
+          (existingVip.source === "GIVEAWAY"
+            ? giveawayVipExpiresAt(existingVip.grantedAt)
+            : null),
+        assignmentId: existingVip._id,
+      });
+    }
 
     return {
       steamId: user.steamId,
@@ -1520,6 +1590,12 @@ export async function processLaunchGiveaway(input: {
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
   });
   if (raced) {
+    await syncComplimentaryVipEntitlement({
+      userId: user._id,
+      steamId: user.steamId,
+      expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
+      assignmentId: raced._id,
+    });
     return {
       steamId: user.steamId,
       personaName: user.personaName,

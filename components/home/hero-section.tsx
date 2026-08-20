@@ -4,7 +4,7 @@ import { MapPin, ShieldCheck, Sparkles, Sword } from "lucide-react";
 import { HeroConnectActions } from "@/components/home/hero-connect-actions";
 import { HeroFleetStats } from "@/components/home/hero-fleet-stats";
 import { LiveServerCard } from "@/components/home/live-server-card";
-import { BrandMark } from "@/components/shared/primitives";
+import { BrandLogo, BrandMark } from "@/components/shared/primitives";
 import { getMapImage } from "@/config/servers";
 import { getFeaturedRegisteredServer } from "@/lib/servers/registry";
 
@@ -52,9 +52,14 @@ export async function HeroSection() {
             CS2 · India first · Live now
           </p>
 
+          <BrandLogo
+            alt=""
+            className="animate-rise mb-5 size-16 sm:size-20 [animation-delay:80ms]"
+            priority
+          />
           <BrandMark
             as="h1"
-            className="animate-rise text-5xl [animation-delay:80ms] sm:text-6xl lg:text-7xl"
+            className="animate-rise text-5xl [animation-delay:110ms] sm:text-6xl lg:text-7xl"
           />
           <p className="animate-rise mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl [animation-delay:140ms]">
             India&apos;s Next-Generation Counter-Strike 2 Community Servers

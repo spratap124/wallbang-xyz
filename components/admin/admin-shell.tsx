@@ -18,6 +18,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SteamAuthControls } from "@/components/auth/steam-auth-controls";
+import { BrandLogo } from "@/components/shared/primitives";
 import { mainNav } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
@@ -207,9 +208,7 @@ export function AdminShell({
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
         <div className="flex items-center gap-2.5 px-5 py-5">
-          <span className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            W
-          </span>
+          <BrandLogo alt="" className="size-8" />
           <Link href="/admin" className="text-base font-semibold tracking-tight">
             WallBang
           </Link>
@@ -230,9 +229,7 @@ export function AdminShell({
           <aside className="relative flex h-full w-64 flex-col bg-sidebar shadow-xl">
             <div className="flex items-center justify-between px-4 py-4">
               <div className="flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-                  W
-                </span>
+                <BrandLogo alt="" className="size-8" />
                 <span className="text-base font-semibold">WallBang</span>
               </div>
               <Button

@@ -4,8 +4,10 @@ import { describe, it } from "node:test";
 import {
   buildEntitlementsFromHistory,
   computeEntitlementExpiry,
+  durationDaysToCoverUntil,
   furthestEntitlementExpiry,
   hasActiveVipEntitlementForServer,
+  pickComplimentaryVipPlan,
 } from "@/lib/payments/entitlements-logic";
 import { computeVipExtension } from "@/lib/payments/expiry";
 import type { VipHistoryDoc } from "@/types/payments";
@@ -227,5 +229,39 @@ describe("buildEntitlementsFromHistory", () => {
     assert.ok(two && two.kind === "individual");
     assert.equal(one.expiresAt, "2026-11-18T10:01:32.179Z");
     assert.equal(two.expiresAt, "2027-02-16T10:01:32.179Z");
+  });
+});
+
+describe("complimentary VIP coverage days", () => {
+  it("uses remaining days when there is no prior entitlement", () => {
+    const now = new Date("2026-08-20T10:00:00.000Z");
+    const coversUntil = new Date("2026-11-18T10:00:00.000Z");
+    assert.equal(
+      durationDaysToCoverUntil({ currentExpiry: null, coversUntil, now }),
+      90,
+    );
+    assert.equal(pickComplimentaryVipPlan(90), "3_months");
+  });
+
+  it("skips when individual entitlement already covers the VIP expiry", () => {
+    const now = new Date("2026-08-20T10:00:00.000Z");
+    assert.equal(
+      durationDaysToCoverUntil({
+        currentExpiry: new Date("2026-11-18T10:00:00.000Z"),
+        coversUntil: new Date("2026-11-18T10:00:00.000Z"),
+        now,
+      }),
+      null,
+    );
+  });
+
+  it("only adds the gap when extending a shorter entitlement", () => {
+    const now = new Date("2026-08-20T10:00:00.000Z");
+    const currentExpiry = new Date("2026-09-19T10:00:00.000Z");
+    const coversUntil = new Date("2026-11-18T10:00:00.000Z");
+    assert.equal(
+      durationDaysToCoverUntil({ currentExpiry, coversUntil, now }),
+      60,
+    );
   });
 });

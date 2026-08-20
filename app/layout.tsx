@@ -18,7 +18,19 @@ export const metadata: Metadata = {
   applicationName: siteConfig.name,
   category: "game",
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/favicon.ico?v=2", sizes: "16x16 32x32" },
+      { url: "/favicon-32x32.png?v=2", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16x16.png?v=2", type: "image/png", sizes: "16x16" },
+    ],
+    apple: [
+      {
+        url: "/apple-touch-icon.png?v=2",
+        type: "image/png",
+        sizes: "180x180",
+      },
+    ],
+    shortcut: "/favicon-32x32.png?v=2",
   },
   verification: {
     google: "Wnvozkpb8bWT8G486m8Kxi9GcTETfnMypygBeTyZxpo",

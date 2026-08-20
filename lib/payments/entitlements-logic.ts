@@ -2,9 +2,16 @@ import type { VipHistoryDoc } from "@/types/payments";
 import type {
   VipEntitlement,
   VipMembershipSummary,
+  VipPlanId,
   VipServerRef,
 } from "@/types/vip";
 import { durationDaysToMs } from "@/lib/payments/expiry";
+
+/** Complimentary VIP (giveaway / admin grant) — same server as the global-VIP backfill. */
+export const COMPLIMENTARY_VIP_SERVER_ID = "retake-1-mumbai";
+
+/** Approximate lifetime when a VIP role has no expiry (`expiresAt: null`). */
+export const COMPLIMENTARY_LIFETIME_DURATION_DAYS = 365 * 100;
 
 export type VipMembershipServer = {
   id: string;
@@ -164,6 +171,38 @@ export function hasActiveVipEntitlementForServer(input: {
   );
   const serverExpiry = computeEntitlementExpiry(serverRecords);
   return Boolean(serverExpiry && serverExpiry.getTime() > now.getTime());
+}
+
+export function pickComplimentaryVipPlan(durationDays: number): VipPlanId {
+  if (durationDays >= 365) return "1_year";
+  if (durationDays >= 180) return "6_months";
+  if (durationDays >= 90) return "3_months";
+  return "1_month";
+}
+
+/**
+ * Days to insert so stacked individual-server expiry reaches `coversUntil`.
+ * `null` means already covered, or the target is not in the future.
+ */
+export function durationDaysToCoverUntil(input: {
+  currentExpiry: Date | null;
+  coversUntil: Date;
+  now?: Date;
+}): number | null {
+  const now = input.now ?? new Date();
+  const target = input.coversUntil;
+  if (target.getTime() <= now.getTime()) return null;
+  if (input.currentExpiry && input.currentExpiry.getTime() >= target.getTime()) {
+    return null;
+  }
+  const base =
+    input.currentExpiry && input.currentExpiry.getTime() > now.getTime()
+      ? input.currentExpiry
+      : now;
+  return Math.max(
+    1,
+    Math.ceil((target.getTime() - base.getTime()) / durationDaysToMs(1)),
+  );
 }
 
 function serverName(
