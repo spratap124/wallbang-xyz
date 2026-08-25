@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { featureFlags } from "@/config/features.flags";
 import { isSteamAuthConfigured } from "@/lib/auth/config";
 import { getSession } from "@/lib/auth/session";
+import { isVipPageEnabled } from "@/lib/platform/feature-flags";
 import { hasPermission } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 
@@ -24,7 +25,10 @@ export default async function MarketingLayout({
 }>) {
   await connection();
   const steamAuthEnabled = featureFlags.steamAuth && isSteamAuthConfigured();
-  const user = steamAuthEnabled ? await getSession() : null;
+  const [user, showVip] = await Promise.all([
+    steamAuthEnabled ? getSession() : Promise.resolve(null),
+    isVipPageEnabled(),
+  ]);
 
   let showAdmin = false;
   if (
@@ -48,12 +52,13 @@ export default async function MarketingLayout({
         user={user}
         steamAuthEnabled={steamAuthEnabled}
         showAdmin={showAdmin}
+        showVip={showVip}
       />
       <Suspense fallback={null}>
         <AuthErrorBanner />
       </Suspense>
       <main id="main-content">{children}</main>
-      <SiteFooter />
+      <SiteFooter showVip={showVip} />
     </>
   );
 }

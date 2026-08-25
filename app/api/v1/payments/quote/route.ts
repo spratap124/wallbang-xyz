@@ -2,7 +2,10 @@ import { z } from "zod";
 
 import { buildVipShopQuote } from "@/config/vip-plans";
 import { jsonError, jsonOk } from "@/lib/permissions/authz";
-import { isVipAllRetakesEnabled } from "@/lib/platform/feature-flags";
+import {
+  isVipAllRetakesEnabled,
+  isVipPageEnabled,
+} from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import type { VipShopQuote } from "@/types/vip";
 
@@ -41,6 +44,10 @@ const bodySchema = z
   });
 
 export async function POST(request: Request): Promise<Response> {
+  if (!(await isVipPageEnabled())) {
+    return jsonError("VIP is not available yet.", 503);
+  }
+
   let json: unknown;
   try {
     json = await request.json();

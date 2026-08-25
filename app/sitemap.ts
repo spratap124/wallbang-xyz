@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/config/site";
 import { getAllPosts } from "@/lib/content/blog";
+import { isVipPageEnabled } from "@/lib/platform/feature-flags";
 
 const staticRoutes = [
   "/",
@@ -19,15 +20,18 @@ const staticRoutes = [
   "/refund",
 ] as const;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
+  const vipPageEnabled = await isVipPageEnabled();
 
-  const pages = staticRoutes.map((path) => ({
-    url: `${siteConfig.url}${path === "/" ? "" : path}`,
-    lastModified,
-    changeFrequency: path === "/" ? ("weekly" as const) : ("monthly" as const),
-    priority: path === "/" ? 1 : 0.7,
-  }));
+  const pages = staticRoutes
+    .filter((path) => vipPageEnabled || path !== "/vip")
+    .map((path) => ({
+      url: `${siteConfig.url}${path === "/" ? "" : path}`,
+      lastModified,
+      changeFrequency: path === "/" ? ("weekly" as const) : ("monthly" as const),
+      priority: path === "/" ? 1 : 0.7,
+    }));
 
   const posts = getAllPosts().map((post) => ({
     url: `${siteConfig.url}/blog/${post.slug}`,

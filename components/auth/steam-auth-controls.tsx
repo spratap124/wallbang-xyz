@@ -19,6 +19,7 @@ type SteamAuthControlsProps = {
   user: AuthUser | null;
   enabled: boolean;
   showAdmin?: boolean;
+  showVip?: boolean;
 };
 
 function SteamMark({ className }: { className?: string }) {
@@ -74,6 +75,7 @@ export function SteamAuthControls({
   user,
   enabled,
   showAdmin = false,
+  showVip = false,
 }: SteamAuthControlsProps) {
   if (!enabled) return null;
 
@@ -121,7 +123,7 @@ export function SteamAuthControls({
                 Settings
               </DropdownMenuItem>
             ) : null}
-            {featureFlags.vipPurchase ? (
+            {showVip ? (
               <DropdownMenuItem render={<Link href="/vip" />}>
                 <Crown />
                 VIP
@@ -162,6 +164,7 @@ export function SteamAuthControlsMobile({
   user,
   enabled,
   showAdmin = false,
+  showVip = false,
 }: SteamAuthControlsProps) {
   if (!enabled) return null;
 
@@ -200,7 +203,7 @@ export function SteamAuthControlsMobile({
             Settings
           </Link>
         ) : null}
-        {featureFlags.vipPurchase ? (
+        {showVip ? (
           <Link
             href="/vip"
             className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"

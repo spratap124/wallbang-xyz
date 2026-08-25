@@ -1,10 +1,16 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/shared/primitives";
-import { footerNav } from "@/config/navigation";
+import { filterFooterNav, footerNav } from "@/config/navigation";
 import { siteConfig } from "@/config/site";
 
-export function SiteFooter() {
+type SiteFooterProps = {
+  showVip?: boolean;
+};
+
+export function SiteFooter({ showVip = false }: SiteFooterProps) {
+  const nav = filterFooterNav(footerNav, { vipPage: showVip });
+
   return (
     <footer className="border-t border-border bg-card/40">
       <div className="container-wb grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
@@ -15,7 +21,7 @@ export function SiteFooter() {
           </p>
         </div>
 
-        {footerNav.map((group) => (
+        {nav.map((group) => (
           <div key={group.title}>
             <p className="text-sm font-medium text-foreground">{group.title}</p>
             <ul className="mt-4 space-y-2">

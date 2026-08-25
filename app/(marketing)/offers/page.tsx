@@ -28,6 +28,7 @@ import {
   processLaunchGiveaway,
 } from "@/lib/permissions/service";
 import { announceLaunchGiveawayGrant } from "@/lib/discord/giveaway-announce";
+import { isVipPageEnabled } from "@/lib/platform/feature-flags";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
@@ -166,6 +167,7 @@ export default async function LaunchOfferPage({
   const discordReady = isDiscordLinkConfigured();
   const requireDiscord = isLaunchGiveawayDiscordRequired();
   const totalSteps = requireDiscord ? 2 : 1;
+  const showVip = await isVipPageEnabled();
 
   let giveawayStatus: {
     maxWinners: number;
@@ -327,20 +329,24 @@ export default async function LaunchOfferPage({
                   <strong>{session.personaName}</strong>
                 </>
               ) : null}
-              . You can buy prepaid VIP anytime, or join Discord for community updates.
+              .{showVip
+                ? " You can buy prepaid VIP anytime, or join Discord for community updates."
+                : " Join Discord for community updates."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a
-                href="/vip"
-                className={cn(buttonVariants())}
-              >
-                Buy prepaid VIP
-              </a>
+              {showVip ? (
+                <a
+                  href="/vip"
+                  className={cn(buttonVariants())}
+                >
+                  Buy prepaid VIP
+                </a>
+              ) : null}
               <a
                 href={siteConfig.discordUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: "outline" }))}
+                className={cn(buttonVariants({ variant: showVip ? "outline" : "default" }))}
               >
                 <MessageCircle />
                 Join Discord
