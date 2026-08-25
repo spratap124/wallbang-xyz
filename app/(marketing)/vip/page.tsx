@@ -9,6 +9,7 @@ import {
   Timer,
 } from "lucide-react";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 
 import { VipHero } from "@/components/vip/vip-hero";
 import { VipPageBody } from "@/components/vip/vip-page-body";
@@ -22,7 +23,11 @@ import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
-import { isVipAllRetakesEnabled, isVipCheckoutEnabled } from "@/lib/platform/feature-flags";
+import {
+  isVipAllRetakesEnabled,
+  isVipCheckoutEnabled,
+  isVipPageEnabled,
+} from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
@@ -71,6 +76,10 @@ function SteamMark({ className }: { className?: string }) {
 }
 
 export default async function VipPage({ searchParams }: VipPageProps) {
+  if (!(await isVipPageEnabled())) {
+    redirect("/");
+  }
+
   const params = await searchParams;
   const paid = params.paid === "1";
   const session = await getSession();

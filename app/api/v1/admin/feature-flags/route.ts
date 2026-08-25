@@ -4,18 +4,22 @@ import {
   getRuntimeFeatureFlags,
   setVipAllRetakesEnabled,
   setVipCheckoutEnabled,
+  setVipPageEnabled,
 } from "@/lib/platform/feature-flags";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 
 const patchSchema = z
   .object({
+    vipPage: z.boolean().optional(),
     vipAllRetakes: z.boolean().optional(),
     vipCheckout: z.boolean().optional(),
   })
   .refine(
     (value) =>
-      value.vipAllRetakes !== undefined || value.vipCheckout !== undefined,
+      value.vipPage !== undefined ||
+      value.vipAllRetakes !== undefined ||
+      value.vipCheckout !== undefined,
     { message: "Provide at least one feature flag to update." },
   );
 
@@ -51,6 +55,9 @@ export async function PATCH(request: Request): Promise<Response> {
   }
 
   try {
+    if (parsed.data.vipPage !== undefined) {
+      await setVipPageEnabled(parsed.data.vipPage, auth.user.steamId);
+    }
     if (parsed.data.vipAllRetakes !== undefined) {
       await setVipAllRetakesEnabled(
         parsed.data.vipAllRetakes,

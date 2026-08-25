@@ -17,7 +17,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { mainNav } from "@/config/navigation";
+import { filterNavItems, mainNav } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
 
@@ -25,14 +25,17 @@ type SiteHeaderProps = {
   user: AuthUser | null;
   steamAuthEnabled: boolean;
   showAdmin?: boolean;
+  showVip?: boolean;
 };
 
 export function SiteHeader({
   user,
   steamAuthEnabled,
   showAdmin = false,
+  showVip = false,
 }: SiteHeaderProps) {
   const pathname = usePathname();
+  const nav = filterNavItems(mainNav, { vipPage: showVip });
 
   return (
     <header className="sticky top-0 z-50 overflow-visible border-b border-border/80 bg-background/80 backdrop-blur-md">
@@ -40,7 +43,7 @@ export function SiteHeader({
         <Logo priority />
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
-          {mainNav.map((item) => {
+          {nav.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -63,6 +66,7 @@ export function SiteHeader({
             user={user}
             enabled={steamAuthEnabled}
             showAdmin={showAdmin}
+            showVip={showVip}
           />
 
           <Sheet>
@@ -85,7 +89,7 @@ export function SiteHeader({
                 </SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-1" aria-label="Mobile">
-                {mainNav.map((item) => (
+                {nav.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -98,6 +102,7 @@ export function SiteHeader({
                   user={user}
                   enabled={steamAuthEnabled}
                   showAdmin={showAdmin}
+                  showVip={showVip}
                 />
               </nav>
             </SheetContent>

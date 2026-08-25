@@ -2,8 +2,11 @@ import "server-only";
 
 import type { Collection } from "mongodb";
 
-import { featureFlags as staticFeatureFlags } from "@/config/features.flags";
-import type { FeatureFlags } from "@/config/features.flags";
+import {
+  featureFlags as staticFeatureFlags,
+  type FeatureFlags,
+  type WritableFeatureFlag,
+} from "@/config/features.flags";
 import { getDb, isMongoConfigured } from "@/lib/mongo";
 
 const COLLECTION = "platform_settings";
@@ -11,6 +14,7 @@ const DOC_ID = "feature_flags";
 
 type FeatureFlagDoc = {
   _id: string;
+  vipPage?: boolean;
   vipAllRetakes?: boolean;
   vipCheckout?: boolean;
   updatedAt?: Date;
@@ -55,6 +59,11 @@ export async function getRuntimeFeatureFlags(): Promise<FeatureFlags> {
   const overrides = await readOverrides();
   return {
     ...staticFeatureFlags,
+    vipPage: resolveFlag(
+      "FEATURE_VIP_PAGE",
+      overrides?.vipPage,
+      staticFeatureFlags.vipPage,
+    ),
     vipAllRetakes: resolveFlag(
       "FEATURE_VIP_ALL_RETAKES",
       overrides?.vipAllRetakes,
@@ -68,6 +77,11 @@ export async function getRuntimeFeatureFlags(): Promise<FeatureFlags> {
   };
 }
 
+export async function isVipPageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.vipPage;
+}
+
 export async function isVipAllRetakesEnabled(): Promise<boolean> {
   const flags = await getRuntimeFeatureFlags();
   return flags.vipAllRetakes;
@@ -76,6 +90,13 @@ export async function isVipAllRetakesEnabled(): Promise<boolean> {
 export async function isVipCheckoutEnabled(): Promise<boolean> {
   const flags = await getRuntimeFeatureFlags();
   return flags.vipCheckout;
+}
+
+export async function setVipPageEnabled(
+  enabled: boolean,
+  updatedBy: string,
+): Promise<boolean> {
+  return setFeatureFlag("vipPage", enabled, updatedBy);
 }
 
 export async function setVipAllRetakesEnabled(
@@ -93,7 +114,7 @@ export async function setVipCheckoutEnabled(
 }
 
 async function setFeatureFlag(
-  key: "vipAllRetakes" | "vipCheckout",
+  key: WritableFeatureFlag,
   enabled: boolean,
   updatedBy: string,
 ): Promise<boolean> {

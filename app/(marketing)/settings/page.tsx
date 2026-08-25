@@ -15,6 +15,7 @@ import {
 import { featureFlags } from "@/config/features.flags";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
+import { isVipPageEnabled } from "@/lib/platform/feature-flags";
 import { ensurePlayerDomain, getMyProfile } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
 
@@ -44,6 +45,8 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
+  const showVip = await isVipPageEnabled();
+
   return (
     <div className="py-10 sm:py-14">
       <Container>
@@ -70,33 +73,35 @@ export default async function SettingsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>VIP</CardTitle>
-                <CardDescription>
-                  Prepaid VIP status and renewals. No automatic charges.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {profile.isVip ? "VIP is active on this account" : "VIP is optional"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Buy or renew 3-month, 6-month, or 1-year access.
-                    </p>
+            {showVip ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>VIP</CardTitle>
+                  <CardDescription>
+                    Prepaid VIP status and renewals. No automatic charges.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {profile.isVip ? "VIP is active on this account" : "VIP is optional"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Buy or renew 3-month, 6-month, or 1-year access.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<Link href="/vip" />}
+                    >
+                      Manage VIP
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    render={<Link href="/vip" />}
-                  >
-                    Manage VIP
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ) : null}
 
             <Card>
               <CardHeader>

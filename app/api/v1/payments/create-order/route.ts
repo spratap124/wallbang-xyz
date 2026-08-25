@@ -8,6 +8,7 @@ import { createVipOrder } from "@/lib/payments/service";
 import {
   isVipAllRetakesEnabled,
   isVipCheckoutEnabled,
+  isVipPageEnabled,
 } from "@/lib/platform/feature-flags";
 
 const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES"]);
@@ -59,7 +60,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!isRazorpayConfigured()) {
     return jsonError("VIP purchases are not available yet.", 503);
   }
-  if (!(await isVipCheckoutEnabled())) {
+  if (!(await isVipPageEnabled()) || !(await isVipCheckoutEnabled())) {
     return jsonError("VIP checkout is not available yet.", 503);
   }
 

@@ -19,7 +19,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SteamAuthControls } from "@/components/auth/steam-auth-controls";
 import { BrandLogo } from "@/components/shared/primitives";
-import { mainNav } from "@/config/navigation";
+import { filterNavItems, mainNav } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
 import type { PermissionCode, RoleCode } from "@/types/permissions";
@@ -119,6 +119,7 @@ type AdminShellProps = {
   healthLabel?: string;
   healthOk?: boolean;
   steamAuthEnabled?: boolean;
+  showVip?: boolean;
 };
 
 export function AdminShell({
@@ -129,11 +130,13 @@ export function AdminShell({
   healthLabel = "Checking systems…",
   healthOk = true,
   steamAuthEnabled = true,
+  showVip = false,
 }: AdminShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const meta = pageMeta(pathname);
   const canManageServers = permissions.includes("manage_servers");
+  const siteNav = filterNavItems(mainNav, { vipPage: showVip });
 
   const visibleNav = NAV.filter(
     (item) => !item.permission || permissions.includes(item.permission),
@@ -253,7 +256,7 @@ export function AdminShell({
               >
                 Home
               </Link>
-              {mainNav.map((item) => (
+              {siteNav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -299,7 +302,7 @@ export function AdminShell({
             >
               Home
             </Link>
-            {mainNav.map((item) => (
+            {siteNav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -343,6 +346,7 @@ export function AdminShell({
               user={user}
               enabled={steamAuthEnabled}
               showAdmin
+              showVip={showVip}
             />
           </div>
         </header>
