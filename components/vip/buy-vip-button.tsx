@@ -48,10 +48,10 @@ function loadRazorpayScript(): Promise<RazorpayConstructor> {
     if (existing) {
       existing.addEventListener("load", () => {
         if (window.Razorpay) resolve(window.Razorpay);
-        else reject(new Error("Razorpay failed to load."));
+        else reject(new Error("Payment checkout failed to load."));
       });
       existing.addEventListener("error", () =>
-        reject(new Error("Razorpay failed to load.")),
+        reject(new Error("Payment checkout failed to load.")),
       );
       return;
     }
@@ -62,9 +62,9 @@ function loadRazorpayScript(): Promise<RazorpayConstructor> {
     script.dataset.razorpayCheckout = "true";
     script.onload = () => {
       if (window.Razorpay) resolve(window.Razorpay);
-      else reject(new Error("Razorpay failed to load."));
+      else reject(new Error("Payment checkout failed to load."));
     };
-    script.onerror = () => reject(new Error("Razorpay failed to load."));
+    script.onerror = () => reject(new Error("Payment checkout failed to load."));
     document.body.appendChild(script);
   });
 }

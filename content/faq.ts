@@ -23,7 +23,7 @@ export const faqs: FaqItem[] = [
     id: "become-vip",
     question: "How do I become VIP?",
     answer:
-      "Buy prepaid VIP on the VIP page. Select servers, then 1 / 3 / 6 months or 1 year — paid once through Razorpay with no auto-renewal. During the launch offer, a limited number of players can also claim free VIP after signing in with Steam. A paid term extends your current expiry if VIP is still active.",
+      "Buy prepaid VIP on the VIP page. Select servers, then 1 / 3 / 6 months or 1 year — paid once at checkout with no auto-renewal. During the launch offer, a limited number of players can also claim free VIP after signing in with Steam. A paid term extends your current expiry if VIP is still active.",
   },
   {
     id: "regions",

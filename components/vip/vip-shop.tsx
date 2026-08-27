@@ -5,7 +5,6 @@ import { Check, ChevronDown, Info, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { BuyVipButton } from "@/components/vip/buy-vip-button";
-import { RazorpayLogo, RazorpaySecuredBadge } from "@/components/vip/razorpay-brand";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -498,19 +497,12 @@ export function VipShop({
                     : "Checkout coming soon"
                 }
               />
-              <RazorpaySecuredBadge />
             </div>
           ) : (
             <div className="rounded-lg border border-border bg-secondary/50 px-4 py-3 text-center">
               <p className="text-sm font-semibold text-foreground">
                 Checkout <span className="text-primary">— Coming Soon</span>
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Secure payments powered by
-              </p>
-              <div className="mt-2 flex items-center justify-center">
-                <RazorpayLogo className="h-6 w-auto" />
-              </div>
             </div>
           )}
         </div>
