@@ -7,7 +7,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Refund Policy",
   description:
-    "WallBang prepaid VIP refund policy: 7-day requests, Razorpay payouts, and how chargebacks affect VIP access.",
+    "WallBang prepaid VIP refund policy: 7-day requests, payment processor payouts, and how chargebacks affect VIP access.",
   path: "/refund",
 });
 

@@ -18,7 +18,7 @@ Cheating, abuse of exploits, harassment, hate speech, and disruptive behavior ar
 
 ## VIP and purchases
 
-VIP is optional prepaid access sold in fixed terms (1 month, 3 months, 6 months, or 1 year). There is no automatic renewal. Purchases do not grant competitive advantage (no pay-to-win). Payments are processed by Razorpay; WallBang does not store card numbers, CVV, or UPI PINs.
+VIP is optional prepaid access sold in fixed terms (1 month, 3 months, 6 months, or 1 year). There is no automatic renewal. Purchases do not grant competitive advantage (no pay-to-win). Payments are processed by a third-party payment provider; WallBang does not store card numbers, CVV, or UPI PINs.
 
 Refunds follow the [Refund Policy](https://wallbang.xyz/refund).
 

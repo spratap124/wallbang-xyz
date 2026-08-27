@@ -2,7 +2,7 @@
 
 **Last updated:** August 19, 2026
 
-WallBang (“we”, “us”) sells prepaid VIP access on wallbang.xyz. Payments are processed by Razorpay. This policy applies to those purchases.
+WallBang (“we”, “us”) sells prepaid VIP access on wallbang.xyz. Payments are processed by our payment provider. This policy applies to those purchases.
 
 ## What you are buying
 
@@ -10,7 +10,7 @@ VIP is a prepaid digital membership for a fixed term (1 month, 3 months, 6 month
 
 ## When we grant access
 
-VIP is activated after Razorpay confirms a successful captured payment. If you already have active VIP, the new term is added to your existing expiry date.
+VIP is activated after our payment provider confirms a successful captured payment. If you already have active VIP, the new term is added to your existing expiry date.
 
 ## Refund eligibility
 
@@ -26,7 +26,7 @@ We may refuse or prorate refunds when:
 - VIP was activated and used (reserved slot, cosmetics, chat tag, or other member perks).
 - The request is after 7 days, except where required by applicable law.
 
-Approved refunds are issued to the original payment method via Razorpay. Bank or UPI timelines are controlled by Razorpay and your bank, not WallBang.
+Approved refunds are issued to the original payment method through our payment processor. Bank or UPI timelines are controlled by the processor and your bank, not WallBang.
 
 ## Cancellations
 

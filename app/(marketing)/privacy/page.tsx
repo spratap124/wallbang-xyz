@@ -7,7 +7,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Privacy Policy",
   description:
-    "WallBang privacy policy covering Steam login, VIP payments via Razorpay, Discord, and waitlist data on wallbang.xyz.",
+    "WallBang privacy policy covering Steam login, VIP payments, Discord, and waitlist data on wallbang.xyz.",
   path: "/privacy",
 });
 

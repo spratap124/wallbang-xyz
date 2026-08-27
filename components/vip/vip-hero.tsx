@@ -12,7 +12,7 @@ const trustItems = [
   {
     icon: Lock,
     title: "Secure & Reliable",
-    body: "Safe payments via Razorpay.",
+    body: "Safe, encrypted checkout.",
   },
   {
     icon: Zap,

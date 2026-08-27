@@ -10,7 +10,7 @@ When you sign in with Steam, we store your SteamID, persona name, avatar, and pr
 
 If you link Discord, we store your Discord user id and username to verify community membership.
 
-If you buy VIP, we store order and payment identifiers from Razorpay (order id, payment id, amount, plan, status). We do not receive or store card numbers, CVV, or UPI PINs — Razorpay collects payment credentials on their checkout.
+If you buy VIP, we store order and payment identifiers from our payment processor (order id, payment id, amount, plan, status). We do not receive or store card numbers, CVV, or UPI PINs — payment credentials are collected on the processor's secure checkout.
 
 When you join the waitlist, we may collect your name and email address.
 
@@ -31,7 +31,7 @@ Steam account records, VIP payment history, and related logs are retained while 
 We use infrastructure and payment providers that process data on our behalf:
 
 - Hosting and database providers for the website and game services.
-- Razorpay to process prepaid VIP payments. Razorpay’s privacy policy applies to data you submit on their checkout.
+- A third-party payment processor to handle prepaid VIP payments. The processor's privacy policy applies to data you submit on their checkout.
 - Steam and Discord, when you use those logins. Their policies apply to those platforms.
 
 ## Children’s privacy
