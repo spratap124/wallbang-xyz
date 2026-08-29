@@ -36,4 +36,8 @@ Discord — [https://discord.gg/KY2dRw8Yh4](https://discord.gg/KY2dRw8Yh4)
 
 ## Business Address
 
-109
+109/364, Ram Krishna Nagar R K Nagar, S O Kanpur Nagar, R K Nagar, Kanpur Nagar,
+Uttar Pradesh, 208012, India,
+Kanpur Nagar,
+UTTAR PRADESH,
+India - 208012
