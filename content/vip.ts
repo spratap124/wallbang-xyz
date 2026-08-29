@@ -2,7 +2,7 @@ export const vipPerks = [
   "Access to premium retake servers",
   "Priority queue when servers are full",
   "VIP chat tag and colored chat",
-  "Knives, gloves, and skins",
+  "In-server cosmetic knives, gloves, and skins",
 ] as const;
 
 export const vipFaqBlurb =
