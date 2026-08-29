@@ -61,7 +61,7 @@ function escapeHtml(value: string): string {
 
 function linkify(value: string): string {
   return escapeHtml(value).replace(
-    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    /\[([^\]]+)\]\((mailto:[^)]+|https?:\/\/[^)]+)\)/g,
     '<a href="$2" rel="noopener noreferrer">$1</a>',
   );
 }
