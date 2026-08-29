@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export const metadata = createPageMetadata({
   title: "Contact",
   description:
-    "Contact WallBang via Discord for CS2 retake server support, VIP questions, partnerships, and community feedback.",
+    "Contact WallBang via Discord or email for CS2 retake server support, VIP questions, partnerships, and community feedback.",
   path: "/contact",
 });
 
@@ -27,7 +27,7 @@ export default function ContactPage() {
         <SectionHeading
           eyebrow="Contact"
           title="Talk to the WallBang team"
-          description="Discord is the primary contact channel for support, feedback, partnerships, and launch updates."
+          description="Reach us on Discord or email for support, feedback, partnerships, and launch updates."
         />
 
         <div className="max-w-xl rounded-xl border border-border bg-card/50 p-8">
@@ -43,10 +43,16 @@ export default function ContactPage() {
           >
             Open Discord
           </a>
-          <p className="mt-6 text-xs text-muted-foreground">
-            Prefer email later? A formal support inbox will be published with platform
-            auth. Until then, Discord is the source of truth.
-          </p>
+
+          <div className="mt-8 border-t border-border pt-8">
+            <p className="text-sm font-medium text-foreground">Email</p>
+            <a
+              href="mailto:admin@wallbang.xyz"
+              className="mt-1 inline-block text-sm text-primary hover:underline"
+            >
+              admin@wallbang.xyz
+            </a>
+          </div>
         </div>
       </Container>
     </div>

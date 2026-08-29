@@ -1,7 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export function getLegalDocument(slug: "privacy" | "terms" | "refund"): string {
+export type LegalDocumentSlug =
+  | "privacy"
+  | "terms"
+  | "refund"
+  | "about"
+  | "business-information"
+  | "shipping-and-delivery";
+
+export function getLegalDocument(slug: LegalDocumentSlug): string {
   const fullPath = path.join(process.cwd(), "content/legal", `${slug}.md`);
   return fs.readFileSync(fullPath, "utf8");
 }
@@ -53,7 +61,7 @@ function escapeHtml(value: string): string {
 
 function linkify(value: string): string {
   return escapeHtml(value).replace(
-    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    /\[([^\]]+)\]\((mailto:[^)]+|https?:\/\/[^)]+)\)/g,
     '<a href="$2" rel="noopener noreferrer">$1</a>',
   );
 }

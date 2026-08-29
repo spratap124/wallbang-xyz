@@ -30,15 +30,18 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
     items: [
       { title: "Blog", href: "/blog" },
       { title: "FAQ", href: "/faq" },
-      { title: "Contact", href: "/contact" },
     ],
   },
   {
     title: "Legal",
     items: [
-      { title: "Privacy", href: "/privacy" },
-      { title: "Terms", href: "/terms" },
+      { title: "About Us", href: "/about" },
+      { title: "Terms & Conditions", href: "/terms" },
+      { title: "Privacy Policy", href: "/privacy" },
       { title: "Refund Policy", href: "/refund" },
+      { title: "Shipping & Delivery", href: "/shipping-and-delivery" },
+      { title: "Business Information", href: "/business-information" },
+      { title: "Contact", href: "/contact" },
     ],
   },
 ];
