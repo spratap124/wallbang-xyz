@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { generateInvoiceNumber } from "./invoice-number";
 import {
   buildPayuRequestHashSequence,
   buildPayuResponseHashSequence,
@@ -82,6 +83,17 @@ describe("payu hash", () => {
         hash: responseHash,
       }),
       true,
+    );
+  });
+});
+
+describe("invoice number", () => {
+  it("generates deterministic invoice numbers", () => {
+    const paidAt = new Date("2026-08-29T10:00:00.000Z");
+    const paymentId = "ed4c71f7-73ca-4cac-bbf7-dcfb6d4d135f";
+    assert.equal(
+      generateInvoiceNumber(paidAt, paymentId),
+      "WB-20260829-ED4C71F7",
     );
   });
 });

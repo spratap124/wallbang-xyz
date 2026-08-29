@@ -1,27 +1,31 @@
 import { NextResponse } from "next/server";
 
-import { isMongoConfigured } from "@/lib/mongo";
 import {
-  parsePayuAmountToPaise,
   verifyPayuResponseHash,
   type PayuResponseParams,
 } from "@/lib/payments/payu";
-import {
-  fulfillCapturedPayment,
-  markPaymentFailed,
-} from "@/lib/payments/service";
 
 export const dynamic = "force-dynamic";
 
-function redirectToVip(outcome: "success" | "failure" | "invalid"): Response {
+/** Browser return URL only — VIP fulfillment happens exclusively in the PayU webhook. */
+function redirectToVip(
+  outcome: "pending" | "failure" | "invalid",
+  txnid?: string,
+): Response {
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ?? "";
-  const path =
-    outcome === "success"
-      ? "/vip?paid=1"
-      : outcome === "failure"
-        ? "/vip?paid=0"
-        : "/vip?paid=0&error=invalid";
-  return NextResponse.redirect(`${base}${path}`, { status: 303 });
+  const params = new URLSearchParams();
+  if (outcome === "pending") {
+    params.set("paid", "pending");
+    if (txnid) params.set("txnid", txnid);
+  } else if (outcome === "failure") {
+    params.set("paid", "0");
+  } else {
+    params.set("paid", "0");
+    params.set("error", "invalid");
+  }
+  return NextResponse.redirect(`${base}/vip?${params.toString()}`, {
+    status: 303,
+  });
 }
 
 function formValue(formData: FormData, key: string): string {
@@ -51,10 +55,6 @@ function parsePayuFormData(formData: FormData): PayuResponseParams {
 }
 
 async function handleCallback(request: Request): Promise<Response> {
-  if (!isMongoConfigured()) {
-    return redirectToVip("invalid");
-  }
-
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -76,26 +76,10 @@ async function handleCallback(request: Request): Promise<Response> {
   }
 
   if (params.status !== "success") {
-    await markPaymentFailed({
-      razorpayOrderId: params.txnid,
-      razorpayPaymentId: params.mihpayid,
-      reason: params.error_Message ?? "payment_failed",
-    });
     return redirectToVip("failure");
   }
 
-  const amountPaise = parsePayuAmountToPaise(params.amount);
-  try {
-    await fulfillCapturedPayment({
-      razorpayOrderId: params.txnid,
-      razorpayPaymentId: params.mihpayid ?? params.txnid,
-      amount: Number.isFinite(amountPaise) ? amountPaise : undefined,
-    });
-    return redirectToVip("success");
-  } catch (err) {
-    console.error("[payments] PayU callback fulfillment failed", params.txnid, err);
-    return redirectToVip("failure");
-  }
+  return redirectToVip("pending", params.txnid);
 }
 
 export async function POST(request: Request): Promise<Response> {

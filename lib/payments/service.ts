@@ -445,6 +445,17 @@ export async function fulfillCapturedPayment(input: {
     lifetime: vipRole.lifetime,
   });
 
+  if (claimed.provider === "payu") {
+    try {
+      const { ensurePayuPaymentInvoice } = await import(
+        "@/lib/payments/payu-invoice"
+      );
+      await ensurePayuPaymentInvoice(claimed._id);
+    } catch (err) {
+      console.error("[payments] PayU invoice generation failed", claimed._id, err);
+    }
+  }
+
   return {
     alreadyFulfilled: false,
     paymentId: claimed._id,
@@ -527,6 +538,34 @@ export async function markPaymentDisputed(input: {
       },
     },
   );
+}
+
+export type PayuOrderStatusView = {
+  status: PaymentStatus;
+  paymentId: string;
+  fulfilled: boolean;
+  invoiceNumber: string | null;
+};
+
+export async function getPayuOrderStatusForUser(input: {
+  userId: string;
+  txnid: string;
+}): Promise<PayuOrderStatusView | null> {
+  await ready();
+  const payments = await paymentsCollection();
+  const payment = await payments.findOne({
+    razorpayOrderId: input.txnid,
+    userId: input.userId,
+    provider: "payu",
+  });
+  if (!payment) return null;
+
+  return {
+    status: payment.status,
+    paymentId: payment._id,
+    fulfilled: payment.fulfilledAt !== null,
+    invoiceNumber: payment.invoiceNumber ?? null,
+  };
 }
 
 export async function recordPayuWebhookEventId(

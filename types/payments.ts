@@ -38,6 +38,9 @@ export type PaymentDoc = {
   refundedAt: Date | null;
   fulfilledAt: Date | null;
   failureReason: string | null;
+  invoiceNumber?: string | null;
+  invoiceGeneratedAt?: Date | null;
+  payuInvoiceSyncedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

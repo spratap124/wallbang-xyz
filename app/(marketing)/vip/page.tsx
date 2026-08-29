@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { VipHero } from "@/components/vip/vip-hero";
 import { VipPageBody } from "@/components/vip/vip-page-body";
+import { VipPaymentResultBanner } from "@/components/vip/vip-payment-result-banner";
 import { LiveServersProvider } from "@/components/servers/live-servers-provider";
 import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
@@ -40,9 +42,7 @@ export const metadata = createPageMetadata({
   path: "/vip",
 });
 
-type VipPageProps = {
-  searchParams: Promise<{ paid?: string }>;
-};
+type VipPageProps = Record<string, never>;
 
 const howItWorks = [
   {
@@ -75,13 +75,11 @@ function SteamMark({ className }: { className?: string }) {
   );
 }
 
-export default async function VipPage({ searchParams }: VipPageProps) {
+export default async function VipPage(_props: VipPageProps) {
   if (!(await isVipPageEnabled())) {
     redirect("/");
   }
 
-  const params = await searchParams;
-  const paid = params.paid === "1";
   const session = await getSession();
   const servers = await getGameServers();
   const catalog = getVipShopCatalog(servers);
@@ -119,6 +117,10 @@ export default async function VipPage({ searchParams }: VipPageProps) {
       <VipHero />
 
       <Container className="py-10 sm:py-12">
+        <Suspense fallback={null}>
+          <VipPaymentResultBanner />
+        </Suspense>
+
         {session ? (
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/70 px-5 py-4">
             <div className="flex items-center gap-3">
@@ -175,7 +177,6 @@ export default async function VipPage({ searchParams }: VipPageProps) {
             allRetakesEnabled={allRetakesEnabled}
             hideBuy={lifetime}
             membership={membership}
-            paid={paid}
           />
         </LiveServersProvider>
 

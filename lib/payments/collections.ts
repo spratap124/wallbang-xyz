@@ -70,6 +70,13 @@ export async function ensurePaymentIndexes(): Promise<void> {
           createdAt: -1,
         }),
         payments.createIndex({ provider: 1, userId: 1, createdAt: -1 }),
+        payments.createIndex(
+          { invoiceNumber: 1 },
+          {
+            unique: true,
+            partialFilterExpression: { invoiceNumber: { $type: "string" } },
+          },
+        ),
         history.createIndex({ userId: 1, createdAt: -1 }),
         history.createIndex({ paymentId: 1 }, { unique: true }),
         razorpayEvents.createIndex({ eventId: 1 }, { unique: true }),

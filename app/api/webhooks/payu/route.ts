@@ -51,6 +51,7 @@ type PayuRefundPayload = {
   token?: string;
 };
 
+/** Sole source of truth for PayU VIP fulfillment (capture, fail, refund). */
 export async function POST(request: Request): Promise<Response> {
   if (!isMongoConfigured() || !isPayuConfigured()) {
     return NextResponse.json({ ok: false }, { status: 503 });

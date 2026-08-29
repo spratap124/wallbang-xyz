@@ -20,7 +20,6 @@ type VipPageBodyProps = {
   allRetakesEnabled: boolean;
   hideBuy?: boolean;
   membership: VipMembershipView | null;
-  paid?: boolean;
 };
 
 export function VipPageBody({
@@ -32,7 +31,6 @@ export function VipPageBody({
   allRetakesEnabled,
   hideBuy = false,
   membership,
-  paid = false,
 }: VipPageBodyProps) {
   const [renewTarget, setRenewTarget] = useState<VipRenewTarget | null>(null);
   const showPurchaseHeading =
@@ -53,7 +51,6 @@ export function VipPageBody({
       {loggedIn ? (
         <VipMembershipDashboard
           membership={membership}
-          paid={paid}
           onRenew={handleRenew}
         />
       ) : null}

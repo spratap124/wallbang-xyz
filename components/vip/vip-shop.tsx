@@ -479,7 +479,7 @@ export function VipShop({
             <p className="text-sm text-muted-foreground">
               You already have lifetime VIP access.
             </p>
-          ) : purchasesEnabled ? (
+          ) : purchasesEnabled || checkoutEnabled ? (
             <div>
               <BuyVipButton
                 accessType={accessType}
@@ -490,7 +490,10 @@ export function VipShop({
                 loggedIn={loggedIn}
                 paymentProvider={paymentProvider}
                 disabled={
-                  !checkoutEnabled || !checkoutReady || !duration
+                  !checkoutEnabled ||
+                  !checkoutReady ||
+                  !duration ||
+                  !purchasesEnabled
                 }
                 collectContact={checkoutEnabled}
                 label={
