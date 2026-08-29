@@ -1,4 +1,4 @@
-# R364 109/Business Information
+# Business Information
 
 **Last updated:** August 28, 2026
 
