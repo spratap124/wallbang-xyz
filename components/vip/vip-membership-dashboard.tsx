@@ -19,7 +19,6 @@ export type VipRenewTarget = {
 
 type VipMembershipDashboardProps = {
   membership: VipMembershipView | null;
-  paid?: boolean;
   onRenew: (target: VipRenewTarget) => void;
 };
 
@@ -133,7 +132,6 @@ function EntitlementCard({
 
 export function VipMembershipDashboard({
   membership,
-  paid = false,
   onRenew,
 }: VipMembershipDashboardProps) {
   if (!membership) {
@@ -153,13 +151,10 @@ export function VipMembershipDashboard({
 
   if (hasActiveVip || lifetime) {
     return (
-      <section className="mb-8 space-y-4">
+      <section id="vip-membership" className="mb-8 space-y-4">
         <h2 className="text-base font-semibold tracking-tight">
           Your VIP Access
         </h2>
-        {paid ? (
-          <p className="text-sm text-emerald-400">Payment successful.</p>
-        ) : null}
         {entitlements.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {entitlements.map((entitlement) => (

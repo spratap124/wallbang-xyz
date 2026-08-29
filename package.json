@@ -18,7 +18,8 @@
     "migrate:vip-server": "node --env-file=.env.local --import tsx scripts/migrate-global-vip-to-server.ts",
     "rename:server": "node --env-file=.env.local --import tsx scripts/rename-server-id.ts",
     "test:vip-pricing": "node --import tsx --test lib/payments/vip-pricing.test.ts",
-    "test:vip-entitlements": "node --import tsx --test lib/payments/entitlements.test.ts"
+    "test:vip-entitlements": "node --import tsx --test lib/payments/entitlements.test.ts",
+    "test:payu": "node --import tsx --test lib/payments/payu.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
