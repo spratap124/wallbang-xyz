@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApiResult } from "@/lib/api/waitlist";
+import type { PaymentProvider } from "@/types/payments";
 import type { VipAccessType } from "@/types/vip";
 
 type RazorpayCheckoutResponse = {
@@ -27,7 +28,7 @@ declare global {
   }
 }
 
-type CreateOrderData = {
+type CreateRazorpayOrderData = {
   orderId: string;
   amount: number;
   currency: "INR";
@@ -36,6 +37,14 @@ type CreateOrderData = {
   name: string;
   description: string;
   prefill: { name: string; email: string; contact: string };
+};
+
+type PayuCheckoutParams = Record<string, string | undefined>;
+
+type CreatePayuOrderData = {
+  provider: "payu";
+  action: string;
+  params: PayuCheckoutParams;
 };
 
 function loadRazorpayScript(): Promise<RazorpayConstructor> {
@@ -69,6 +78,25 @@ function loadRazorpayScript(): Promise<RazorpayConstructor> {
   });
 }
 
+function submitPayuForm(action: string, params: PayuCheckoutParams): void {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = action;
+  form.style.display = "none";
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -83,6 +111,7 @@ type BuyVipButtonProps = {
   serverId: string | null;
   label: string;
   loggedIn: boolean;
+  paymentProvider: PaymentProvider;
   disabled?: boolean;
   collectContact?: boolean;
 };
@@ -93,6 +122,7 @@ export function BuyVipButton({
   serverId,
   label,
   loggedIn,
+  paymentProvider,
   disabled = false,
   collectContact = true,
 }: BuyVipButtonProps) {
@@ -113,10 +143,10 @@ export function BuyVipButton({
       setCollectingContact(true);
       return;
     }
-    void openRazorpayCheckout();
+    void openCheckout();
   }
 
-  async function openRazorpayCheckout(): Promise<void> {
+  async function openCheckout(): Promise<void> {
     setError(null);
 
     const trimmedEmail = email.trim();
@@ -135,70 +165,103 @@ export function BuyVipButton({
 
     setBusy(true);
     try {
-      const Razorpay = await loadRazorpayScript();
-      const response = await fetch("/api/v1/payments/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accessType,
-          planId,
-          ...(serverId ? { serverId } : {}),
-          email: trimmedEmail,
-          phone: trimmedPhone,
-        }),
-      });
-      const payload = (await response.json()) as ApiResult<CreateOrderData>;
-      if (!payload.ok) {
-        throw new Error(payload.error);
+      if (paymentProvider === "payu") {
+        await openPayuCheckout(trimmedEmail, trimmedPhone);
+        return;
       }
-
-      const checkout = new Razorpay({
-        key: payload.data.keyId,
-        amount: payload.data.amount,
-        currency: payload.data.currency,
-        name: payload.data.name,
-        description: payload.data.description,
-        order_id: payload.data.orderId,
-        prefill: payload.data.prefill,
-        theme: { color: "#e8242a" },
-        modal: {
-          ondismiss: () => {
-            setBusy(false);
-          },
-        },
-        handler: async (result: RazorpayCheckoutResponse) => {
-          try {
-            const verify = await fetch("/api/v1/payments/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(result),
-            });
-            const verified = (await verify.json()) as ApiResult<unknown>;
-            if (!verified.ok) {
-              throw new Error(verified.error);
-            }
-            setBusy(false);
-            setCollectingContact(false);
-            setError(null);
-            router.push("/vip?paid=1");
-            router.refresh();
-          } catch (err) {
-            setError(
-              err instanceof Error
-                ? err.message
-                : "Payment succeeded but VIP is still confirming. Refresh in a moment.",
-            );
-            setBusy(false);
-          }
-        },
-      });
-
-      checkout.open();
-      // Modal is open; keep busy until dismiss or handler finishes.
+      await openRazorpayCheckout(trimmedEmail, trimmedPhone);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start checkout.");
       setBusy(false);
     }
+  }
+
+  async function openPayuCheckout(
+    trimmedEmail: string,
+    trimmedPhone: string,
+  ): Promise<void> {
+    const response = await fetch("/api/v1/payments/payu/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessType,
+        planId,
+        ...(serverId ? { serverId } : {}),
+        email: trimmedEmail,
+        phone: trimmedPhone,
+      }),
+    });
+    const payload = (await response.json()) as ApiResult<CreatePayuOrderData>;
+    if (!payload.ok) {
+      throw new Error(payload.error);
+    }
+
+    submitPayuForm(payload.data.action, payload.data.params);
+  }
+
+  async function openRazorpayCheckout(
+    trimmedEmail: string,
+    trimmedPhone: string,
+  ): Promise<void> {
+    const Razorpay = await loadRazorpayScript();
+    const response = await fetch("/api/v1/payments/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessType,
+        planId,
+        ...(serverId ? { serverId } : {}),
+        email: trimmedEmail,
+        phone: trimmedPhone,
+      }),
+    });
+    const payload = (await response.json()) as ApiResult<CreateRazorpayOrderData>;
+    if (!payload.ok) {
+      throw new Error(payload.error);
+    }
+
+    const checkout = new Razorpay({
+      key: payload.data.keyId,
+      amount: payload.data.amount,
+      currency: payload.data.currency,
+      name: payload.data.name,
+      description: payload.data.description,
+      order_id: payload.data.orderId,
+      prefill: payload.data.prefill,
+      theme: { color: "#e8242a" },
+      modal: {
+        ondismiss: () => {
+          setBusy(false);
+        },
+      },
+      handler: async (result: RazorpayCheckoutResponse) => {
+        try {
+          const verify = await fetch("/api/v1/payments/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(result),
+          });
+          const verified = (await verify.json()) as ApiResult<unknown>;
+          if (!verified.ok) {
+            throw new Error(verified.error);
+          }
+          setBusy(false);
+          setCollectingContact(false);
+          setError(null);
+          router.push("/vip?paid=1");
+          router.refresh();
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Payment succeeded but VIP is still confirming. Refresh in a moment.",
+          );
+          setBusy(false);
+        }
+      },
+    });
+
+    checkout.open();
   }
 
   if (collectingContact && loggedIn && collectContact && !disabled) {
@@ -258,7 +321,7 @@ export function BuyVipButton({
             className="h-11 flex-[1.4]"
             size="lg"
             disabled={busy}
-            onClick={() => void openRazorpayCheckout()}
+            onClick={() => void openCheckout()}
           >
             {busy ? "Opening checkout…" : "Continue to Payment"}
           </Button>

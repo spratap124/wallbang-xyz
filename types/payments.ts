@@ -11,11 +11,16 @@ export const PAYMENT_STATUSES = [
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+export type PaymentProvider = "razorpay" | "payu";
+
 export type PaymentDoc = {
   _id: string;
   userId: string;
   steamId: string;
+  provider?: PaymentProvider;
+  /** Provider order id — Razorpay order id or PayU txnid. */
   razorpayOrderId: string;
+  /** Provider payment id — Razorpay payment id or PayU mihpayid. */
   razorpayPaymentId: string | null;
   email?: string | null;
   phone?: string | null;
@@ -56,6 +61,13 @@ export type VipHistoryDoc = {
 };
 
 export type RazorpayWebhookEventDoc = {
+  _id: string;
+  eventId: string;
+  event: string;
+  processedAt: Date;
+};
+
+export type PayuWebhookEventDoc = {
   _id: string;
   eventId: string;
   event: string;

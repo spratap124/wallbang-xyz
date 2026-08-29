@@ -4,6 +4,7 @@ import { isVipPlanId } from "@/lib/payments/quote";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requireSession } from "@/lib/permissions/authz";
 import { isRazorpayConfigured } from "@/lib/payments/razorpay";
+import { isRazorpayActive } from "@/lib/payments/provider";
 import { createVipOrder } from "@/lib/payments/service";
 import {
   isVipAllRetakesEnabled,
@@ -57,7 +58,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {
     return jsonError("Database is not configured.", 503);
   }
-  if (!isRazorpayConfigured()) {
+  if (!isRazorpayConfigured() || !isRazorpayActive()) {
     return jsonError("VIP purchases are not available yet.", 503);
   }
   if (!(await isVipPageEnabled()) || !(await isVipCheckoutEnabled())) {

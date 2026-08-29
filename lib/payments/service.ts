@@ -5,6 +5,7 @@ import type { VipAccessType, VipPlanId } from "@/types/vip";
 import { findUserById } from "@/lib/auth/users";
 import {
   ensurePaymentIndexes,
+  payuWebhookEventsCollection,
   paymentsCollection,
   razorpayWebhookEventsCollection,
   vipHistoryCollection,
@@ -207,6 +208,7 @@ export async function createVipOrder(input: {
     _id: crypto.randomUUID(),
     userId: input.userId,
     steamId: input.steamId,
+    provider: "razorpay",
     razorpayOrderId: order.id,
     razorpayPaymentId: null,
     email: input.email,
@@ -525,6 +527,26 @@ export async function markPaymentDisputed(input: {
       },
     },
   );
+}
+
+export async function recordPayuWebhookEventId(
+  eventId: string,
+  event: string,
+): Promise<boolean> {
+  await ready();
+  const events = await payuWebhookEventsCollection();
+  try {
+    await events.insertOne({
+      _id: crypto.randomUUID(),
+      eventId,
+      event,
+      processedAt: new Date(),
+    });
+    return true;
+  } catch (err) {
+    if (isDuplicateKeyError(err)) return false;
+    throw err;
+  }
 }
 
 export async function recordWebhookEventId(eventId: string, event: string): Promise<boolean> {

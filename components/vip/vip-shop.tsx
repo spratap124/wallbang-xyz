@@ -26,6 +26,7 @@ import type {
   VipShopQuote,
   VipShopServer,
 } from "@/types/vip";
+import type { PaymentProvider } from "@/types/payments";
 
 export type VipShopRenewTarget = {
   accessType: VipAccessType;
@@ -47,6 +48,7 @@ type VipShopProps = {
   catalog: VipShopCatalog;
   loggedIn: boolean;
   purchasesEnabled: boolean;
+  paymentProvider: PaymentProvider;
   checkoutEnabled?: boolean;
   allRetakesEnabled?: boolean;
   hideBuy?: boolean;
@@ -128,6 +130,7 @@ export function VipShop({
   catalog,
   loggedIn,
   purchasesEnabled,
+  paymentProvider,
   checkoutEnabled = false,
   allRetakesEnabled = false,
   hideBuy = false,
@@ -485,6 +488,7 @@ export function VipShop({
                   accessType === "INDIVIDUAL_SERVER" ? selectedServerId : null
                 }
                 loggedIn={loggedIn}
+                paymentProvider={paymentProvider}
                 disabled={
                   !checkoutEnabled || !checkoutReady || !duration
                 }

@@ -22,7 +22,7 @@ import { siteConfig } from "@/config/site";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
-import { isRazorpayConfigured } from "@/lib/payments/razorpay";
+import { isPaymentConfigured, isPayuActive } from "@/lib/payments/provider";
 import {
   isVipAllRetakesEnabled,
   isVipCheckoutEnabled,
@@ -85,7 +85,8 @@ export default async function VipPage({ searchParams }: VipPageProps) {
   const session = await getSession();
   const servers = await getGameServers();
   const catalog = getVipShopCatalog(servers);
-  const purchasesEnabled = isRazorpayConfigured();
+  const purchasesEnabled = isPaymentConfigured();
+  const paymentProvider = isPayuActive() ? "payu" : "razorpay";
   const [allRetakesEnabled, checkoutEnabled] = await Promise.all([
     isVipAllRetakesEnabled(),
     isVipCheckoutEnabled(),
@@ -169,6 +170,7 @@ export default async function VipPage({ searchParams }: VipPageProps) {
             catalog={catalog}
             loggedIn={Boolean(session)}
             purchasesEnabled={purchasesEnabled}
+            paymentProvider={paymentProvider}
             checkoutEnabled={checkoutEnabled}
             allRetakesEnabled={allRetakesEnabled}
             hideBuy={lifetime}

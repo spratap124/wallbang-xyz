@@ -9,10 +9,13 @@ import {
 import { VipShop } from "@/components/vip/vip-shop";
 import type { VipMembershipView, VipShopCatalog } from "@/types/vip";
 
+import type { PaymentProvider } from "@/types/payments";
+
 type VipPageBodyProps = {
   catalog: VipShopCatalog;
   loggedIn: boolean;
   purchasesEnabled: boolean;
+  paymentProvider: PaymentProvider;
   checkoutEnabled: boolean;
   allRetakesEnabled: boolean;
   hideBuy?: boolean;
@@ -24,6 +27,7 @@ export function VipPageBody({
   catalog,
   loggedIn,
   purchasesEnabled,
+  paymentProvider,
   checkoutEnabled,
   allRetakesEnabled,
   hideBuy = false,
@@ -64,6 +68,7 @@ export function VipPageBody({
         catalog={catalog}
         loggedIn={loggedIn}
         purchasesEnabled={purchasesEnabled}
+        paymentProvider={paymentProvider}
         checkoutEnabled={checkoutEnabled}
         allRetakesEnabled={allRetakesEnabled}
         hideBuy={hideBuy}
