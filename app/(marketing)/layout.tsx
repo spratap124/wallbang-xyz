@@ -27,7 +27,7 @@ export default async function MarketingLayout({
   const steamAuthEnabled = featureFlags.steamAuth && isSteamAuthConfigured();
   const [user, showVip] = await Promise.all([
     steamAuthEnabled ? getSession() : Promise.resolve(null),
-    isVipPageEnabled(),
+    isVipPageEnabled().catch(() => featureFlags.vipPage),
   ]);
 
   let showAdmin = false;

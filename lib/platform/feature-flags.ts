@@ -38,10 +38,17 @@ async function settingsCollection(): Promise<Collection<FeatureFlagDoc>> {
 async function readOverrides(): Promise<FeatureFlagDoc | null> {
   if (!isMongoConfigured()) return null;
 
-  const col = await settingsCollection();
-  const doc = await col.findOne({ _id: DOC_ID });
-
-  return doc ?? null;
+  try {
+    const col = await settingsCollection();
+    const doc = await col.findOne({ _id: DOC_ID });
+    return doc ?? null;
+  } catch (error) {
+    console.error(
+      "[feature-flags] Mongo unavailable; using env/static flags.",
+      error,
+    );
+    return null;
+  }
 }
 
 function resolveFlag(

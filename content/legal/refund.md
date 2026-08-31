@@ -1,41 +1,50 @@
 # Refund Policy
 
-**Last updated:** August 19, 2026
+**Effective Date:** August 31, 2026
 
-WallBang (“we”, “us”) sells prepaid VIP access on wallbang.xyz. Payments are processed by our payment provider. This policy applies to those purchases.
+This Refund Policy applies to purchases made through [wallbang.xyz](https://wallbang.xyz).
 
-## What you are buying
+## 1. Nature of the Service
 
-VIP is a prepaid digital membership for a fixed term (1 month, 3 months, 6 months, or 1 year). There is no automatic renewal and no recurring mandate. When the term ends, VIP access stops until you buy again.
+WallBang provides prepaid digital gaming services, including VIP access to its CS2 retake server.
 
-## When we grant access
+## 2. Refund Eligibility
 
-VIP is activated after our payment provider confirms a successful captured payment. If you already have active VIP, the new term is added to your existing expiry date.
+Customers may request a refund within 7 days of the original purchase if the purchased VIP service has not been used/activated.
 
-## Refund eligibility
+For a service that has already been activated or used, refunds may be considered only where the service could not reasonably be provided due to a technical issue attributable to WallBang.
 
-Request a refund on [Discord](https://discord.gg/KY2dRw8Yh4) within **7 days** of payment.
+Refund requests will be reviewed on a case-by-case basis.
 
-We generally approve refunds when:
+## 3. Refund Request Duration
 
-- The payment succeeded but VIP was not activated due to a technical error on our side.
-- You purchased in error and have not used VIP benefits on WallBang CS2 servers.
+Refund requests must be submitted within 7 days from the date of purchase, unless a different period is required by applicable law.
 
-We may refuse or prorate refunds when:
+## 4. Refund Method
 
-- VIP was activated and used (reserved slot, cosmetics, chat tag, or other member perks).
-- The request is after 7 days, except where required by applicable law.
+Approved refunds will generally be processed to the original payment method used for the transaction.
 
-Approved refunds are issued to the original payment method through our payment processor. Bank or UPI timelines are controlled by the processor and your bank, not WallBang.
+The time taken for the refund to appear in the customer's account may depend on the payment gateway, bank, card issuer, or payment service provider.
 
-## Cancellations
+## 5. Duplicate / Incorrect Payments
 
-Because VIP is prepaid and not a subscription, there is nothing to “cancel” after purchase. You will not be charged again unless you start a new checkout.
+If a customer is charged more than once for the same purchase due to a duplicate transaction, the duplicate amount will be eligible for a refund after verification.
 
-## Chargebacks and disputes
+## 6. Server Downtime
 
-If you dispute a charge with your bank while VIP is active, we may suspend VIP until the dispute is resolved. A lost dispute is treated as a refund: the matching VIP term is removed.
+Temporary server downtime does not automatically qualify a purchase for a refund.
 
-## Contact
+However, if a significant technical issue prevents a customer from receiving the purchased service, they may contact us for review.
 
-Refund questions: [Discord](https://discord.gg/KY2dRw8Yh4) (open a ticket) or the [contact page](https://wallbang.xyz/contact).
+## 7. How to Request a Refund
+
+To request a refund, contact:
+
+**Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+
+Please include:
+
+- Customer/Steam ID
+- Transaction/order ID
+- Date of purchase
+- Reason for the refund request

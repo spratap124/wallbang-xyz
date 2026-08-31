@@ -1,6 +1,6 @@
 # Shipping & Delivery Policy
 
-**Last updated:** August 28, 2026
+**Last updated:** August 31, 2026
 
 ## Digital services only
 
@@ -14,8 +14,8 @@ After successful payment confirmation, the purchased prepaid VIP membership is a
 
 ## Activation issues
 
-If your VIP membership does not activate after a successful payment, contact us at admin@wallbang.xyz with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
+If your VIP membership does not activate after a successful payment, contact us at [admin@wallbang.xyz](mailto:admin@wallbang.xyz) with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
 
 ## Related policies
 
-Refunds are handled under our [Refund Policy](https://wallbang.xyz/refund). General purchase terms are in our [Terms of Service](https://wallbang.xyz/terms).
+Refunds are handled under our [Refund Policy](https://wallbang.xyz/refund). Cancellations are handled under our [Cancellation Policy](https://wallbang.xyz/cancellation). General purchase terms are in our [Terms & Conditions](https://wallbang.xyz/terms).

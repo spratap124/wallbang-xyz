@@ -1,47 +1,74 @@
 # Privacy Policy
 
-**Last updated:** August 19, 2026
+**Effective Date:** August 31, 2026
 
-WallBang (“we”, “us”) operates wallbang.xyz and related Counter-Strike 2 community services.
+WallBang respects your privacy and is committed to protecting information provided when using [wallbang.xyz](https://wallbang.xyz) and our services.
 
-## Information we collect
+## 1. Information We May Collect
 
-When you sign in with Steam, we store your SteamID, persona name, avatar, and profile URL so we can authenticate you, show your player profile, and grant VIP on the same account you use in-game.
+Depending on how you use our website and services, we may collect:
 
-If you link Discord, we store your Discord user id and username to verify community membership.
+- Name
+- Email address
+- Steam ID / Steam account identifier
+- Transaction/order information
+- Payment status
+- Information provided when contacting support
+- Basic technical information required for website operation
 
-If you buy VIP, we store order and payment identifiers from our payment processor (order id, payment id, amount, plan, status). We do not receive or store card numbers, CVV, or UPI PINs — payment credentials are collected on the processor's secure checkout.
+## 2. Payment Information
 
-When you join the waitlist, we may collect your name and email address.
+Payments are processed through third-party payment service providers.
 
-## How we use information
+WallBang does not intentionally store complete credit/debit card numbers, UPI credentials, banking passwords, or other sensitive payment credentials.
 
-We use this data to operate Steam login, player profiles, VIP access, CS2 server permissions, launch offers, and service communications. We do not sell personal data.
+Payment providers may process payment information according to their own privacy policies and terms.
 
-## Cookies and analytics
+## 3. How We Use Information
 
-The site uses essential cookies required for security and Steam session login. If analytics are added later, this policy will be updated before collection begins.
+Information may be used to:
 
-## Data retention
+- Provide purchased services
+- Activate and manage VIP access
+- Associate VIP access with the appropriate Steam account
+- Process and verify transactions
+- Respond to customer support requests
+- Prevent fraud and abuse
+- Maintain and improve our services
+- Comply with applicable legal requirements
 
-Steam account records, VIP payment history, and related logs are retained while your account exists and as needed for accounting, refunds, and dispute handling. Contact us via Discord to request deletion; we may retain records required by law or to complete a refund or chargeback.
+## 4. Information Sharing
 
-## Third parties
+We may share necessary information with payment processors, hosting/service providers, technical providers, or authorities where required to provide the service, comply with legal obligations, prevent fraud, or protect our services.
 
-We use infrastructure and payment providers that process data on our behalf:
+We do not sell personal information to third parties.
 
-- Hosting and database providers for the website and game services.
-- A third-party payment processor to handle prepaid VIP payments. The processor's privacy policy applies to data you submit on their checkout.
-- Steam and Discord, when you use those logins. Their policies apply to those platforms.
+## 5. Data Security
 
-## Children’s privacy
+We take reasonable measures to protect information from unauthorized access, alteration, disclosure, or destruction.
 
-WallBang is intended for players who meet Steam and Counter-Strike 2 age requirements. We do not knowingly collect data from children below those requirements.
+However, no internet-based service can guarantee absolute security.
 
-## Changes
+## 6. Cookies
 
-We may update this policy as the platform grows. Material changes will be posted on this page.
+Our website may use cookies or similar technologies required for functionality, security, analytics, or improving the user experience.
 
-## Contact
+## 7. Third-Party Services
 
-Questions about privacy: join [Discord](https://discord.gg/KY2dRw8Yh4) and open a ticket, or use the [contact page](https://wallbang.xyz/contact).
+Our website may contain or use third-party services, including payment processors and gaming/Steam-related services.
+
+These third parties may have their own terms and privacy policies.
+
+## 8. Data Retention
+
+We retain information for as long as reasonably necessary to provide services, maintain transaction records, resolve disputes, prevent fraud, and comply with applicable legal obligations.
+
+## 9. Your Rights
+
+If you have questions about personal information associated with your WallBang account or transactions, you may contact us.
+
+**Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+
+## 10. Changes to This Policy
+
+This Privacy Policy may be updated periodically. The latest version will be published on this website.
