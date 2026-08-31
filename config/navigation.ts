@@ -36,12 +36,14 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
     title: "Legal",
     items: [
       { title: "About Us", href: "/about" },
+      { title: "Services", href: "/services" },
       { title: "Terms & Conditions", href: "/terms" },
       { title: "Privacy Policy", href: "/privacy" },
       { title: "Refund Policy", href: "/refund" },
+      { title: "Cancellation Policy", href: "/cancellation" },
       { title: "Shipping & Delivery", href: "/shipping-and-delivery" },
       { title: "Business Information", href: "/business-information" },
-      { title: "Contact", href: "/contact" },
+      { title: "Contact Us", href: "/contact" },
     ],
   },
 ];

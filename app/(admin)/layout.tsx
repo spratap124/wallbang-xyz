@@ -52,7 +52,7 @@ export default async function AdminLayout({
     healthLabel = "Status Unavailable";
   }
 
-  const showVip = await isVipPageEnabled();
+  const showVip = await isVipPageEnabled().catch(() => featureFlags.vipPage);
 
   return (
     <AdminShell

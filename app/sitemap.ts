@@ -15,17 +15,19 @@ const staticRoutes = [
   "/changelog",
   "/contact",
   "/about",
+  "/services",
   "/business-information",
   "/shipping-and-delivery",
   "/vip",
   "/privacy",
   "/terms",
   "/refund",
+  "/cancellation",
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
-  const vipPageEnabled = await isVipPageEnabled();
+  const vipPageEnabled = await isVipPageEnabled().catch(() => false);
 
   const pages = staticRoutes
     .filter((path) => vipPageEnabled || path !== "/vip")

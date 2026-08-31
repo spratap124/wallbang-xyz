@@ -1,16 +1,18 @@
 # Business Information
 
-**Last updated:** August 28, 2026
+**Last updated:** August 31, 2026
 
 This page provides publicly available business details for WallBang (wallbang.xyz).
 
-## Brand Name
+This website is operated by Shivani under the trade name WallBang.
+
+## Brand Name / Trade Name
 
 WallBang
 
-## Legal Business Name
+## Legal Name
 
-WallBang
+Shivani
 
 ## Business Category
 
@@ -36,8 +38,4 @@ Discord — [https://discord.gg/KY2dRw8Yh4](https://discord.gg/KY2dRw8Yh4)
 
 ## Business Address
 
-109/364, Ram Krishna Nagar R K Nagar, S O Kanpur Nagar, R K Nagar, Kanpur Nagar,
-Uttar Pradesh, 208012, India,
-Kanpur Nagar,
-UTTAR PRADESH,
-India - 208012
+109/364, Ram Krishna Nagar, R K Nagar, Kanpur Nagar, Uttar Pradesh, 208012, India
