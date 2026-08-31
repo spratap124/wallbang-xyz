@@ -21,8 +21,6 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
       { title: "VIP", href: "/vip" },
       { title: "Offers", href: "/offers" },
       { title: "Features", href: "/features" },
-      { title: "Roadmap", href: "/roadmap" },
-      { title: "Changelog", href: "/changelog" },
     ],
   },
   {

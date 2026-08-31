@@ -19,14 +19,6 @@ export type FaqItem = {
   answer: string;
 };
 
-export type ChangelogEntry = {
-  id: string;
-  version: string;
-  date: string;
-  title: string;
-  highlights: string[];
-};
-
 export type BlogFrontmatter = {
   title: string;
   description: string;
