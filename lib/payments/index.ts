@@ -15,3 +15,10 @@ export {
   fulfillCapturedPayment,
   getVipAccessStatus,
 } from "@/lib/payments/service";
+export { createPayuVipOrder } from "@/lib/payments/payu-service";
+export {
+  getActivePaymentProvider,
+  isPaymentConfigured,
+  isPayuActive,
+  isRazorpayActive,
+} from "@/lib/payments/provider";

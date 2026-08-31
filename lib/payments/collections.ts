@@ -5,13 +5,15 @@ import type { Collection } from "mongodb";
 import { getDb } from "@/lib/mongo";
 import type {
   PaymentDoc,
+  PayuWebhookEventDoc,
   RazorpayWebhookEventDoc,
   VipHistoryDoc,
 } from "@/types/payments";
 
 const PAYMENTS = "payments";
 const VIP_HISTORY = "vip_history";
-const WEBHOOK_EVENTS = "razorpay_webhook_events";
+const RAZORPAY_WEBHOOK_EVENTS = "razorpay_webhook_events";
+const PAYU_WEBHOOK_EVENTS = "payu_webhook_events";
 
 let indexesReady: Promise<void> | null = null;
 
@@ -29,16 +31,24 @@ export async function razorpayWebhookEventsCollection(): Promise<
   Collection<RazorpayWebhookEventDoc>
 > {
   const db = await getDb();
-  return db.collection<RazorpayWebhookEventDoc>(WEBHOOK_EVENTS);
+  return db.collection<RazorpayWebhookEventDoc>(RAZORPAY_WEBHOOK_EVENTS);
+}
+
+export async function payuWebhookEventsCollection(): Promise<
+  Collection<PayuWebhookEventDoc>
+> {
+  const db = await getDb();
+  return db.collection<PayuWebhookEventDoc>(PAYU_WEBHOOK_EVENTS);
 }
 
 export async function ensurePaymentIndexes(): Promise<void> {
   if (!indexesReady) {
     indexesReady = (async () => {
-      const [payments, history, events] = await Promise.all([
+      const [payments, history, razorpayEvents, payuEvents] = await Promise.all([
         paymentsCollection(),
         vipHistoryCollection(),
         razorpayWebhookEventsCollection(),
+        payuWebhookEventsCollection(),
       ]);
 
       await Promise.all([
@@ -59,9 +69,18 @@ export async function ensurePaymentIndexes(): Promise<void> {
           status: 1,
           createdAt: -1,
         }),
+        payments.createIndex({ provider: 1, userId: 1, createdAt: -1 }),
+        payments.createIndex(
+          { invoiceNumber: 1 },
+          {
+            unique: true,
+            partialFilterExpression: { invoiceNumber: { $type: "string" } },
+          },
+        ),
         history.createIndex({ userId: 1, createdAt: -1 }),
         history.createIndex({ paymentId: 1 }, { unique: true }),
-        events.createIndex({ eventId: 1 }, { unique: true }),
+        razorpayEvents.createIndex({ eventId: 1 }, { unique: true }),
+        payuEvents.createIndex({ eventId: 1 }, { unique: true }),
       ]);
     })().catch((err) => {
       indexesReady = null;

@@ -5,6 +5,7 @@ import type { VipAccessType, VipPlanId } from "@/types/vip";
 import { findUserById } from "@/lib/auth/users";
 import {
   ensurePaymentIndexes,
+  payuWebhookEventsCollection,
   paymentsCollection,
   razorpayWebhookEventsCollection,
   vipHistoryCollection,
@@ -207,6 +208,7 @@ export async function createVipOrder(input: {
     _id: crypto.randomUUID(),
     userId: input.userId,
     steamId: input.steamId,
+    provider: "razorpay",
     razorpayOrderId: order.id,
     razorpayPaymentId: null,
     email: input.email,
@@ -443,6 +445,17 @@ export async function fulfillCapturedPayment(input: {
     lifetime: vipRole.lifetime,
   });
 
+  if (claimed.provider === "payu") {
+    try {
+      const { ensurePayuPaymentInvoice } = await import(
+        "@/lib/payments/payu-invoice"
+      );
+      await ensurePayuPaymentInvoice(claimed._id);
+    } catch (err) {
+      console.error("[payments] PayU invoice generation failed", claimed._id, err);
+    }
+  }
+
   return {
     alreadyFulfilled: false,
     paymentId: claimed._id,
@@ -525,6 +538,54 @@ export async function markPaymentDisputed(input: {
       },
     },
   );
+}
+
+export type PayuOrderStatusView = {
+  status: PaymentStatus;
+  paymentId: string;
+  fulfilled: boolean;
+  invoiceNumber: string | null;
+};
+
+export async function getPayuOrderStatusForUser(input: {
+  userId: string;
+  txnid: string;
+}): Promise<PayuOrderStatusView | null> {
+  await ready();
+  const payments = await paymentsCollection();
+  const payment = await payments.findOne({
+    razorpayOrderId: input.txnid,
+    userId: input.userId,
+    provider: "payu",
+  });
+  if (!payment) return null;
+
+  return {
+    status: payment.status,
+    paymentId: payment._id,
+    fulfilled: payment.fulfilledAt !== null,
+    invoiceNumber: payment.invoiceNumber ?? null,
+  };
+}
+
+export async function recordPayuWebhookEventId(
+  eventId: string,
+  event: string,
+): Promise<boolean> {
+  await ready();
+  const events = await payuWebhookEventsCollection();
+  try {
+    await events.insertOne({
+      _id: crypto.randomUUID(),
+      eventId,
+      event,
+      processedAt: new Date(),
+    });
+    return true;
+  } catch (err) {
+    if (isDuplicateKeyError(err)) return false;
+    throw err;
+  }
 }
 
 export async function recordWebhookEventId(eventId: string, event: string): Promise<boolean> {
