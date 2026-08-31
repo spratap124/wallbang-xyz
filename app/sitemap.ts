@@ -12,7 +12,6 @@ const staticRoutes = [
   "/roadmap",
   "/faq",
   "/blog",
-  "/changelog",
   "/contact",
   "/about",
   "/services",

@@ -2,7 +2,6 @@ import { ComingSoonSection } from "@/components/home/coming-soon-section";
 import { FaqSection } from "@/components/home/faq-section";
 import { FeaturesSection } from "@/components/home/features-section";
 import { HeroSection } from "@/components/home/hero-section";
-import { RoadmapSection } from "@/components/home/roadmap-section";
 import { ServersSection } from "@/components/home/servers-section";
 import { WaitlistSection } from "@/components/home/waitlist-section";
 import { WhySection } from "@/components/home/why-section";
@@ -29,7 +28,6 @@ export default function HomePage() {
       </LiveServersProvider>
       <FeaturesSection limit={6} />
       <WhySection />
-      <RoadmapSection />
       <FaqSection items={homeFaqs} />
       <ComingSoonSection />
       <WaitlistSection />
