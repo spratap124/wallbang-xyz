@@ -26,7 +26,7 @@ export function SkinGrid({
 }: SkinGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
@@ -46,7 +46,7 @@ export function SkinGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {skins.map((skin) => (
         <SkinCard
           key={skin.id}

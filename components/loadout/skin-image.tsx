@@ -12,7 +12,7 @@ type SkinImageProps = {
   rarity: SkinRarity;
   image?: string | null;
   className?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   alt?: string;
 };
 
@@ -21,6 +21,7 @@ const SIZE_CLASS = {
   md: "h-28",
   lg: "h-40",
   xl: "h-56 sm:h-72",
+  "2xl": "aspect-square h-auto min-h-64",
 };
 
 export function SkinImage({
@@ -67,7 +68,7 @@ export function SkinImage({
           onError={() => setFailed(true)}
           className={cn(
             "relative z-[1] max-h-[85%] max-w-[90%] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]",
-            size === "xl" && "max-h-[90%]",
+            (size === "xl" || size === "2xl") && "max-h-[90%]",
           )}
         />
       ) : (

@@ -8,10 +8,10 @@ import { CategorySidebar } from "@/components/loadout/category-sidebar";
 import { GloveGrid } from "@/components/loadout/glove-grid";
 import { KnifeGrid } from "@/components/loadout/knife-grid";
 import { PreviewPanel } from "@/components/loadout/preview-panel";
-import { RecentlyEquipped } from "@/components/loadout/recently-equipped";
 import { SearchBar } from "@/components/loadout/search-bar";
 import { SkinBrowser } from "@/components/loadout/skin-browser";
 import { WeaponGrid } from "@/components/loadout/weapon-grid";
+import { WeaponGroupPicker } from "@/components/loadout/weapon-group-picker";
 import { Button } from "@/components/ui/button";
 import {
   fetchCatalogIndex,
@@ -36,6 +36,7 @@ import type {
   Skin,
   UserLoadoutState,
   WeaponDef,
+  WeaponGroup,
 } from "@/types/loadout";
 
 function pickRandom<T>(items: T[]): T | undefined {
@@ -54,6 +55,9 @@ export function LoadoutPage() {
   const [saving, setSaving] = useState(false);
 
   const [category, setCategory] = useState<LoadoutCategory>("weapons");
+  const [activeWeaponGroup, setActiveWeaponGroup] = useState<WeaponGroup | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const [browsingSkins, setBrowsingSkins] = useState(false);
   const [activeWeaponId, setActiveWeaponId] = useState<string | null>(null);
@@ -187,7 +191,17 @@ export function LoadoutPage() {
     (equippedForActive?.stattrak ?? false) ===
       (draftSkin.stattrakSupported ? stattrak : false);
 
-  function openSkinBrowser(weaponId: string, existing: EquippedItem | null) {
+  function openSkinBrowser(
+    weaponId: string,
+    existing: EquippedItem | null,
+    nextCategory: LoadoutCategory = category,
+  ) {
+    if (nextCategory === "weapons") {
+      const def = weapons.find((w) => w.id === weaponId);
+      if (def) setActiveWeaponGroup(def.group);
+    } else {
+      setActiveWeaponGroup(null);
+    }
     setActiveWeaponId(weaponId);
     setDraftSkin(null);
     if (existing) {
@@ -356,6 +370,7 @@ export function LoadoutPage() {
         ].slice(0, 8),
       }));
       setCategory("weapons");
+      setActiveWeaponGroup(randomWeapon.group);
       setActiveWeaponId(randomWeapon.id);
       setDraftSkin(weaponSkin);
       setWear(weaponItem.wear);
@@ -365,27 +380,11 @@ export function LoadoutPage() {
     }
   }
 
-  function handleRecentSelect(item: EquippedItem) {
-    const isKnife = knives.some((k) => k.id === item.weapon);
-    const isGlove = gloves.some((g) => g.id === item.weapon);
-    setCategory(isKnife ? "knives" : isGlove ? "gloves" : "weapons");
-    openSkinBrowser(item.weapon, item);
-  }
-
   const skinCategory =
     category === "knives" || category === "gloves" ? category : "weapons";
 
-  function resolveWeaponLabel(weaponId: string): string {
-    return (
-      weapons.find((w) => w.id === weaponId)?.name ??
-      knives.find((k) => k.id === weaponId)?.name ??
-      gloves.find((g) => g.id === weaponId)?.name ??
-      weaponId
-    );
-  }
-
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+    <div className="mx-auto w-full max-w-[90rem] px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-2 text-xs font-medium tracking-[0.2em] text-primary uppercase">
@@ -416,13 +415,17 @@ export function LoadoutPage() {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Search weapons, skins, rarity..."
+            placeholder={
+              category === "weapons" && !activeWeaponGroup
+                ? "Search categories, weapons, skins..."
+                : "Search weapons, skins, rarity..."
+            }
             className="sm:max-w-md sm:flex-1"
           />
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[11rem_minmax(0,1fr)] xl:grid-cols-[11rem_minmax(0,1fr)_20rem]">
+      <div className="grid gap-6 lg:grid-cols-[11rem_minmax(0,1fr)] xl:grid-cols-[11rem_minmax(0,1fr)_26rem]">
         <CategorySidebar
           active={category}
           onChange={(next) => {
@@ -430,6 +433,7 @@ export function LoadoutPage() {
             setDraftSkin(null);
             setSearch("");
             setBrowsingSkins(false);
+            setActiveWeaponGroup(null);
             if (next === "knives") {
               setActiveWeaponId(loadout.knife?.weapon ?? knives[0]?.id ?? null);
             } else if (next === "gloves") {
@@ -466,22 +470,43 @@ export function LoadoutPage() {
             />
           ) : (
             <>
-              {category !== "agents" ? (
-                <RecentlyEquipped
-                  items={loadout.recentlyEquipped}
-                  onSelect={handleRecentSelect}
-                  resolveWeaponLabel={resolveWeaponLabel}
+              {category === "weapons" && !activeWeaponGroup ? (
+                <WeaponGroupPicker
+                  weapons={weapons}
+                  equipped={loadout.weapons}
+                  filter={search}
+                  loading={catalogLoading}
+                  error={catalogError}
+                  onSelectGroup={(group) => {
+                    setActiveWeaponGroup(group);
+                    setSearch("");
+                    const first = weapons.find((w) => w.group === group);
+                    if (!first) return;
+                    setActiveWeaponId(first.id);
+                    setDraftSkin(null);
+                    const item = loadout.weapons[first.id];
+                    if (item) {
+                      setWear(item.wear);
+                      setStatTrak(item.stattrak);
+                    }
+                  }}
                 />
               ) : null}
 
-              {category === "weapons" ? (
+              {category === "weapons" && activeWeaponGroup ? (
                 <WeaponGrid
+                  group={activeWeaponGroup}
                   weapons={weapons}
                   equipped={loadout.weapons}
                   weaponFilter={search}
                   selectedWeapon={activeWeaponId}
                   loading={catalogLoading}
                   error={catalogError}
+                  onBack={() => {
+                    setActiveWeaponGroup(null);
+                    setSearch("");
+                    setDraftSkin(null);
+                  }}
                   onSelectWeapon={(id) =>
                     openSkinBrowser(id, loadout.weapons[id] ?? null)
                   }

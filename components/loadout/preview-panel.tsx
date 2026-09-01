@@ -105,7 +105,7 @@ export function PreviewPanel({
         name={skinName ?? weaponName ?? "Default"}
         rarity={rarity}
         image={previewImage}
-        size="xl"
+        size="2xl"
         alt={
           skinName && weaponName
             ? `${weaponName} | ${skinName}`
