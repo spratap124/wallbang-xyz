@@ -45,7 +45,7 @@ export async function getPlayerLoadout(
     const now = new Date(0);
     return toResponse(steamId, empty, now);
   }
-  return toResponse(doc.steamId, doc.loadout, doc.updatedAt);
+  return toResponse(doc.steamId, sanitizeUserLoadout(doc.loadout), doc.updatedAt);
 }
 
 /** Lean game projection for the CS2 plugin player endpoint. */
@@ -56,7 +56,7 @@ export async function getGameLoadoutForPlayer(
   const col = await playerLoadoutsCollection();
   const doc = await col.findOne({ steamId });
   if (!doc) return null;
-  return toGameLoadout(doc.loadout, doc.updatedAt);
+  return toGameLoadout(sanitizeUserLoadout(doc.loadout), doc.updatedAt);
 }
 
 export async function savePlayerLoadout(

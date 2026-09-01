@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Check } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkinImage } from "@/components/loadout/skin-image";
 import { AGENTS } from "@/lib/loadout/mock-data";
@@ -11,19 +9,18 @@ import { cn } from "@/lib/utils";
 import type { AgentFaction, EquippedAgent } from "@/types/loadout";
 
 type AgentGridProps = {
-  agentCT: EquippedAgent | null;
-  agentT: EquippedAgent | null;
+  faction: AgentFaction;
+  equipped: EquippedAgent | null;
   filter: string;
   onEquip: (agentId: string, name: string, faction: AgentFaction) => void;
 };
 
 export function AgentGrid({
-  agentCT,
-  agentT,
+  faction,
+  equipped,
   filter,
   onEquip,
 }: AgentGridProps) {
-  const [faction, setFaction] = useState<AgentFaction>("CT");
   const query = filter.trim().toLowerCase();
 
   const agents = AGENTS.filter((a) => {
@@ -32,26 +29,17 @@ export function AgentGrid({
     return a.name.toLowerCase().includes(query);
   });
 
-  const equippedId = faction === "CT" ? agentCT?.agentId : agentT?.agentId;
+  const equippedId = equipped?.agentId;
 
   return (
-    <div className="space-y-5">
-      <div className="inline-flex rounded-lg bg-secondary p-1">
-        {(["CT", "T"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setFaction(tab)}
-            className={cn(
-              "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-              faction === tab
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab === "CT" ? "Counter-Terrorist" : "Terrorist"}
-          </button>
-        ))}
+    <div>
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
+          {faction === "CT" ? "CT Agents" : "T Agents"}
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          {agents.length} item{agents.length === 1 ? "" : "s"}
+        </p>
       </div>
 
       {agents.length === 0 ? (
@@ -59,7 +47,7 @@ export function AgentGrid({
           No agents match your search.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {agents.map((agent) => {
             const isEquipped = equippedId === agent.id;
             return (
@@ -79,12 +67,7 @@ export function AgentGrid({
                   alt={agent.name}
                 />
                 <div className="space-y-3 p-3">
-                  <div>
-                    <p className="font-heading text-sm font-semibold">{agent.name}</p>
-                    <Badge variant="secondary" className="mt-1.5">
-                      {faction}
-                    </Badge>
-                  </div>
+                  <p className="font-heading text-sm font-semibold">{agent.name}</p>
                   <Button
                     size="sm"
                     variant={isEquipped ? "secondary" : "default"}

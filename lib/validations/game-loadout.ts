@@ -49,6 +49,8 @@ const gameAgentPatchSchema = z
  */
 export const patchGameLoadoutSchema = z
   .object({
+    /** When set, weapon/knife/glove patches apply only to that side. */
+    side: z.enum(["CT", "T"]).optional(),
     weapons: z.record(z.string().max(64), gameWeaponPatchSchema).optional(),
     knife: gameKnifePatchSchema.nullable().optional(),
     gloves: gameGlovePatchSchema.nullable().optional(),

@@ -14,6 +14,7 @@ type SkinImageProps = {
   className?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   alt?: string;
+  muted?: boolean;
 };
 
 const SIZE_CLASS = {
@@ -31,8 +32,9 @@ export function SkinImage({
   className,
   size = "md",
   alt,
+  muted = false,
 }: SkinImageProps) {
-  const color = RARITY_COLORS[rarity];
+  const color = muted ? RARITY_COLORS.Unknown : RARITY_COLORS[rarity];
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export function SkinImage({
           className={cn(
             "relative z-[1] max-h-[85%] max-w-[90%] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]",
             (size === "xl" || size === "2xl") && "max-h-[90%]",
+            muted && "opacity-55 grayscale",
           )}
         />
       ) : (

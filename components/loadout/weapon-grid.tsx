@@ -1,8 +1,5 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { WeaponCard } from "@/components/loadout/weapon-card";
 import type { EquippedItem, WeaponDef, WeaponGroup } from "@/types/loadout";
 
@@ -13,8 +10,8 @@ type WeaponGridProps = {
   weaponFilter: string;
   onSelectWeapon: (weaponId: string) => void;
   selectedWeapon?: string | null;
-  onPreview: (item: EquippedItem | null, weaponId: string) => void;
-  onBack: () => void;
+  favorites?: string[];
+  onToggleFavorite?: (skinId: string) => void;
   loading?: boolean;
   error?: string | null;
 };
@@ -26,8 +23,8 @@ export function WeaponGrid({
   weaponFilter,
   onSelectWeapon,
   selectedWeapon,
-  onPreview,
-  onBack,
+  favorites = [],
+  onToggleFavorite,
   loading = false,
   error = null,
 }: WeaponGridProps) {
@@ -68,27 +65,13 @@ export function WeaponGrid({
 
   return (
     <div>
-      <div className="mb-6 flex items-start gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onBack}
-          aria-label="Back to weapon categories"
-          className="mt-0.5 shrink-0"
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div>
-          <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
-            Weapons
-          </p>
-          <h2 className="mt-1 font-heading text-2xl font-semibold tracking-tight">
-            {group}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {items.length} weapon{items.length === 1 ? "" : "s"}
-          </p>
-        </div>
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
+          {group}
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          {items.length} item{items.length === 1 ? "" : "s"}
+        </p>
       </div>
 
       {items.length === 0 ? (
@@ -107,10 +90,13 @@ export function WeaponGrid({
                 defIndex={weapon.defIndex}
                 equipped={eq}
                 selected={selectedWeapon === weapon.id}
-                onClick={() => {
-                  onPreview(eq, weapon.id);
-                  onSelectWeapon(weapon.id);
-                }}
+                isFavorite={eq ? favorites.includes(eq.skinId) : false}
+                onToggleFavorite={
+                  eq && onToggleFavorite
+                    ? () => onToggleFavorite(eq.skinId)
+                    : undefined
+                }
+                onClick={() => onSelectWeapon(weapon.id)}
               />
             );
           })}

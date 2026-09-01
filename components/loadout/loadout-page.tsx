@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Dices } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Info, Shuffle } from "lucide-react";
 
 import { AgentGrid } from "@/components/loadout/agent-grid";
-import { CategorySidebar } from "@/components/loadout/category-sidebar";
 import { GloveGrid } from "@/components/loadout/glove-grid";
 import { KnifeGrid } from "@/components/loadout/knife-grid";
+import { LoadoutTabs } from "@/components/loadout/loadout-tabs";
+import { OverviewGrid } from "@/components/loadout/overview-grid";
 import { PreviewPanel } from "@/components/loadout/preview-panel";
 import { SearchBar } from "@/components/loadout/search-bar";
+import { SideSwitcher } from "@/components/loadout/side-switcher";
 import { SkinBrowser } from "@/components/loadout/skin-browser";
 import { WeaponGrid } from "@/components/loadout/weapon-grid";
-import { WeaponGroupPicker } from "@/components/loadout/weapon-group-picker";
 import { Button } from "@/components/ui/button";
 import {
   fetchCatalogIndex,
@@ -21,27 +22,152 @@ import {
   loadSkinsForSlot,
   saveSavedLoadout,
 } from "@/lib/loadout/api-client";
-import { midFloatForWear, wearNameFromFloat } from "@/lib/loadout/constants";
+import {
+  midFloatForWear,
+  TAB_WEAPON_GROUP,
+  WEAPON_GROUP_TAB,
+  wearNameFromFloat,
+} from "@/lib/loadout/constants";
 import {
   resolveSkinImage,
   resolveSkinImageByName,
 } from "@/lib/loadout/images";
 import { AGENTS } from "@/lib/loadout/mock-data";
-import { emptyUserLoadout } from "@/types/player-loadout";
+import { weaponsForSide, withCanonicalGroups } from "@/lib/loadout/weapon-sides";
+import {
+  emptyUserLoadout,
+  getSideLoadout,
+  sanitizeUserLoadout,
+  updateSideLoadout,
+} from "@/types/player-loadout";
 import { cn } from "@/lib/utils";
 import type {
   AgentFaction,
   EquippedItem,
-  LoadoutCategory,
+  LoadoutSide,
+  LoadoutTab,
+  SideLoadout,
   Skin,
   UserLoadoutState,
   WeaponDef,
-  WeaponGroup,
 } from "@/types/loadout";
+
+const LOADOUT_UI_KEY = "wallbang.loadout.ui";
+const LOADOUT_TABS: LoadoutTab[] = [
+  "overview",
+  "pistols",
+  "smgs",
+  "rifles",
+  "heavy",
+  "snipers",
+  "knives",
+  "gloves",
+  "agents",
+];
+
+type LoadoutUiPrefs = {
+  side: LoadoutSide;
+  tab: LoadoutTab;
+  activeWeaponId: string | null;
+};
+
+function isLoadoutTab(value: unknown): value is LoadoutTab {
+  return (
+    typeof value === "string" && LOADOUT_TABS.includes(value as LoadoutTab)
+  );
+}
+
+function readLoadoutUi(): LoadoutUiPrefs | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LOADOUT_UI_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LoadoutUiPrefs>;
+    const side = parsed.side === "T" ? "T" : parsed.side === "CT" ? "CT" : null;
+    if (!side || !isLoadoutTab(parsed.tab)) return null;
+    return {
+      side,
+      tab: parsed.tab,
+      activeWeaponId:
+        typeof parsed.activeWeaponId === "string" ? parsed.activeWeaponId : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeLoadoutUi(prefs: LoadoutUiPrefs) {
+  try {
+    window.localStorage.setItem(LOADOUT_UI_KEY, JSON.stringify(prefs));
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
+}
+
+function pickSlotWeaponId(
+  nextTab: LoadoutTab,
+  list: WeaponDef[],
+  sideState: SideLoadout,
+  knives: WeaponDef[],
+  gloves: WeaponDef[],
+): string | null {
+  if (nextTab === "knives") {
+    return sideState.knife?.weapon ?? knives[0]?.id ?? null;
+  }
+  if (nextTab === "gloves") {
+    return sideState.gloves?.weapon ?? gloves[0]?.id ?? null;
+  }
+  if (nextTab === "agents") return null;
+  if (nextTab === "overview") {
+    return (
+      list.find((w) => sideState.weapons[w.id])?.id ??
+      sideState.knife?.weapon ??
+      sideState.gloves?.weapon ??
+      list[0]?.id ??
+      null
+    );
+  }
+  const group = TAB_WEAPON_GROUP[nextTab];
+  const inGroup = group ? list.filter((w) => w.group === group) : list;
+  return (
+    inGroup.find((w) => sideState.weapons[w.id])?.id ?? inGroup[0]?.id ?? null
+  );
+}
+
+function weaponBelongsToTab(
+  id: string,
+  tab: LoadoutTab,
+  weapons: WeaponDef[],
+  knives: WeaponDef[],
+  gloves: WeaponDef[],
+): boolean {
+  if (tab === "agents") return false;
+  if (tab === "knives") return knives.some((k) => k.id === id);
+  if (tab === "gloves") return gloves.some((g) => g.id === id);
+  if (tab === "overview") {
+    return (
+      weapons.some((w) => w.id === id) ||
+      knives.some((k) => k.id === id) ||
+      gloves.some((g) => g.id === id)
+    );
+  }
+  const group = TAB_WEAPON_GROUP[tab];
+  return weapons.some((w) => w.id === id && (!group || w.group === group));
+}
 
 function pickRandom<T>(items: T[]): T | undefined {
   if (items.length === 0) return undefined;
   return items[Math.floor(Math.random() * items.length)];
+}
+
+function slotKind(
+  tab: LoadoutTab,
+): "weapons" | "knives" | "gloves" | "agents" | "overview" {
+  if (tab === "knives") return "knives";
+  if (tab === "gloves") return "gloves";
+  if (tab === "agents") return "agents";
+  if (tab === "overview") return "overview";
+  return "weapons";
 }
 
 export function LoadoutPage() {
@@ -54,18 +180,25 @@ export function LoadoutPage() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [category, setCategory] = useState<LoadoutCategory>("weapons");
-  const [activeWeaponGroup, setActiveWeaponGroup] = useState<WeaponGroup | null>(
-    null,
-  );
+  const [side, setSide] = useState<LoadoutSide>("CT");
+  const [tab, setTab] = useState<LoadoutTab>("pistols");
   const [search, setSearch] = useState("");
   const [browsingSkins, setBrowsingSkins] = useState(false);
   const [activeWeaponId, setActiveWeaponId] = useState<string | null>(null);
   const [draftSkin, setDraftSkin] = useState<Skin | null>(null);
   const [wear, setWear] = useState(0.18);
+  const [seed, setSeed] = useState(661);
   const [stattrak, setStatTrak] = useState(true);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [randomizing, setRandomizing] = useState(false);
+  const readyToSaveRef = useRef(false);
+
+  const sideLoadout = getSideLoadout(loadout, side);
+  const kind = slotKind(tab);
+  const visibleWeapons = useMemo(
+    () => weaponsForSide(weapons, side),
+    [weapons, side],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -80,15 +213,61 @@ export function LoadoutPage() {
     ])
       .then(([weaponsIndex, knivesIndex, glovesIndex, saved]) => {
         if (cancelled) return;
-        setWeapons(weaponsIndex.weapons);
-        setKnives(knivesIndex.knives);
-        setGloves(glovesIndex.gloves);
-        if (saved?.loadout) setLoadout(saved.loadout);
-        setActiveWeaponId((prev) => prev ?? weaponsIndex.weapons[0]?.id ?? null);
+        const catalogWeapons = withCanonicalGroups(weaponsIndex.weapons);
+        const nextKnives = knivesIndex.knives;
+        const nextGloves = glovesIndex.gloves;
+        const nextLoadout = saved?.loadout
+          ? sanitizeUserLoadout(saved.loadout)
+          : emptyUserLoadout();
+        const prefs = readLoadoutUi();
+        const nextSide = prefs?.side ?? "CT";
+        const nextTab = prefs?.tab ?? "pistols";
+        const visible = weaponsForSide(catalogWeapons, nextSide);
+        const sideState = getSideLoadout(nextLoadout, nextSide);
+        const restoredId =
+          prefs?.activeWeaponId &&
+          weaponBelongsToTab(
+            prefs.activeWeaponId,
+            nextTab,
+            visible,
+            nextKnives,
+            nextGloves,
+          )
+            ? prefs.activeWeaponId
+            : pickSlotWeaponId(
+                nextTab,
+                visible,
+                sideState,
+                nextKnives,
+                nextGloves,
+              );
+        const existing =
+          restoredId == null
+            ? null
+            : sideState.knife?.weapon === restoredId
+              ? sideState.knife
+              : sideState.gloves?.weapon === restoredId
+                ? sideState.gloves
+                : (sideState.weapons[restoredId] ?? null);
+
+        setWeapons(catalogWeapons);
+        setKnives(nextKnives);
+        setGloves(nextGloves);
+        setLoadout(nextLoadout);
+        setSide(nextSide);
+        setTab(nextTab);
+        setActiveWeaponId(restoredId);
+        if (existing) {
+          setWear(existing.wear);
+          setStatTrak(existing.stattrak);
+          setSeed(existing.seed);
+        }
+        readyToSaveRef.current = true;
         setCatalogLoading(false);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
+        readyToSaveRef.current = true;
         setCatalogError(
           err instanceof Error ? err.message : "Failed to load catalog",
         );
@@ -100,7 +279,13 @@ export function LoadoutPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!readyToSaveRef.current) return;
+    writeLoadoutUi({ side, tab, activeWeaponId });
+  }, [side, tab, activeWeaponId]);
+
   function persistLoadout(next: UserLoadoutState) {
+    if (!readyToSaveRef.current) return;
     setSaving(true);
     setSyncError(null);
     void saveSavedLoadout(next)
@@ -125,27 +310,23 @@ export function LoadoutPage() {
 
   const activeDef = useMemo(() => {
     if (!activeWeaponId) return null;
-    if (category === "knives") {
+    if (kind === "knives" || (kind === "overview" && sideLoadout.knife?.weapon === activeWeaponId)) {
       return knives.find((k) => k.id === activeWeaponId) ?? null;
     }
-    if (category === "gloves") {
+    if (kind === "gloves" || (kind === "overview" && sideLoadout.gloves?.weapon === activeWeaponId)) {
       return gloves.find((g) => g.id === activeWeaponId) ?? null;
     }
     return weapons.find((w) => w.id === activeWeaponId) ?? null;
-  }, [activeWeaponId, category, weapons, knives, gloves]);
+  }, [activeWeaponId, kind, weapons, knives, gloves, sideLoadout.knife, sideLoadout.gloves]);
 
   const activeDisplayName = activeDef?.name ?? activeWeaponId;
 
   const equippedForActive = useMemo(() => {
     if (!activeWeaponId) return null;
-    if (category === "knives") {
-      return loadout.knife?.weapon === activeWeaponId ? loadout.knife : null;
-    }
-    if (category === "gloves") {
-      return loadout.gloves?.weapon === activeWeaponId ? loadout.gloves : null;
-    }
-    return loadout.weapons[activeWeaponId] ?? null;
-  }, [activeWeaponId, category, loadout]);
+    if (sideLoadout.knife?.weapon === activeWeaponId) return sideLoadout.knife;
+    if (sideLoadout.gloves?.weapon === activeWeaponId) return sideLoadout.gloves;
+    return sideLoadout.weapons[activeWeaponId] ?? null;
+  }, [activeWeaponId, sideLoadout]);
 
   const previewItem = useMemo(() => {
     if (draftSkin && activeWeaponId) {
@@ -166,51 +347,54 @@ export function LoadoutPage() {
         wear,
         wearName: wearNameFromFloat(wear),
         stattrak: draftSkin.stattrakSupported ? stattrak : false,
-        seed: equippedForActive?.seed ?? 661,
+        seed,
         image,
         updatedAt: new Date().toISOString(),
       } satisfies EquippedItem;
     }
-    return equippedForActive;
+    return equippedForActive
+      ? { ...equippedForActive, wear, wearName: wearNameFromFloat(wear), stattrak, seed }
+      : null;
   }, [
     draftSkin,
     activeWeaponId,
     activeDisplayName,
     wear,
     stattrak,
+    seed,
     equippedForActive,
   ]);
 
   const favoriteId = draftSkin?.id ?? equippedForActive?.skinId ?? "";
   const isFavorite = favoriteId ? loadout.favorites.includes(favoriteId) : false;
 
-  const isCurrentEquipped =
-    !!draftSkin &&
-    equippedForActive?.skinId === draftSkin.id &&
-    Math.abs((equippedForActive?.wear ?? 0) - wear) < 0.0005 &&
-    (equippedForActive?.stattrak ?? false) ===
-      (draftSkin.stattrakSupported ? stattrak : false);
+  const equippedMatchesPreview =
+    !!equippedForActive &&
+    Math.abs(equippedForActive.wear - wear) < 0.0005 &&
+    equippedForActive.seed === seed &&
+    equippedForActive.stattrak ===
+      (draftSkin ? (draftSkin.stattrakSupported ? stattrak : false) : stattrak) &&
+    (draftSkin ? equippedForActive.skinId === draftSkin.id : true);
 
-  function openSkinBrowser(
-    weaponId: string,
-    existing: EquippedItem | null,
-    nextCategory: LoadoutCategory = category,
-  ) {
-    if (nextCategory === "weapons") {
-      const def = weapons.find((w) => w.id === weaponId);
-      if (def) setActiveWeaponGroup(def.group);
-    } else {
-      setActiveWeaponGroup(null);
-    }
-    setActiveWeaponId(weaponId);
-    setDraftSkin(null);
+  const canEquip = !!draftSkin || !!equippedForActive;
+  const isCurrentEquipped = equippedMatchesPreview && (!!draftSkin || !!equippedForActive);
+
+  function applyEquippedToEditors(existing: EquippedItem | null) {
     if (existing) {
       setWear(existing.wear);
       setStatTrak(existing.stattrak);
+      setSeed(existing.seed);
     } else {
       setWear(midFloatForWear("Field-Tested"));
       setStatTrak(false);
+      setSeed(Math.floor(Math.random() * 1000));
     }
+  }
+
+  function openSkinBrowser(weaponId: string, existing: EquippedItem | null) {
+    setActiveWeaponId(weaponId);
+    setDraftSkin(null);
+    applyEquippedToEditors(existing);
     setBrowsingSkins(true);
     setSearch("");
     setMobilePreviewOpen(false);
@@ -228,11 +412,20 @@ export function LoadoutPage() {
     setMobilePreviewOpen(true);
   }
 
+  function currentSlotKind(): "weapons" | "knives" | "gloves" {
+    if (kind === "knives") return "knives";
+    if (kind === "gloves") return "gloves";
+    if (sideLoadout.knife?.weapon === activeWeaponId) return "knives";
+    if (sideLoadout.gloves?.weapon === activeWeaponId) return "gloves";
+    return "weapons";
+  }
+
   function equipSkin(skin: Skin, weaponId: string) {
+    const slot = currentSlotKind();
     const def =
-      category === "knives"
+      slot === "knives"
         ? knives.find((k) => k.id === weaponId)
-        : category === "gloves"
+        : slot === "gloves"
           ? gloves.find((g) => g.id === weaponId)
           : weapons.find((w) => w.id === weaponId);
     const displayName = def?.name ?? weaponId;
@@ -250,32 +443,56 @@ export function LoadoutPage() {
       wear: skin.wearSupported ? wear : 0,
       wearName: wearNameFromFloat(skin.wearSupported ? wear : 0),
       stattrak: skin.stattrakSupported ? stattrak : false,
-      seed: Math.floor(Math.random() * 1000),
+      seed,
       image,
       updatedAt: new Date().toISOString(),
     };
 
-    updateLoadout((prev) => {
-      const next: UserLoadoutState = { ...prev };
-      if (category === "knives") {
-        next.knife = item;
-      } else if (category === "gloves") {
-        next.gloves = item;
-      } else {
-        next.weapons = { ...prev.weapons, [weaponId]: item };
-      }
-      next.recentlyEquipped = [
-        item,
-        ...prev.recentlyEquipped.filter((r) => r.skinId !== item.skinId),
-      ].slice(0, 8);
-      return next;
-    });
+    writeEquippedItem(item, slot);
     setDraftSkin(skin);
   }
 
+  function writeEquippedItem(
+    item: EquippedItem,
+    slot: "weapons" | "knives" | "gloves",
+  ) {
+    updateLoadout((prev) => {
+      const next = updateSideLoadout(prev, side, (current) => {
+        if (slot === "knives") return { ...current, knife: item };
+        if (slot === "gloves") return { ...current, gloves: item };
+        return {
+          ...current,
+          weapons: { ...current.weapons, [item.weapon]: item },
+        };
+      });
+      return {
+        ...next,
+        recentlyEquipped: [
+          item,
+          ...prev.recentlyEquipped.filter((r) => r.skinId !== item.skinId),
+        ].slice(0, 8),
+      };
+    });
+  }
+
   function handleEquipFromPreview() {
-    if (!draftSkin || !activeWeaponId) return;
-    equipSkin(draftSkin, activeWeaponId);
+    if (!activeWeaponId) return;
+    if (draftSkin) {
+      equipSkin(draftSkin, activeWeaponId);
+      return;
+    }
+    if (!equippedForActive) return;
+    writeEquippedItem(
+      {
+        ...equippedForActive,
+        wear,
+        wearName: wearNameFromFloat(wear),
+        stattrak,
+        seed,
+        updatedAt: new Date().toISOString(),
+      },
+      currentSlotKind(),
+    );
   }
 
   function toggleFavorite(skinId?: string) {
@@ -291,15 +508,90 @@ export function LoadoutPage() {
 
   function equipAgent(agentId: string, name: string, faction: AgentFaction) {
     const agent = { agentId, name, faction, updatedAt: new Date().toISOString() };
-    updateLoadout((prev) => ({
-      ...prev,
-      agentCT: faction === "CT" ? agent : prev.agentCT,
-      agentT: faction === "T" ? agent : prev.agentT,
-    }));
+    updateLoadout((prev) =>
+      updateSideLoadout(prev, faction, (current) => ({ ...current, agent })),
+    );
+  }
+
+  function handleWeaponClick(
+    id: string,
+    existing: EquippedItem | null,
+    nextTab?: LoadoutTab,
+  ) {
+    if (nextTab) setTab(nextTab);
+    if (activeWeaponId === id && !browsingSkins) {
+      openSkinBrowser(id, existing);
+      return;
+    }
+    setActiveWeaponId(id);
+    setDraftSkin(null);
+    applyEquippedToEditors(existing);
+  }
+
+  function changeSide(next: LoadoutSide) {
+    setSide(next);
+    setDraftSkin(null);
+    setBrowsingSkins(false);
+    const nextSide = getSideLoadout(loadout, next);
+    const visible = weaponsForSide(weapons, next);
+
+    if (tab === "knives" || tab === "gloves" || tab === "agents") {
+      const existing =
+        (activeWeaponId && nextSide.weapons[activeWeaponId]) ||
+        (nextSide.knife?.weapon === activeWeaponId ? nextSide.knife : null) ||
+        (nextSide.gloves?.weapon === activeWeaponId ? nextSide.gloves : null);
+      applyEquippedToEditors(existing ?? null);
+      return;
+    }
+
+    const stillValid =
+      !!activeWeaponId && visible.some((w) => w.id === activeWeaponId);
+    const nextWeaponId = stillValid
+      ? activeWeaponId
+      : pickSlotWeaponId(tab, visible, nextSide, knives, gloves);
+
+    setActiveWeaponId(nextWeaponId);
+    const existing =
+      nextWeaponId == null
+        ? null
+        : nextSide.knife?.weapon === nextWeaponId
+          ? nextSide.knife
+          : nextSide.gloves?.weapon === nextWeaponId
+            ? nextSide.gloves
+            : (nextSide.weapons[nextWeaponId] ?? null);
+    applyEquippedToEditors(existing);
+  }
+
+  function changeTab(next: LoadoutTab) {
+    setTab(next);
+    setDraftSkin(null);
+    setSearch("");
+    setBrowsingSkins(false);
+    const nextId = pickSlotWeaponId(
+      next,
+      visibleWeapons,
+      sideLoadout,
+      knives,
+      gloves,
+    );
+    setActiveWeaponId(nextId);
+    if (next === "agents") {
+      applyEquippedToEditors(null);
+      return;
+    }
+    const existing =
+      nextId == null
+        ? null
+        : sideLoadout.knife?.weapon === nextId
+          ? sideLoadout.knife
+          : sideLoadout.gloves?.weapon === nextId
+            ? sideLoadout.gloves
+            : (sideLoadout.weapons[nextId] ?? null);
+    applyEquippedToEditors(existing);
   }
 
   async function randomizeLoadout() {
-    const randomWeapon = pickRandom(weapons);
+    const randomWeapon = pickRandom(visibleWeapons);
     const randomKnife = pickRandom(knives);
     const randomGlove = pickRandom(gloves);
     if (!randomWeapon || !randomKnife || !randomGlove) return;
@@ -317,9 +609,9 @@ export function LoadoutPage() {
       const gloveSkin = pickRandom(gloveSkins);
       if (!weaponSkin || !knifeSkin || !gloveSkin) return;
 
-      const ct = pickRandom(AGENTS.filter((a) => a.faction === "CT"));
-      const t = pickRandom(AGENTS.filter((a) => a.faction === "T"));
-      if (!ct || !t) return;
+      const agentPool = AGENTS.filter((a) => a.faction === side);
+      const agent = pickRandom(agentPool);
+      if (!agent) return;
 
       const make = (skin: Skin, weaponId: string, displayName: string): EquippedItem => {
         const itemWear = skin.wearSupported ? Math.random() * 0.5 : 0;
@@ -345,35 +637,34 @@ export function LoadoutPage() {
       const knifeItem = make(knifeSkin, randomKnife.id, randomKnife.name);
       const gloveItem = make(gloveSkin, randomGlove.id, randomGlove.name);
 
-      updateLoadout((prev) => ({
-        ...prev,
-        weapons: { ...prev.weapons, [randomWeapon.id]: weaponItem },
-        knife: knifeItem,
-        gloves: gloveItem,
-        agentCT: {
-          agentId: ct.id,
-          name: ct.name,
-          faction: "CT",
-          updatedAt: new Date().toISOString(),
-        },
-        agentT: {
-          agentId: t.id,
-          name: t.name,
-          faction: "T",
-          updatedAt: new Date().toISOString(),
-        },
-        recentlyEquipped: [
-          weaponItem,
-          gloveItem,
-          knifeItem,
-          ...prev.recentlyEquipped,
-        ].slice(0, 8),
-      }));
-      setCategory("weapons");
-      setActiveWeaponGroup(randomWeapon.group);
+      updateLoadout((prev) => {
+        const next = updateSideLoadout(prev, side, (current) => ({
+          ...current,
+          weapons: { ...current.weapons, [randomWeapon.id]: weaponItem },
+          knife: knifeItem,
+          gloves: gloveItem,
+          agent: {
+            agentId: agent.id,
+            name: agent.name,
+            faction: side,
+            updatedAt: new Date().toISOString(),
+          },
+        }));
+        return {
+          ...next,
+          recentlyEquipped: [
+            weaponItem,
+            gloveItem,
+            knifeItem,
+            ...prev.recentlyEquipped,
+          ].slice(0, 8),
+        };
+      });
+      setTab("pistols");
       setActiveWeaponId(randomWeapon.id);
       setDraftSkin(weaponSkin);
       setWear(weaponItem.wear);
+      setSeed(weaponItem.seed);
       setStatTrak(weaponItem.stattrak);
     } finally {
       setRandomizing(false);
@@ -381,79 +672,58 @@ export function LoadoutPage() {
   }
 
   const skinCategory =
-    category === "knives" || category === "gloves" ? category : "weapons";
+    currentSlotKind() === "knives" || currentSlotKind() === "gloves"
+      ? currentSlotKind()
+      : "weapons";
+
+  const weaponGroup = TAB_WEAPON_GROUP[tab] ?? activeDef?.group;
+
+  const randomButton = (
+    <Button
+      variant="outline"
+      onClick={() => void randomizeLoadout()}
+      disabled={catalogLoading || randomizing || visibleWeapons.length === 0}
+      className="shrink-0"
+    >
+      <Shuffle data-icon="inline-start" />
+      {randomizing ? "Randomizing…" : "Random Loadout"}
+    </Button>
+  );
 
   return (
     <div className="mx-auto w-full max-w-[90rem] px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-2 text-xs font-medium tracking-[0.2em] text-primary uppercase">
-            Loadout
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Your Personal CS2 Inventory
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Equip skins, knives, gloves, and agents. Saved loadouts sync to
-            WallBang servers when you join a match
-            {saving ? " · Saving…" : syncError ? ` · ${syncError}` : ""}.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => void randomizeLoadout()}
-          disabled={catalogLoading || randomizing || weapons.length === 0}
-          className="shrink-0"
-        >
-          <Dices data-icon="inline-start" />
-          {randomizing ? "Randomizing…" : "Random Loadout"}
-        </Button>
+      <header className="mb-6">
+        <p className="mb-2 text-xs font-medium tracking-[0.2em] text-primary uppercase">
+          Loadout
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          Your Wallbang Inventory
+        </h1>
+        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+          Equip a separate loadout for CT and T. Saved loadouts sync to WallBang
+          servers when you join a match
+          {saving ? " · Saving…" : syncError ? ` · ${syncError}` : ""}.
+        </p>
       </header>
 
-      {!browsingSkins ? (
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder={
-              category === "weapons" && !activeWeaponGroup
-                ? "Search categories, weapons, skins..."
-                : "Search weapons, skins, rarity..."
-            }
-            className="sm:max-w-md sm:flex-1"
-          />
-        </div>
-      ) : null}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
+        <div className="min-w-0 space-y-5">
+          <SideSwitcher side={side} onChange={changeSide} />
+          <LoadoutTabs active={tab} onChange={changeTab} />
 
-      <div className="grid gap-6 lg:grid-cols-[11rem_minmax(0,1fr)] xl:grid-cols-[11rem_minmax(0,1fr)_26rem]">
-        <CategorySidebar
-          active={category}
-          onChange={(next) => {
-            setCategory(next);
-            setDraftSkin(null);
-            setSearch("");
-            setBrowsingSkins(false);
-            setActiveWeaponGroup(null);
-            if (next === "knives") {
-              setActiveWeaponId(loadout.knife?.weapon ?? knives[0]?.id ?? null);
-            } else if (next === "gloves") {
-              setActiveWeaponId(
-                loadout.gloves?.weapon ?? gloves[0]?.id ?? null,
-              );
-            } else if (next === "weapons") {
-              setActiveWeaponId(weapons[0]?.id ?? null);
-            } else {
-              setActiveWeaponId(null);
-            }
-          }}
-          className="lg:sticky lg:top-20 lg:self-start"
-        />
+          {!browsingSkins ? (
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search weapons, skins, rarity..."
+              className="sm:max-w-md"
+            />
+          ) : null}
 
-        <div className="min-w-0">
           {browsingSkins &&
           activeWeaponId &&
           activeDisplayName &&
-          category !== "agents" ? (
+          tab !== "agents" ? (
             <SkinBrowser
               weaponId={activeWeaponId}
               weaponDisplayName={activeDisplayName}
@@ -470,133 +740,136 @@ export function LoadoutPage() {
             />
           ) : (
             <>
-              {category === "weapons" && !activeWeaponGroup ? (
-                <WeaponGroupPicker
-                  weapons={weapons}
-                  equipped={loadout.weapons}
-                  filter={search}
-                  loading={catalogLoading}
-                  error={catalogError}
-                  onSelectGroup={(group) => {
-                    setActiveWeaponGroup(group);
-                    setSearch("");
-                    const first = weapons.find((w) => w.group === group);
-                    if (!first) return;
-                    setActiveWeaponId(first.id);
-                    setDraftSkin(null);
-                    const item = loadout.weapons[first.id];
-                    if (item) {
-                      setWear(item.wear);
-                      setStatTrak(item.stattrak);
-                    }
+              {tab === "overview" ? (
+                <OverviewGrid
+                  weapons={visibleWeapons}
+                  knives={knives}
+                  gloves={gloves}
+                  equippedWeapons={sideLoadout.weapons}
+                  equippedKnife={sideLoadout.knife}
+                  equippedGloves={sideLoadout.gloves}
+                  selectedWeapon={activeWeaponId}
+                  favorites={loadout.favorites}
+                  onToggleFavorite={toggleFavorite}
+                  onSelectWeapon={(id, nextKind) => {
+                    const existing =
+                      nextKind === "knives"
+                        ? sideLoadout.knife
+                        : nextKind === "gloves"
+                          ? sideLoadout.gloves
+                          : (sideLoadout.weapons[id] ?? null);
+                    const group = weapons.find((w) => w.id === id)?.group;
+                    const nextTab: LoadoutTab =
+                      nextKind === "knives"
+                        ? "knives"
+                        : nextKind === "gloves"
+                          ? "gloves"
+                          : (group ? (WEAPON_GROUP_TAB[group] ?? "pistols") : "pistols");
+                    handleWeaponClick(id, existing, nextTab);
                   }}
                 />
               ) : null}
 
-              {category === "weapons" && activeWeaponGroup ? (
+              {weaponGroup && kind === "weapons" ? (
                 <WeaponGrid
-                  group={activeWeaponGroup}
-                  weapons={weapons}
-                  equipped={loadout.weapons}
+                  group={weaponGroup}
+                  weapons={visibleWeapons}
+                  equipped={sideLoadout.weapons}
                   weaponFilter={search}
                   selectedWeapon={activeWeaponId}
                   loading={catalogLoading}
                   error={catalogError}
-                  onBack={() => {
-                    setActiveWeaponGroup(null);
-                    setSearch("");
-                    setDraftSkin(null);
-                  }}
+                  favorites={loadout.favorites}
+                  onToggleFavorite={toggleFavorite}
                   onSelectWeapon={(id) =>
-                    openSkinBrowser(id, loadout.weapons[id] ?? null)
+                    handleWeaponClick(id, sideLoadout.weapons[id] ?? null)
                   }
-                  onPreview={(item, id) => {
-                    setActiveWeaponId(id);
-                    setDraftSkin(null);
-                    if (item) {
-                      setWear(item.wear);
-                      setStatTrak(item.stattrak);
-                    }
-                  }}
                 />
               ) : null}
 
-              {category === "knives" ? (
+              {tab === "knives" ? (
                 <KnifeGrid
                   knives={knives}
-                  equippedKnife={loadout.knife}
+                  equippedKnife={sideLoadout.knife}
                   filter={search}
                   selectedKnife={activeWeaponId}
                   loading={catalogLoading}
                   error={catalogError}
+                  favorites={loadout.favorites}
+                  onToggleFavorite={toggleFavorite}
                   onSelectKnife={(id) =>
-                    openSkinBrowser(
+                    handleWeaponClick(
                       id,
-                      loadout.knife?.weapon === id ? loadout.knife : null,
+                      sideLoadout.knife?.weapon === id ? sideLoadout.knife : null,
                     )
                   }
-                  onPreview={(item, id) => {
-                    setActiveWeaponId(id);
-                    setDraftSkin(null);
-                    if (item) {
-                      setWear(item.wear);
-                      setStatTrak(item.stattrak);
-                    }
-                  }}
                 />
               ) : null}
 
-              {category === "gloves" ? (
+              {tab === "gloves" ? (
                 <GloveGrid
                   gloves={gloves}
-                  equippedGloves={loadout.gloves}
+                  equippedGloves={sideLoadout.gloves}
                   filter={search}
                   selectedGloves={activeWeaponId}
                   loading={catalogLoading}
                   error={catalogError}
+                  favorites={loadout.favorites}
+                  onToggleFavorite={toggleFavorite}
                   onSelectGloves={(id) =>
-                    openSkinBrowser(
+                    handleWeaponClick(
                       id,
-                      loadout.gloves?.weapon === id ? loadout.gloves : null,
+                      sideLoadout.gloves?.weapon === id
+                        ? sideLoadout.gloves
+                        : null,
                     )
                   }
-                  onPreview={(item, id) => {
-                    setActiveWeaponId(id);
-                    setDraftSkin(null);
-                    if (item) {
-                      setWear(item.wear);
-                      setStatTrak(item.stattrak);
-                    }
-                  }}
                 />
               ) : null}
 
-              {category === "agents" ? (
+              {tab === "agents" ? (
                 <AgentGrid
-                  agentCT={loadout.agentCT}
-                  agentT={loadout.agentT}
+                  faction={side}
+                  equipped={sideLoadout.agent}
                   filter={search}
                   onEquip={equipAgent}
                 />
               ) : null}
             </>
           )}
+
+          <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0 text-sky-400" />
+              Your loadout is saved per side. Switch between CT and T side to
+              manage different loadouts.
+            </p>
+            {randomButton}
+          </div>
         </div>
 
-        {category !== "agents" ? (
+        {tab !== "agents" ? (
           <PreviewPanel
             weaponName={activeDisplayName}
             weaponId={activeWeaponId}
             weaponDefIndex={activeDef?.defIndex}
+            weaponGroup={activeDef?.group}
             preview={previewItem}
             draftSkin={draftSkin}
             wear={wear}
+            seed={seed}
             stattrak={stattrak}
             isFavorite={isFavorite}
-            canEquip={!!draftSkin}
+            canEquip={canEquip}
             isEquipped={isCurrentEquipped}
             onWearChange={setWear}
+            onSeedChange={setSeed}
             onStatTrakChange={setStatTrak}
+            onBrowseSkins={
+              activeWeaponId
+                ? () => openSkinBrowser(activeWeaponId, equippedForActive)
+                : undefined
+            }
             onEquip={handleEquipFromPreview}
             onToggleFavorite={() => toggleFavorite()}
             className="hidden xl:sticky xl:top-20 xl:flex xl:self-start"
@@ -604,9 +877,8 @@ export function LoadoutPage() {
         ) : null}
       </div>
 
-      {/* Mobile preview — only while browsing skins */}
       {browsingSkins &&
-      category !== "agents" &&
+      tab !== "agents" &&
       mobilePreviewOpen &&
       activeDisplayName ? (
         <div className="fixed inset-x-0 bottom-0 z-40 xl:hidden">
@@ -622,14 +894,17 @@ export function LoadoutPage() {
               weaponName={activeDisplayName}
               weaponId={activeWeaponId}
               weaponDefIndex={activeDef?.defIndex}
+              weaponGroup={activeDef?.group}
               preview={previewItem}
               draftSkin={draftSkin}
               wear={wear}
+              seed={seed}
               stattrak={stattrak}
               isFavorite={isFavorite}
-              canEquip={!!draftSkin}
+              canEquip={canEquip}
               isEquipped={isCurrentEquipped}
               onWearChange={setWear}
+              onSeedChange={setSeed}
               onStatTrakChange={setStatTrak}
               onEquip={() => {
                 handleEquipFromPreview();

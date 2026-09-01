@@ -23,6 +23,7 @@ import type {
   KnifeFinish,
 } from "@/types/catalog";
 import type { Skin, WeaponDef, WeaponGroup } from "@/types/loadout";
+import { canonicalWeaponGroup } from "@/lib/loadout/weapon-sides";
 
 export type IngestResult =
   | {
@@ -315,15 +316,18 @@ export async function getGloveDetail(gloveId: string): Promise<{
 
 /** Map catalog weapons → loadout WeaponDef (CS2 ids canonical). */
 export function toWeaponDefs(weapons: CatalogWeapon[]): WeaponDef[] {
-  return weapons.map((w) => ({
-    id: w.id,
-    name: w.displayName,
-    group: w.category as WeaponGroup,
-    category: "weapons" as const,
-    weapon: w.weapon,
-    defIndex: w.defIndex,
-    skinCount: w.skinCount,
-  }));
+  return weapons.map((w) => {
+    const def: WeaponDef = {
+      id: w.id,
+      name: w.displayName,
+      group: w.category as WeaponGroup,
+      category: "weapons" as const,
+      weapon: w.weapon,
+      defIndex: w.defIndex,
+      skinCount: w.skinCount,
+    };
+    return { ...def, group: canonicalWeaponGroup(def) };
+  });
 }
 
 /** Map gun skins → loadout Skin rows; rarity/collection enriched from ByMykel metadata. */
