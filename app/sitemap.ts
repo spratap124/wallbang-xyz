@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/config/site";
 import { getAllPosts } from "@/lib/content/blog";
-import { isVipPageEnabled } from "@/lib/platform/feature-flags";
+import { getRuntimeFeatureFlags } from "@/lib/platform/feature-flags";
 
 const staticRoutes = [
   "/",
@@ -27,10 +27,18 @@ const staticRoutes = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
-  const vipPageEnabled = await isVipPageEnabled().catch(() => false);
+  const flags = await getRuntimeFeatureFlags().catch(() => ({
+    vipPage: false,
+    loadoutPage: false,
+    featuresPage: false,
+  }));
 
   const pages = staticRoutes
-    .filter((path) => vipPageEnabled || path !== "/vip")
+    .filter((path) => {
+      if (path === "/vip") return flags.vipPage;
+      if (path === "/features") return flags.featuresPage;
+      return true;
+    })
     .map((path) => ({
       url: `${siteConfig.url}${path === "/" ? "" : path}`,
       lastModified,

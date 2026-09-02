@@ -15,6 +15,7 @@ import type { PlayerProfileView } from "@/types/profile";
 
 type PlayerSummaryCardProps = {
   profile: PlayerProfileView;
+  showSettings?: boolean;
 };
 
 function SummaryRow({
@@ -34,7 +35,10 @@ function SummaryRow({
   );
 }
 
-export function PlayerSummary({ profile }: PlayerSummaryCardProps) {
+export function PlayerSummary({
+  profile,
+  showSettings = false,
+}: PlayerSummaryCardProps) {
   const { summary } = profile;
 
   return (
@@ -44,7 +48,10 @@ export function PlayerSummary({ profile }: PlayerSummaryCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {profile.isOwner ? (
-          <ProfileCompletionBar completion={summary.completion} />
+          <ProfileCompletionBar
+            completion={summary.completion}
+            showSettingsLink={showSettings}
+          />
         ) : (
           <SummaryRow
             label="Profile Completion"

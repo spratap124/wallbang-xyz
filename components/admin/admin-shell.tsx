@@ -120,6 +120,10 @@ type AdminShellProps = {
   healthOk?: boolean;
   steamAuthEnabled?: boolean;
   showVip?: boolean;
+  showLoadout?: boolean;
+  showFeatures?: boolean;
+  showProfile?: boolean;
+  showSettings?: boolean;
 };
 
 export function AdminShell({
@@ -131,12 +135,20 @@ export function AdminShell({
   healthOk = true,
   steamAuthEnabled = true,
   showVip = false,
+  showLoadout = false,
+  showFeatures = false,
+  showProfile = false,
+  showSettings = false,
 }: AdminShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const meta = pageMeta(pathname);
   const canManageServers = permissions.includes("manage_servers");
-  const siteNav = filterNavItems(mainNav, { vipPage: showVip });
+  const siteNav = filterNavItems(mainNav, {
+    vipPage: showVip,
+    loadoutPage: showLoadout,
+    featuresPage: showFeatures,
+  });
 
   const visibleNav = NAV.filter(
     (item) => !item.permission || permissions.includes(item.permission),
@@ -347,6 +359,8 @@ export function AdminShell({
               enabled={steamAuthEnabled}
               showAdmin
               showVip={showVip}
+              showProfile={showProfile}
+              showSettings={showSettings}
             />
           </div>
         </header>

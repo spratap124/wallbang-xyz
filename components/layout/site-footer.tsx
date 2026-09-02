@@ -6,10 +6,20 @@ import { siteConfig } from "@/config/site";
 
 type SiteFooterProps = {
   showVip?: boolean;
+  showLoadout?: boolean;
+  showFeatures?: boolean;
 };
 
-export function SiteFooter({ showVip = false }: SiteFooterProps) {
-  const nav = filterFooterNav(footerNav, { vipPage: showVip });
+export function SiteFooter({
+  showVip = false,
+  showLoadout = false,
+  showFeatures = false,
+}: SiteFooterProps) {
+  const nav = filterFooterNav(footerNav, {
+    vipPage: showVip,
+    loadoutPage: showLoadout,
+    featuresPage: showFeatures,
+  });
 
   return (
     <footer className="border-t border-border bg-card/40">
@@ -17,7 +27,7 @@ export function SiteFooter({ showVip = false }: SiteFooterProps) {
         <div className="lg:col-span-1">
           <Logo />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-            {siteConfig.tagline} India-first CS2 retakes. Built for serious players.
+            {siteConfig.tagline}
           </p>
         </div>
 

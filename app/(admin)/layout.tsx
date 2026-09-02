@@ -6,7 +6,7 @@ import { getAdminHealth } from "@/lib/admin/health";
 import { featureFlags } from "@/config/features.flags";
 import { isSteamAuthConfigured } from "@/lib/auth/config";
 import { getSession } from "@/lib/auth/session";
-import { isVipPageEnabled } from "@/lib/platform/feature-flags";
+import { getRuntimeFeatureFlags } from "@/lib/platform/feature-flags";
 import { getUserPermissions } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 
@@ -52,7 +52,7 @@ export default async function AdminLayout({
     healthLabel = "Status Unavailable";
   }
 
-  const showVip = await isVipPageEnabled().catch(() => featureFlags.vipPage);
+  const flags = await getRuntimeFeatureFlags().catch(() => featureFlags);
 
   return (
     <AdminShell
@@ -62,7 +62,11 @@ export default async function AdminLayout({
       healthLabel={healthLabel}
       healthOk={healthOk}
       steamAuthEnabled={steamAuthEnabled}
-      showVip={showVip}
+      showVip={flags.vipPage}
+      showLoadout={flags.loadoutPage}
+      showFeatures={flags.featuresPage}
+      showProfile={flags.profilePage}
+      showSettings={flags.settingsPage}
     >
       {children}
     </AdminShell>

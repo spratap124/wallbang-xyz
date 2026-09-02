@@ -21,8 +21,8 @@ type FaqSectionProps = {
 export function FaqSection({
   items,
   showViewAll = true,
-  title = "Answers before you queue",
-  description = "Straight answers about WallBang, launch timing, VIP, regions, and statistics.",
+  title = "Answers about WallBang",
+  description = "What WallBang is, what VIP includes, how long it lasts, and how refunds work.",
 }: FaqSectionProps) {
   return (
     <section id="faq" className="border-y border-border bg-card/30 py-20 sm:py-24">

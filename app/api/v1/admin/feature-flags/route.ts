@@ -1,10 +1,9 @@
 import { z } from "zod";
 
+import { writableFeatureFlags } from "@/config/features.flags";
 import {
   getRuntimeFeatureFlags,
-  setVipAllRetakesEnabled,
-  setVipCheckoutEnabled,
-  setVipPageEnabled,
+  setRuntimeFeatureFlag,
 } from "@/lib/platform/feature-flags";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
@@ -14,12 +13,13 @@ const patchSchema = z
     vipPage: z.boolean().optional(),
     vipAllRetakes: z.boolean().optional(),
     vipCheckout: z.boolean().optional(),
+    loadoutPage: z.boolean().optional(),
+    featuresPage: z.boolean().optional(),
+    profilePage: z.boolean().optional(),
+    settingsPage: z.boolean().optional(),
   })
   .refine(
-    (value) =>
-      value.vipPage !== undefined ||
-      value.vipAllRetakes !== undefined ||
-      value.vipCheckout !== undefined,
+    (value) => writableFeatureFlags.some((key) => value[key] !== undefined),
     { message: "Provide at least one feature flag to update." },
   );
 
@@ -55,17 +55,11 @@ export async function PATCH(request: Request): Promise<Response> {
   }
 
   try {
-    if (parsed.data.vipPage !== undefined) {
-      await setVipPageEnabled(parsed.data.vipPage, auth.user.steamId);
-    }
-    if (parsed.data.vipAllRetakes !== undefined) {
-      await setVipAllRetakesEnabled(
-        parsed.data.vipAllRetakes,
-        auth.user.steamId,
-      );
-    }
-    if (parsed.data.vipCheckout !== undefined) {
-      await setVipCheckoutEnabled(parsed.data.vipCheckout, auth.user.steamId);
+    for (const key of writableFeatureFlags) {
+      const value = parsed.data[key];
+      if (value !== undefined) {
+        await setRuntimeFeatureFlag(key, value, auth.user.steamId);
+      }
     }
   } catch (err) {
     const message =

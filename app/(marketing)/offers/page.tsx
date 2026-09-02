@@ -28,7 +28,10 @@ import {
   processLaunchGiveaway,
 } from "@/lib/permissions/service";
 import { announceLaunchGiveawayGrant } from "@/lib/discord/giveaway-announce";
-import { isVipPageEnabled } from "@/lib/platform/feature-flags";
+import {
+  isProfilePageEnabled,
+  isVipPageEnabled,
+} from "@/lib/platform/feature-flags";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
@@ -36,7 +39,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Launch VIP",
   description:
-    "Become one of WallBang's first 100 players and unlock 3 months of Launch VIP. Sign in with Steam to claim your limited-time reward.",
+    "Become one of WallBang's first 100 players and unlock 3 months of Launch VIP. Sign in with Steam to claim this limited-time membership.",
   path: "/offers",
 });
 
@@ -167,7 +170,10 @@ export default async function LaunchOfferPage({
   const discordReady = isDiscordLinkConfigured();
   const requireDiscord = isLaunchGiveawayDiscordRequired();
   const totalSteps = requireDiscord ? 2 : 1;
-  const showVip = await isVipPageEnabled();
+  const [showVip, showProfile] = await Promise.all([
+    isVipPageEnabled(),
+    isProfilePageEnabled(),
+  ]);
 
   let giveawayStatus: {
     maxWinners: number;
@@ -262,7 +268,7 @@ export default async function LaunchOfferPage({
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
             {requireDiscord
-              ? `Complete the two steps below to unlock ${vipMonths} months of Launch VIP. This limited-time reward is available only while spots remain.`
+              ? `Complete the two steps below to unlock ${vipMonths} months of Launch VIP. This limited-time membership is available only while spots remain.`
               : launchOfferSteamOnlyBlurb(vipMonths)}
           </p>
 
@@ -540,7 +546,7 @@ export default async function LaunchOfferPage({
                     🎉 Launch VIP Activated
                   </h2>
                   <p className="mt-3 text-muted-foreground">
-                    Your VIP benefits are now available on all WallBang servers.
+                    Your VIP privileges are now available on all WallBang servers.
                   </p>
                   <p className="mt-4 text-sm text-muted-foreground">
                     Entry <strong>#{userGiveaway.position}</strong> of{" "}
@@ -553,7 +559,7 @@ export default async function LaunchOfferPage({
                   <div className="mb-4 flex items-center gap-2">
                     <Crown className="size-5 text-red-500" />
                     <h2 className="text-lg font-semibold tracking-tight">
-                      Launch VIP Reward
+                      Launch VIP membership
                     </h2>
                   </div>
                   <p className="text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
@@ -562,7 +568,7 @@ export default async function LaunchOfferPage({
                       : "After you sign in with Steam, your Launch VIP is activated automatically."}
                   </p>
                   <p className="mt-5 text-sm font-medium text-foreground">
-                    Benefits:
+                    What you receive:
                   </p>
                   <ul className="mt-3 space-y-2.5">
                     {launchOfferRewardBenefits.map((benefit) => (
@@ -596,7 +602,7 @@ export default async function LaunchOfferPage({
                 </a>
               ) : showRewardSuccess ? (
                 <Link
-                  href="/profile"
+                  href={showProfile ? "/profile" : showVip ? "/vip" : "/"}
                   className={cn(
                     buttonVariants({
                       size: "lg",
@@ -605,7 +611,11 @@ export default async function LaunchOfferPage({
                     }),
                   )}
                 >
-                  Go to Dashboard
+                  {showProfile
+                    ? "Go to Dashboard"
+                    : showVip
+                      ? "View VIP"
+                      : "Back to home"}
                 </Link>
               ) : requireDiscord ? (
                 <>

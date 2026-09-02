@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Our Services",
   description:
-    "WallBang CS2 retake server access and optional prepaid VIP plans, including duration, expiry, and renewal terms.",
+    "WallBang CS2 community and retake servers, plus optional fixed-duration VIP membership for priority/reserved access and server privileges.",
   path: "/services",
 });
 

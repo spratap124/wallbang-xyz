@@ -40,6 +40,7 @@ type ProfilePageViewProps = {
   profile: PlayerProfileView;
   activity: ActivityItem[];
   activityPrivate?: boolean;
+  showSettings?: boolean;
 };
 
 function isActiveTab(tab: string | null): ProfileTabId {
@@ -56,6 +57,7 @@ function ProfileTabBody({
   activity,
   activityPrivate,
   tab,
+  showSettings = false,
 }: ProfilePageViewProps & { tab: ProfileTabId }) {
   if (tab === "activity") {
     return (
@@ -97,7 +99,7 @@ function ProfileTabBody({
       </div>
 
       <aside className="space-y-6">
-        <PlayerSummary profile={profile} />
+        <PlayerSummary profile={profile} showSettings={showSettings} />
         <CurrentServerCard server={profile.summary.currentServer} />
         <Achievements badges={profile.badges} />
       </aside>
@@ -109,6 +111,7 @@ function ProfilePageInner({
   profile,
   activity,
   activityPrivate,
+  showSettings = false,
 }: ProfilePageViewProps) {
   const searchParams = useSearchParams();
   const tab = useMemo(
@@ -120,17 +123,19 @@ function ProfilePageInner({
     <div className="pb-16">
       <ProfileBanner bannerUrl={profile.bannerUrl} />
       <Container className="space-y-8">
-        <ProfileHeader profile={profile} />
+        <ProfileHeader profile={profile} showSettings={showSettings} />
         <ProfileTabs
           steamId={profile.steamId}
           isOwner={profile.isOwner}
           activeTab={tab}
+          showSettings={showSettings}
         />
         <ProfileTabBody
           profile={profile}
           activity={activity}
           activityPrivate={activityPrivate}
           tab={tab}
+          showSettings={showSettings}
         />
       </Container>
     </div>
@@ -144,7 +149,10 @@ export function ProfilePageView(props: ProfilePageViewProps) {
         <div className="pb-16">
           <ProfileBanner bannerUrl={props.profile.bannerUrl} />
           <Container className="space-y-8">
-            <ProfileHeader profile={props.profile} />
+            <ProfileHeader
+              profile={props.profile}
+              showSettings={props.showSettings}
+            />
             <div className="h-11 border-b border-border" aria-hidden />
           </Container>
         </div>

@@ -4,10 +4,11 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://wallbang.xyz",
   discordUrl:
     process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/KY2dRw8Yh4",
-  tagline: "The Next Generation Counter-Strike 2 Competitive Platform.",
+  tagline: "Privately managed Counter-Strike 2 community and retake servers.",
   heroSubtitle: "CS2 Community Servers",
   description:
-    "WallBang is a long-term CS2 competitive platform starting with India-first community servers — VIP, Steam login, statistics, leaderboards, and tournaments ahead.",
+    "WallBang operates privately managed CS2 community and retake servers. Optional fixed-duration VIP membership provides priority/reserved server access and additional server/community privileges.",
+  businessCategory: "CS2 community and retake server membership",
   keywords: [
     "WallBang",
     "wallbang.xyz",
@@ -15,11 +16,8 @@ export const siteConfig = {
     "CS2 Community Servers",
     "Counter Strike 2 Retakes",
     "CS2 India",
-    "CS2 Competitive",
-    "CS2 VIP",
-    "CS2 Weapon Skins",
-    "Counter Strike 2 Statistics",
-    "Counter Strike 2 Leaderboards",
+    "CS2 VIP membership",
+    "Counter Strike 2 community",
   ] as const,
   locale: "en_IN",
   regionFocus: "India",
@@ -27,11 +25,11 @@ export const siteConfig = {
     discord: process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/KY2dRw8Yh4",
   },
   supportingPoints: [
-    "Low latency servers.",
-    "Powerful player statistics.",
-    "Competitive matchmaking.",
+    "Low latency community and retake servers.",
+    "Optional fixed-duration VIP membership.",
+    "Priority and reserved server access for VIP.",
     "Community-driven development.",
-    "Built for serious Counter-Strike 2 players.",
+    "Built for Counter-Strike 2 community players.",
   ] as const,
 } as const;
 

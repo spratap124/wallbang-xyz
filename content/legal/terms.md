@@ -1,6 +1,6 @@
 # Terms & Conditions
 
-**Effective Date:** August 31, 2026
+**Effective Date:** September 2, 2026
 
 Welcome to WallBang.
 
@@ -16,29 +16,35 @@ This website is operated by Shivani under the trade name WallBang.
 
 ## 2. Services
 
-WallBang provides online gaming services, including access to a Counter-Strike 2 retake server and optional prepaid VIP access.
+WallBang operates privately managed Counter-Strike 2 community and retake servers.
 
-The available services, features, durations, and prices are displayed on the website at the time of purchase.
+Connecting to WallBang servers does not require a purchase.
 
-## 3. VIP Access
+WallBang also offers an optional prepaid VIP membership. VIP is a fixed-duration membership that provides priority/reserved server access and additional server/community privileges.
 
-VIP access is a prepaid digital service.
+The available services, privileges, durations, and prices are displayed on the website at the time of purchase.
 
-The customer receives VIP access for the duration selected during purchase.
+## 3. VIP Membership
 
-VIP access begins according to the activation terms displayed on the purchase page and remains active for the purchased duration unless suspended or terminated in accordance with these Terms.
+VIP is a prepaid digital membership for a stated term.
+
+The customer receives VIP privileges for the duration selected during purchase.
+
+VIP begins according to the activation terms displayed on the purchase page and remains active for the purchased duration unless suspended or terminated in accordance with these Terms.
+
+VIP is not an in-game financial product, wallet, or monetary benefit.
 
 ## 4. No Automatic Renewal
 
 WallBang does not automatically charge customers for renewal.
 
-A customer must make a new purchase to renew or extend VIP access.
+A customer must make a new purchase to renew or extend VIP.
 
-Customers may renew their VIP access at any time by purchasing another available VIP plan.
+Customers may renew VIP at any time by purchasing another available VIP plan.
 
 ## 5. Account / Steam Information
 
-Where required to provide the service, WallBang may use the customer's Steam/SteamID information to associate VIP access with their CS2 account.
+Where required to provide the service, WallBang may use the customer's Steam/SteamID information to associate VIP with their CS2 account.
 
 Customers are responsible for providing accurate information required for service delivery.
 
@@ -68,9 +74,9 @@ Customers should review the Refund Policy before making a purchase.
 
 ## 10. Service Availability
 
-WallBang makes reasonable efforts to keep its gaming services available but does not guarantee uninterrupted or error-free availability.
+WallBang makes reasonable efforts to keep its community and retake servers available but does not guarantee uninterrupted or error-free availability.
 
-Temporary downtime may occur due to maintenance, technical problems, hosting issues, network problems, game updates, or circumstances beyond our reasonable control.
+Temporary downtime may occur due to maintenance, technical problems, infrastructure issues, network problems, game updates, or circumstances beyond our reasonable control.
 
 ## 11. Changes to Services
 

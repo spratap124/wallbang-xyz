@@ -15,14 +15,14 @@ export const launchOfferSteps = [
     step: 1,
     title: "Sign in with Steam",
     description:
-      "Create your WallBang account using Steam. This securely links your player identity and enables stats, loadouts, and rewards.",
+      "Create your WallBang account using Steam. This links your player identity for VIP and server access.",
     successLabel: "Steam account connected",
   },
   {
     step: 2,
     title: "Join the WallBang Discord",
     description:
-      "Join our Discord community to receive announcements, server updates, tournaments, support, and to verify your eligibility for the Launch VIP reward.",
+      "Join our Discord community to receive announcements, server updates, support, and to verify your eligibility for Launch VIP.",
     successLabel: "Discord membership verified",
   },
 ] as const;

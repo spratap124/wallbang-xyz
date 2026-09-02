@@ -1,10 +1,10 @@
 # About WallBang
 
-WallBang is a Counter-Strike 2 (CS2) gaming community and retake server platform operated by Shivani.
+WallBang operates privately managed Counter-Strike 2 community and retake servers.
 
-WallBang provides CS2 players with access to dedicated retake game servers and optional VIP access that provides additional features and benefits on the server.
+Players can connect to WallBang servers and take part in community retake sessions. Connecting does not require a purchase.
 
-Our goal is to provide players with a reliable, competitive, and enjoyable CS2 retake gaming experience.
+Players who want priority/reserved server access and additional server/community privileges may purchase a fixed-duration VIP membership.
 
 ## Operator Details
 

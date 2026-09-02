@@ -28,8 +28,8 @@ export function RoadmapSection({
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading
               eyebrow="Roadmap"
-              title="Retakes are live. The platform comes next."
-              description="Phase 1 public retakes are online in Mumbai. Next up: VIP, Steam login, and player statistics — then profiles, rankings, and tournaments."
+              title="Retakes are live. More is on the way."
+              description="Phase 1 public retakes are online in Mumbai. Next up: VIP membership, Steam login, and player statistics — then profiles and rankings."
               className="mb-0"
             />
             {showViewAll ? (
