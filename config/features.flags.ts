@@ -27,7 +27,10 @@ export const featureFlags = {
    * Default off until payment gateway is fully ready.
    */
   vipPage: false,
-  /** Razorpay checkout CTA. Default on in local/dev; off in production builds. */
+  /**
+   * Checkout CTA on `/pricing`. Default on in local/dev; off in production builds.
+   * Runtime-overridable via admin Settings (wins) or FEATURE_VIP_CHECKOUT.
+   */
   vipCheckout: process.env.NODE_ENV !== "production",
   vipAllRetakes: false,
   /**
