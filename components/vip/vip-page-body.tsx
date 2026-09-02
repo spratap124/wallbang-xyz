@@ -1,76 +1,51 @@
-"use client";
+import Link from "next/link";
 
-import { useCallback, useState } from "react";
-
-import {
-  VipMembershipDashboard,
-  type VipRenewTarget,
-} from "@/components/vip/vip-membership-dashboard";
-import { VipShop } from "@/components/vip/vip-shop";
-import type { VipMembershipView, VipShopCatalog } from "@/types/vip";
-
-import type { PaymentProvider } from "@/types/payments";
+import { VipMembershipDashboard } from "@/components/vip/vip-membership-dashboard";
+import { buttonVariants } from "@/components/ui/button";
+import { pricingCheckoutHref } from "@/lib/payments/pricing-href";
+import { cn } from "@/lib/utils";
+import type { VipMembershipView } from "@/types/vip";
 
 type VipPageBodyProps = {
-  catalog: VipShopCatalog;
   loggedIn: boolean;
-  purchasesEnabled: boolean;
-  paymentProvider: PaymentProvider;
-  checkoutEnabled: boolean;
-  allRetakesEnabled: boolean;
   hideBuy?: boolean;
   membership: VipMembershipView | null;
 };
 
 export function VipPageBody({
-  catalog,
   loggedIn,
-  purchasesEnabled,
-  paymentProvider,
-  checkoutEnabled,
-  allRetakesEnabled,
   hideBuy = false,
   membership,
 }: VipPageBodyProps) {
-  const [renewTarget, setRenewTarget] = useState<VipRenewTarget | null>(null);
-  const showPurchaseHeading =
-    loggedIn && (membership?.hasActiveVip || membership?.lifetime);
-
-  const handleRenew = useCallback((target: VipRenewTarget) => {
-    setRenewTarget(target);
-    requestAnimationFrame(() => {
-      document.getElementById("vip-shop")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }, []);
+  const buyHref = pricingCheckoutHref();
+  const buyLabel =
+    membership?.hasActiveVip && !membership.lifetime ? "Renew VIP" : "Buy VIP";
 
   return (
     <>
       {loggedIn ? (
-        <VipMembershipDashboard
-          membership={membership}
-          onRenew={handleRenew}
-        />
+        <VipMembershipDashboard membership={membership} />
       ) : null}
 
-      {showPurchaseHeading ? (
-        <h2 className="mb-6 text-lg font-semibold tracking-tight">
-          Buy / Renew VIP
-        </h2>
-      ) : null}
-
-      <VipShop
-        catalog={catalog}
-        loggedIn={loggedIn}
-        purchasesEnabled={purchasesEnabled}
-        paymentProvider={paymentProvider}
-        checkoutEnabled={checkoutEnabled}
-        allRetakesEnabled={allRetakesEnabled}
-        hideBuy={hideBuy}
-        renewTarget={renewTarget}
-      />
+      {hideBuy ? null : (
+        <section className="mt-2 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-card/60 px-6 py-6 sm:flex-row sm:items-center">
+          <div>
+            <p className="font-semibold">
+              {membership?.hasActiveVip ? "Extend your VIP" : "Want VIP access?"}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose a server and duration on the Pricing page, then pay once.
+              No auto-renewal.
+            </p>
+          </div>
+          <Link
+            href={buyHref}
+            className={cn(buttonVariants({ size: "lg" }), "h-11 shrink-0")}
+          >
+            {buyLabel}
+          </Link>
+        </section>
+      )}
     </>
   );
 }

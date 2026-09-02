@@ -1,35 +1,23 @@
 import {
-  ChevronRight,
-  CreditCard,
+  ExternalLink,
   Headset,
   MessageCircle,
-  Server,
-  Sparkles,
-  ExternalLink,
-  Timer,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { VipHero } from "@/components/vip/vip-hero";
 import { VipPageBody } from "@/components/vip/vip-page-body";
 import { VipPaymentResultBanner } from "@/components/vip/vip-payment-result-banner";
-import { LiveServersProvider } from "@/components/servers/live-servers-provider";
 import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buttonVariants } from "@/components/ui/button";
-import { getVipShopCatalog } from "@/config/vip-plans";
 import { siteConfig } from "@/config/site";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
-import { isPaymentConfigured, isPayuActive } from "@/lib/payments/provider";
-import {
-  isVipAllRetakesEnabled,
-  isVipCheckoutEnabled,
-  isVipPageEnabled,
-} from "@/lib/platform/feature-flags";
+import { isVipPageEnabled } from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
@@ -38,34 +26,9 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "VIP",
   description:
-    "Buy prepaid WallBang VIP — pick servers, choose 1 / 3 / 6 months or 1 year, pay once. No auto-renewal.",
+    "View your WallBang VIP membership status, expiry, and renewals. Buy prepaid VIP on the Pricing page.",
   path: "/vip",
 });
-
-type VipPageProps = Record<string, never>;
-
-const howItWorks = [
-  {
-    icon: Server,
-    title: "Select servers",
-    body: "Pick the server(s) you want VIP access to.",
-  },
-  {
-    icon: Timer,
-    title: "Choose duration",
-    body: "Pick 1M, 3M, 6M or 1Y that suits you.",
-  },
-  {
-    icon: CreditCard,
-    title: "Pay once",
-    body: "Make a one-time payment. That's it.",
-  },
-  {
-    icon: Sparkles,
-    title: "Enjoy VIP",
-    body: "VIP turns off when the term ends. Renew anytime.",
-  },
-] as const;
 
 function SteamMark({ className }: { className?: string }) {
   return (
@@ -75,20 +38,13 @@ function SteamMark({ className }: { className?: string }) {
   );
 }
 
-export default async function VipPage(_props: VipPageProps) {
+export default async function VipPage() {
   if (!(await isVipPageEnabled())) {
     redirect("/");
   }
 
   const session = await getSession();
   const servers = await getGameServers();
-  const catalog = getVipShopCatalog(servers);
-  const purchasesEnabled = isPaymentConfigured();
-  const paymentProvider = isPayuActive() ? "payu" : "razorpay";
-  const [allRetakesEnabled, checkoutEnabled] = await Promise.all([
-    isVipAllRetakesEnabled(),
-    isVipCheckoutEnabled(),
-  ]);
 
   let membership = null;
   let lifetime = false;
@@ -114,9 +70,11 @@ export default async function VipPage(_props: VipPageProps) {
           { name: "VIP", path: "/vip" },
         ])}
       />
-      <VipHero />
-
       <Container className="py-10 sm:py-12">
+        <h1 className="mb-8 text-3xl font-semibold tracking-tight sm:text-4xl">
+          Your VIP
+        </h1>
+
         <Suspense fallback={null}>
           <VipPaymentResultBanner />
         </Suspense>
@@ -141,7 +99,7 @@ export default async function VipPage(_props: VipPageProps) {
                 <span className="font-medium text-foreground">
                   {session.personaName}
                 </span>
-                . VIP will be applied to this Steam account.
+                . VIP on this page is for this Steam account.
               </p>
             </div>
           </div>
@@ -153,7 +111,7 @@ export default async function VipPage(_props: VipPageProps) {
                 <span className="font-semibold">Sign in with Steam</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  — Buy VIP on the same account you use in-game.
+                  — View VIP status for the account you use in-game.
                 </span>
               </p>
             </div>
@@ -167,39 +125,11 @@ export default async function VipPage(_props: VipPageProps) {
           </div>
         )}
 
-        <LiveServersProvider>
-          <VipPageBody
-            catalog={catalog}
-            loggedIn={Boolean(session)}
-            purchasesEnabled={purchasesEnabled}
-            paymentProvider={paymentProvider}
-            checkoutEnabled={checkoutEnabled}
-            allRetakesEnabled={allRetakesEnabled}
-            hideBuy={lifetime}
-            membership={membership}
-          />
-        </LiveServersProvider>
-
-        <section className="mt-16">
-          <h2 className="text-center text-lg font-semibold">How it works</h2>
-          <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {howItWorks.map((step, index) => (
-              <li key={step.title} className="relative text-center">
-                {index < howItWorks.length - 1 ? (
-                  <ChevronRight
-                    className="pointer-events-none absolute top-5 -right-3 hidden size-5 text-muted-foreground/40 lg:block"
-                    aria-hidden
-                  />
-                ) : null}
-                <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary">
-                  <step.icon className="size-5" />
-                </span>
-                <p className="mt-3 text-sm font-semibold">{step.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{step.body}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <VipPageBody
+          loggedIn={Boolean(session)}
+          hideBuy={lifetime}
+          membership={membership}
+        />
 
         <section className="mt-12 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-card/60 px-6 py-6 sm:flex-row sm:items-center">
           <div>
@@ -217,13 +147,13 @@ export default async function VipPage(_props: VipPageProps) {
               <MessageCircle />
               Join Discord
             </a>
-            <a
+            <Link
               href="/contact"
               className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11")}
             >
               <Headset />
               Contact Support
-            </a>
+            </Link>
           </div>
         </section>
       </Container>

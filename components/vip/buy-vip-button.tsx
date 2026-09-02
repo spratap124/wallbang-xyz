@@ -136,7 +136,7 @@ export function BuyVipButton({
   function beginCheckout(): void {
     setError(null);
     if (!loggedIn) {
-      window.location.href = `/api/auth/steam?returnTo=${encodeURIComponent("/vip")}`;
+      window.location.href = `/api/auth/steam?returnTo=${encodeURIComponent("/pricing")}`;
       return;
     }
     if (collectContact) {
