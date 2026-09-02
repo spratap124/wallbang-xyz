@@ -10,9 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { featureFlags } from "@/config/features.flags";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
+import { isSettingsPageEnabled } from "@/lib/platform/feature-flags";
 import { ensurePlayerDomain, getMyProfile } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
 
@@ -24,7 +24,7 @@ export const metadata = createPageMetadata({
 });
 
 export default async function PrivacySettingsPage() {
-  if (!featureFlags.playerProfiles) {
+  if (!(await isSettingsPageEnabled())) {
     redirect("/");
   }
   if (!isMongoConfigured()) {

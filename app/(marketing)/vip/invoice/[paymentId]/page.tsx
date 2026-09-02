@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Container } from "@/components/shared/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { PrintInvoiceButton } from "@/components/vip/print-invoice-button";
+import { siteConfig } from "@/config/site";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { paymentsCollection } from "@/lib/payments/collections";
@@ -79,7 +80,7 @@ export default async function VipInvoicePage({ params }: InvoicePageProps) {
               </p>
               <h1 className="mt-2 text-2xl font-bold">WallBang</h1>
               <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">
-                Online Gaming / Digital Gaming Services
+                {siteConfig.businessCategory}
               </p>
               <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">
                 wallbang.xyz · admin@wallbang.xyz

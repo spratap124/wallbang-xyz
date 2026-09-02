@@ -12,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { featureFlags } from "@/config/features.flags";
 import type { AuthUser } from "@/types/auth";
 
 type SteamAuthControlsProps = {
@@ -20,6 +19,8 @@ type SteamAuthControlsProps = {
   enabled: boolean;
   showAdmin?: boolean;
   showVip?: boolean;
+  showProfile?: boolean;
+  showSettings?: boolean;
 };
 
 function SteamMark({ className }: { className?: string }) {
@@ -76,10 +77,14 @@ export function SteamAuthControls({
   enabled,
   showAdmin = false,
   showVip = false,
+  showProfile = false,
+  showSettings = false,
 }: SteamAuthControlsProps) {
   if (!enabled) return null;
 
   if (user) {
+    const hasAccountLinks = showProfile || showSettings || showVip || showAdmin;
+
     return (
       <div className="hidden sm:block">
         <DropdownMenu>
@@ -97,43 +102,34 @@ export function SteamAuthControls({
                 {user.personaName}
               </DropdownMenuLabel>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            {featureFlags.playerProfiles ? (
-              <DropdownMenuItem render={<Link href="/profile" />}>
-                <User />
-                Profile
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem
-                render={
-                  <a
-                    href={user.profileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-              >
-                <User />
-                Profile
-              </DropdownMenuItem>
-            )}
-            {featureFlags.playerProfiles ? (
-              <DropdownMenuItem render={<Link href="/settings" />}>
-                <Settings />
-                Settings
-              </DropdownMenuItem>
-            ) : null}
-            {showVip ? (
-              <DropdownMenuItem render={<Link href="/vip" />}>
-                <Crown />
-                VIP
-              </DropdownMenuItem>
-            ) : null}
-            {showAdmin ? (
-              <DropdownMenuItem render={<Link href="/admin" />}>
-                <Shield />
-                Admin
-              </DropdownMenuItem>
+            {hasAccountLinks ? (
+              <>
+                <DropdownMenuSeparator />
+                {showProfile ? (
+                  <DropdownMenuItem render={<Link href="/profile" />}>
+                    <User />
+                    Profile
+                  </DropdownMenuItem>
+                ) : null}
+                {showSettings ? (
+                  <DropdownMenuItem render={<Link href="/settings" />}>
+                    <Settings />
+                    Settings
+                  </DropdownMenuItem>
+                ) : null}
+                {showVip ? (
+                  <DropdownMenuItem render={<Link href="/vip" />}>
+                    <Crown />
+                    VIP
+                  </DropdownMenuItem>
+                ) : null}
+                {showAdmin ? (
+                  <DropdownMenuItem render={<Link href="/admin" />}>
+                    <Shield />
+                    Admin
+                  </DropdownMenuItem>
+                ) : null}
+              </>
             ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -165,6 +161,8 @@ export function SteamAuthControlsMobile({
   enabled,
   showAdmin = false,
   showVip = false,
+  showProfile = false,
+  showSettings = false,
 }: SteamAuthControlsProps) {
   if (!enabled) return null;
 
@@ -175,7 +173,7 @@ export function SteamAuthControlsMobile({
           <UserAvatar user={user} size={32} />
           <span className="truncate text-sm font-medium">{user.personaName}</span>
         </div>
-        {featureFlags.playerProfiles ? (
+        {showProfile ? (
           <Link
             href="/profile"
             className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
@@ -183,18 +181,8 @@ export function SteamAuthControlsMobile({
             <User className="size-4" />
             Profile
           </Link>
-        ) : (
-          <a
-            href={user.profileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
-          >
-            <User className="size-4" />
-            Profile
-          </a>
-        )}
-        {featureFlags.playerProfiles ? (
+        ) : null}
+        {showSettings ? (
           <Link
             href="/settings"
             className="flex items-center gap-2 rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"

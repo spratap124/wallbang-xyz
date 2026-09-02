@@ -26,7 +26,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "VIP",
   description:
-    "View your WallBang VIP membership status, expiry, and renewals. Buy prepaid VIP on the Pricing page.",
+    "View your WallBang VIP membership status and expiry. VIP is a prepaid, fixed-duration membership for reserved server access and community privileges — paid once for the term you choose.",
   path: "/vip",
 });
 

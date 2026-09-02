@@ -8,7 +8,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Blog",
   description:
-    "WallBang blog: CS2 retake tips, aim training insights, and competitive Counter-Strike 2 guides for India-first players.",
+    "WallBang blog: CS2 retake tips, aim training insights, and community updates for India-first players.",
   path: "/blog",
 });
 
@@ -27,8 +27,8 @@ export default function BlogIndexPage() {
       <Container>
         <SectionHeading
           eyebrow="Blog"
-          title="Guides for serious CS2 players"
-          description="Retake tactics, aim development, and platform updates from the WallBang team."
+          title="Guides for CS2 community players"
+          description="Retake tactics, aim development, and updates from the WallBang team."
         />
         <div className="grid gap-4 md:grid-cols-2">
           {posts.map((post) => (

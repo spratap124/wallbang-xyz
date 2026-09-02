@@ -27,7 +27,7 @@ export default function FaqPage() {
         <SectionHeading
           eyebrow="FAQ"
           title="Frequently asked questions"
-          description="Answers about WallBang, CS2 retakes in India, VIP membership, and the competitive platform roadmap."
+          description="Answers about WallBang, CS2 community retakes in India, VIP membership, duration, and refunds."
         />
       </Container>
       <FaqSection items={faqs} showViewAll={false} />

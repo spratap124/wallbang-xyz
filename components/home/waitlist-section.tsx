@@ -47,8 +47,8 @@ export function WaitlistSection() {
         <div className="grid gap-10 lg:grid-cols-[1fr_24rem] lg:items-start">
           <SectionHeading
             eyebrow="Waitlist"
-            title="Be first when public servers open"
-            description="Leave your name and email for launch notices. For real-time updates, Discord remains the primary channel."
+            title="Stay in the loop"
+            description="Leave your name and email for notices about new servers and membership updates. Discord remains the primary channel."
             className="mb-0"
           />
 

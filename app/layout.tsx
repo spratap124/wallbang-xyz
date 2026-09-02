@@ -16,7 +16,6 @@ export const metadata: Metadata = {
     path: "/",
   }),
   applicationName: siteConfig.name,
-  category: "game",
   icons: {
     icon: [
       { url: "/favicon.ico?v=2", sizes: "16x16 32x32" },

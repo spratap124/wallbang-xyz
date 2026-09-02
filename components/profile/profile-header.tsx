@@ -13,9 +13,13 @@ import type { PlayerProfileView } from "@/types/profile";
 
 type ProfileHeaderProps = {
   profile: PlayerProfileView;
+  showSettings?: boolean;
 };
 
-export function ProfileHeader({ profile }: ProfileHeaderProps) {
+export function ProfileHeader({
+  profile,
+  showSettings = false,
+}: ProfileHeaderProps) {
   const flag = countryFlagEmoji(profile.countryCode);
 
   return (
@@ -80,7 +84,7 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
           View Steam Profile
           <ExternalLink data-icon="inline-end" />
         </Button>
-        {profile.isOwner ? (
+        {profile.isOwner && showSettings ? (
           <Button variant="secondary" size="sm" render={<Link href="/settings" />}>
             Settings
           </Button>

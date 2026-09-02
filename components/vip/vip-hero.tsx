@@ -6,7 +6,7 @@ import { Container } from "@/components/shared/primitives";
 const trustItems = [
   {
     icon: Shield,
-    title: "Premium Retake Servers",
+    title: "Premium retake servers",
     body: "Low ping. High performance.",
   },
   {
@@ -59,11 +59,11 @@ export function VipHero() {
           <div className="absolute inset-0 flex items-center">
             <Container>
               <h1 className="max-w-lg text-4xl font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Unlock WallBang VIP
+                Unlock WallBang VIP membership
               </h1>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Choose the servers you want access to, pick a duration, and pay once.
-                No auto-charge. Renew only when you want.
+                Choose servers, pick a duration, and pay once for that term.
+                VIP is a membership for reserved access and server privileges — not automatically renewed.
               </p>
             </Container>
           </div>

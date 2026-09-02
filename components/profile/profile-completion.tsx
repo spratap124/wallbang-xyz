@@ -7,12 +7,14 @@ type ProfileCompletionBarProps = {
   completion: ProfileCompletion;
   className?: string;
   showChecklist?: boolean;
+  showSettingsLink?: boolean;
 };
 
 export function ProfileCompletionBar({
   completion,
   className,
   showChecklist = true,
+  showSettingsLink = true,
 }: ProfileCompletionBarProps) {
   const missing = completion.items.filter((i) => !i.done);
 
@@ -39,10 +41,21 @@ export function ProfileCompletionBar({
       {showChecklist && missing.length > 0 ? (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            Finish your profile in{" "}
-            <Link href="/settings" className="text-foreground underline-offset-2 hover:underline">
-              Settings
-            </Link>
+            Finish your profile
+            {showSettingsLink ? (
+              <>
+                {" "}
+                in{" "}
+                <Link
+                  href="/settings"
+                  className="text-foreground underline-offset-2 hover:underline"
+                >
+                  Settings
+                </Link>
+              </>
+            ) : (
+              "."
+            )}
           </p>
           <ul className="space-y-0.5">
             {missing.slice(0, 3).map((item) => (

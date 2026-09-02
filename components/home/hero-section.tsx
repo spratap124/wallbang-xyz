@@ -9,10 +9,10 @@ import { getMapImage } from "@/config/servers";
 import { getFeaturedRegisteredServer } from "@/lib/servers/registry";
 
 const featurePills = [
-  { icon: Sparkles, label: "Instant Skin Changer" },
-  { icon: Sword, label: "Knife & Gloves" },
-  { icon: ShieldCheck, label: "No Pay-to-Win" },
-  { icon: MapPin, label: "India Hosted" },
+  { icon: Sparkles, label: "Community retakes" },
+  { icon: Sword, label: "Optional VIP membership" },
+  { icon: ShieldCheck, label: "Reserved server access" },
+  { icon: MapPin, label: "India hosted" },
 ];
 
 export async function HeroSection() {
@@ -49,7 +49,7 @@ export async function HeroSection() {
               <span className="animate-ping-pulse absolute inline-flex size-full rounded-full" />
               <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
             </span>
-            CS2 · India first · Live now
+            CS2 community servers · India · Live now
           </p>
 
           <BrandLogo
@@ -62,11 +62,11 @@ export async function HeroSection() {
             className="animate-rise text-5xl [animation-delay:110ms] sm:text-6xl lg:text-7xl"
           />
           <p className="animate-rise mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl [animation-delay:140ms]">
-            India&apos;s Next-Generation Counter-Strike 2 Community Servers
+            Privately managed Counter-Strike 2 community and retake servers
           </p>
           <p className="animate-rise mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty [animation-delay:200ms]">
-            Instant skins, knives, gloves, fast Mumbai hosting, and a competitive experience built
-            for serious players.
+            Connect for free. Optional fixed-duration VIP membership adds priority/reserved
+            server access and additional server/community privileges.
           </p>
 
           {/* Feature pills */}

@@ -22,6 +22,7 @@ type ProfileTabsProps = {
   isOwner: boolean;
   activeTab?: ProfileTabId;
   basePath?: string;
+  showSettings?: boolean;
 };
 
 export function ProfileTabs({
@@ -29,6 +30,7 @@ export function ProfileTabs({
   isOwner,
   activeTab = "overview",
   basePath,
+  showSettings = false,
 }: ProfileTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -75,7 +77,7 @@ export function ProfileTabs({
           </Link>
         );
       })}
-      {isOwner ? (
+      {isOwner && showSettings ? (
         <Link
           href="/settings"
           className={cn(

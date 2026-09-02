@@ -4,6 +4,7 @@ import type { Collection } from "mongodb";
 
 import {
   featureFlags as staticFeatureFlags,
+  writableFeatureFlags,
   type FeatureFlags,
   type WritableFeatureFlag,
 } from "@/config/features.flags";
@@ -12,11 +13,25 @@ import { getDb, isMongoConfigured } from "@/lib/mongo";
 const COLLECTION = "platform_settings";
 const DOC_ID = "feature_flags";
 
+const ENV_NAMES: Record<WritableFeatureFlag, string> = {
+  vipPage: "FEATURE_VIP_PAGE",
+  vipAllRetakes: "FEATURE_VIP_ALL_RETAKES",
+  vipCheckout: "FEATURE_VIP_CHECKOUT",
+  loadoutPage: "FEATURE_LOADOUT_PAGE",
+  featuresPage: "FEATURE_FEATURES_PAGE",
+  profilePage: "FEATURE_PROFILE_PAGE",
+  settingsPage: "FEATURE_SETTINGS_PAGE",
+};
+
 type FeatureFlagDoc = {
   _id: string;
   vipPage?: boolean;
   vipAllRetakes?: boolean;
   vipCheckout?: boolean;
+  loadoutPage?: boolean;
+  featuresPage?: boolean;
+  profilePage?: boolean;
+  settingsPage?: boolean;
   updatedAt?: Date;
   updatedBy?: string;
 };
@@ -64,24 +79,19 @@ function resolveFlag(
 
 export async function getRuntimeFeatureFlags(): Promise<FeatureFlags> {
   const overrides = await readOverrides();
-  return {
+  const runtime: { -readonly [K in keyof FeatureFlags]: boolean } = {
     ...staticFeatureFlags,
-    vipPage: resolveFlag(
-      "FEATURE_VIP_PAGE",
-      overrides?.vipPage,
-      staticFeatureFlags.vipPage,
-    ),
-    vipAllRetakes: resolveFlag(
-      "FEATURE_VIP_ALL_RETAKES",
-      overrides?.vipAllRetakes,
-      staticFeatureFlags.vipAllRetakes,
-    ),
-    vipCheckout: resolveFlag(
-      "FEATURE_VIP_CHECKOUT",
-      overrides?.vipCheckout,
-      staticFeatureFlags.vipCheckout,
-    ),
   };
+
+  for (const key of writableFeatureFlags) {
+    runtime[key] = resolveFlag(
+      ENV_NAMES[key],
+      overrides?.[key],
+      staticFeatureFlags[key],
+    );
+  }
+
+  return runtime;
 }
 
 export async function isVipPageEnabled(): Promise<boolean> {
@@ -97,6 +107,26 @@ export async function isVipAllRetakesEnabled(): Promise<boolean> {
 export async function isVipCheckoutEnabled(): Promise<boolean> {
   const flags = await getRuntimeFeatureFlags();
   return flags.vipCheckout;
+}
+
+export async function isLoadoutPageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.loadoutPage;
+}
+
+export async function isFeaturesPageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.featuresPage;
+}
+
+export async function isProfilePageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.profilePage;
+}
+
+export async function isSettingsPageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.settingsPage;
 }
 
 export async function setVipPageEnabled(
@@ -118,6 +148,14 @@ export async function setVipCheckoutEnabled(
   updatedBy: string,
 ): Promise<boolean> {
   return setFeatureFlag("vipCheckout", enabled, updatedBy);
+}
+
+export async function setRuntimeFeatureFlag(
+  key: WritableFeatureFlag,
+  enabled: boolean,
+  updatedBy: string,
+): Promise<boolean> {
+  return setFeatureFlag(key, enabled, updatedBy);
 }
 
 async function setFeatureFlag(

@@ -57,8 +57,8 @@ export function FeaturesSection({
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <SectionHeading
             eyebrow="Features"
-            title="Built for the full competitive lifecycle"
-            description="Retakes today. Profiles, VIP cosmetics, statistics, and tournaments as WallBang scales into a complete CS2 platform."
+            title="Built for community retakes"
+            description="Public retake servers today. Optional VIP membership for reserved access and server privileges."
             className="mb-0"
           />
           {showViewAll ? (
@@ -71,7 +71,12 @@ export function FeaturesSection({
           ) : null}
         </div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className={cn(
+            "mt-12 grid gap-4 sm:grid-cols-2",
+            items.length > 2 && "lg:grid-cols-3",
+          )}
+        >
           {items.map((feature) => {
             const Icon = iconMap[feature.icon] ?? Zap;
             return (

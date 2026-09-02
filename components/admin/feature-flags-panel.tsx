@@ -49,8 +49,8 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
     <section className="rounded-xl border border-border bg-card/40 p-5">
       <h2 className="text-sm font-semibold">Feature flags</h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Most flags are code/env only. VIP Page, VIP All Retakes, and VIP Checkout
-        can be toggled here.
+        Most flags are code/env only. Page flags (VIP, Loadout, Features, Profile,
+        Settings) and VIP checkout flags can be toggled here.
       </p>
       {error ? (
         <p className="mt-3 text-xs text-destructive">{error}</p>

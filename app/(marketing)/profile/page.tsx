@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { ProfilePageView } from "@/components/profile/profile-page-view";
-import { featureFlags } from "@/config/features.flags";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
+import { isProfilePageEnabled, isSettingsPageEnabled } from "@/lib/platform/feature-flags";
 import {
   ensurePlayerDomain,
   getMyProfile,
@@ -19,7 +19,7 @@ export const metadata = createPageMetadata({
 });
 
 export default async function MyProfilePage() {
-  if (!featureFlags.playerProfiles) {
+  if (!(await isProfilePageEnabled())) {
     redirect("/");
   }
 
@@ -47,11 +47,14 @@ export default async function MyProfilePage() {
     createdAt: item.createdAt.toISOString(),
   }));
 
+  const showSettings = await isSettingsPageEnabled();
+
   return (
     <ProfilePageView
       profile={profile}
       activity={activity}
       activityPrivate={false}
+      showSettings={showSettings}
     />
   );
 }

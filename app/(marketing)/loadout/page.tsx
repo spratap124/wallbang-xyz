@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
+
 import { LoadoutLoginGate } from "@/components/loadout/loadout-login-gate";
 import { LoadoutPage } from "@/components/loadout/loadout-page";
 import { JsonLd } from "@/components/shared/json-ld";
 import { featureFlags } from "@/config/features.flags";
 import { isSteamAuthConfigured } from "@/lib/auth/config";
 import { getSession } from "@/lib/auth/session";
+import { isLoadoutPageEnabled } from "@/lib/platform/feature-flags";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
 
@@ -16,6 +19,10 @@ export const metadata = createPageMetadata({
 });
 
 export default async function LoadoutRoutePage() {
+  if (!(await isLoadoutPageEnabled())) {
+    redirect("/");
+  }
+
   const steamAvailable =
     featureFlags.steamAuth && isSteamAuthConfigured();
   const user = steamAvailable ? await getSession() : null;
