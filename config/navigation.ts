@@ -8,6 +8,7 @@ export const mainNav: NavItem[] = [
   { title: "Servers", href: "/servers" },
   { title: "Loadout", href: "/loadout" },
   { title: "VIP", href: "/vip" },
+  { title: "Pricing", href: "/pricing" },
   { title: "Offers", href: "/offers" },
   { title: "Features", href: "/features" },
 ];
@@ -19,6 +20,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
       { title: "Servers", href: "/servers" },
       { title: "Loadout", href: "/loadout" },
       { title: "VIP", href: "/vip" },
+      { title: "Pricing", href: "/pricing" },
       { title: "Offers", href: "/offers" },
       { title: "Features", href: "/features" },
     ],

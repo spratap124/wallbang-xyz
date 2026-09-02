@@ -86,3 +86,28 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
     })),
   };
 }
+
+export function vipPricingJsonLd(
+  offers: Array<{ name: string; pricePaise: number }>,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: "WallBang VIP",
+    description:
+      "Prepaid WallBang VIP for CS2 retake servers. Pay once for 1, 3, or 6 months, or 1 year. No auto-renewal.",
+    brand: {
+      "@type": "Brand",
+      name: siteConfig.name,
+    },
+    url: `${siteConfig.url}/pricing`,
+    offers: offers.map((offer) => ({
+      "@type": "Offer",
+      name: offer.name,
+      price: (offer.pricePaise / 100).toFixed(2),
+      priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+      url: `${siteConfig.url}/pricing`,
+    })),
+  };
+}

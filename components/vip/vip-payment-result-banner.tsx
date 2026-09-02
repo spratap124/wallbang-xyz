@@ -27,7 +27,8 @@ function parseOutcome(
   paid: string | null,
   error: string | null,
 ): PaymentOutcome | null {
-  if (paid === "1" || paid === "pending") return "pending";
+  if (paid === "1") return "success";
+  if (paid === "pending") return "pending";
   if (paid === "0" && error === "invalid") return "invalid";
   if (paid === "0") return "failure";
   return null;
@@ -45,7 +46,7 @@ const OUTCOME_COPY: Record<
   },
   failure: {
     title: "Payment not completed",
-    body: "Your payment was cancelled or did not go through. No VIP was activated — you can try again below.",
+    body: "Your payment was cancelled or did not go through. No VIP was activated — you can try again on the Pricing page.",
     icon: XCircle,
     tone: "border-destructive/30 bg-destructive/10 text-destructive",
   },
@@ -67,9 +68,13 @@ export function VipPaymentResultBanner() {
   const paid = searchParams.get("paid");
   const error = searchParams.get("error");
   const txnid = searchParams.get("txnid");
-  const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
+  const [outcome, setOutcome] = useState<PaymentOutcome | null>(() =>
+    parseOutcome(paid, error),
+  );
   const [invoicePaymentId, setInvoicePaymentId] = useState<string | null>(null);
-  const [pendingTxnid, setPendingTxnid] = useState<string | null>(null);
+  const [pendingTxnid, setPendingTxnid] = useState<string | null>(
+    () => txnid,
+  );
   const pollStarted = useRef(false);
 
   useEffect(() => {
@@ -77,11 +82,9 @@ export function VipPaymentResultBanner() {
     if (!initial) return;
 
     if (txnid) setPendingTxnid(txnid);
-
-    if (initial !== "pending") {
-      setOutcome(initial);
-    } else {
-      setOutcome("pending");
+    setOutcome(initial);
+    if (initial === "success") {
+      router.refresh();
     }
 
     const next = new URLSearchParams(searchParams.toString());
@@ -154,13 +157,13 @@ export function VipPaymentResultBanner() {
     return (
       <div
         role="status"
-        className="mb-8 flex gap-3 rounded-xl border border-primary/30 bg-primary/10 p-5 sm:p-6"
+        className="mb-8 flex gap-3 rounded-xl border border-border bg-card/70 p-5 sm:p-6"
       >
-        <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-primary" />
+        <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground" />
         <div>
-          <p className="font-semibold text-foreground">Payment received</p>
+          <p className="font-semibold text-foreground">Confirming payment</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            Confirming your payment and activating VIP. This usually takes a few
+            Activating VIP on this Steam account. This usually takes a few
             seconds.
           </p>
         </div>
@@ -232,6 +235,16 @@ export function VipPaymentResultBanner() {
           )}
         >
           View invoice
+        </Link>
+      ) : outcome === "failure" ? (
+        <Link
+          href="/pricing"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "shrink-0 self-start",
+          )}
+        >
+          Try again
         </Link>
       ) : outcome !== "success" ? (
         <Link

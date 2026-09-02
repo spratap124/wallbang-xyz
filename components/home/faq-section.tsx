@@ -14,17 +14,24 @@ import { cn } from "@/lib/utils";
 type FaqSectionProps = {
   items: FaqItem[];
   showViewAll?: boolean;
+  title?: string;
+  description?: string;
 };
 
-export function FaqSection({ items, showViewAll = true }: FaqSectionProps) {
+export function FaqSection({
+  items,
+  showViewAll = true,
+  title = "Answers before you queue",
+  description = "Straight answers about WallBang, launch timing, VIP, regions, and statistics.",
+}: FaqSectionProps) {
   return (
     <section id="faq" className="border-y border-border bg-card/30 py-20 sm:py-24">
       <Container>
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <SectionHeading
             eyebrow="FAQ"
-            title="Answers before you queue"
-            description="Straight answers about WallBang, launch timing, VIP, regions, and statistics."
+            title={title}
+            description={description}
             className="mb-0"
           />
           {showViewAll ? (

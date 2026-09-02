@@ -11,7 +11,8 @@ export const featureFlags = {
   vipDashboard: true,
   vipPurchase: true,
   /**
-   * Public VIP marketing/shop page (`/vip`) and nav entry.
+   * Public VIP membership page (`/vip`) and nav entry.
+   * Checkout lives on `/pricing`.
    * Runtime-overridable via admin Settings / FEATURE_VIP_PAGE.
    * Default off until payment gateway is fully ready.
    */
