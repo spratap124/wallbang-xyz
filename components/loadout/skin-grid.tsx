@@ -3,6 +3,16 @@
 import { SkinCard } from "@/components/loadout/skin-card";
 import type { Skin } from "@/types/loadout";
 
+function skinIdsMatch(equippedId: string | null, skinId: string): boolean {
+  if (!equippedId) return false;
+  if (equippedId === skinId) return true;
+  const tail = (id: string) => {
+    const i = id.lastIndexOf(":");
+    return i >= 0 ? id.slice(i + 1) : id;
+  };
+  return tail(equippedId) === tail(skinId);
+}
+
 type SkinGridProps = {
   skins: Skin[];
   equippedSkinId: string | null;
@@ -51,7 +61,7 @@ export function SkinGrid({
         <SkinCard
           key={skin.id}
           skin={skin}
-          isEquipped={equippedSkinId === skin.id}
+          isEquipped={skinIdsMatch(equippedSkinId, skin.id)}
           isFavorite={favorites.includes(skin.id)}
           selected={selectedSkinId === skin.id}
           onSelect={() => onSelect(skin)}

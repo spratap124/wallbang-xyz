@@ -66,7 +66,7 @@ export function WeaponCard({
           className="rounded-none"
           alt={equipped ? `${name} | ${equipped.skinName}` : name}
         />
-        {equipped ? (
+        {equipped && selected ? (
           <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-sky-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
             <Check className="size-3" />
             Equipped
