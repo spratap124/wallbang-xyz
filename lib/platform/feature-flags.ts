@@ -71,9 +71,10 @@ function resolveFlag(
   mongoValue: boolean | undefined,
   fallback: boolean,
 ): boolean {
+  // Admin Settings (Mongo) wins so toggles cannot be pinned by deploy env.
+  if (mongoValue !== undefined) return mongoValue;
   const envOverride = parseEnvBoolean(process.env[envName]);
   if (envOverride !== undefined) return envOverride;
-  if (mongoValue !== undefined) return mongoValue;
   return fallback;
 }
 

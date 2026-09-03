@@ -50,7 +50,8 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
       <h2 className="text-sm font-semibold">Feature flags</h2>
       <p className="mt-1 text-xs text-muted-foreground">
         Most flags are code/env only. Page flags (VIP, Loadout, Features, Profile,
-        Settings) and VIP checkout flags can be toggled here.
+        Settings) and VIP checkout flags can be toggled here. Saved values override
+        FEATURE_* env vars.
       </p>
       {error ? (
         <p className="mt-3 text-xs text-destructive">{error}</p>
