@@ -454,7 +454,7 @@ export function VipShop({
               ? formatInrFromPaise(duration.amountPaise)
               : "—"}
           </p>
-          <p className="text-xs text-muted-foreground">Incl. taxes</p>
+          <p className="text-xs text-muted-foreground">Prepaid, paid once</p>
           {quoteError ? (
             <p className="mt-1 text-xs text-destructive">{quoteError}</p>
           ) : null}

@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/config/site";
-import { getAllPosts } from "@/lib/content/blog";
 import { getRuntimeFeatureFlags } from "@/lib/platform/feature-flags";
 
 const staticRoutes = [
@@ -12,7 +11,6 @@ const staticRoutes = [
   "/offers",
   "/roadmap",
   "/faq",
-  "/blog",
   "/contact",
   "/about",
   "/services",
@@ -46,12 +44,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: path === "/" ? 1 : 0.7,
     }));
 
-  const posts = getAllPosts().map((post) => ({
-    url: `${siteConfig.url}/blog/${post.slug}`,
-    lastModified: new Date(post.updatedAt ?? post.publishedAt),
-    changeFrequency: "monthly" as const,
-    priority: 0.6,
-  }));
-
-  return [...pages, ...posts];
+  return pages;
 }

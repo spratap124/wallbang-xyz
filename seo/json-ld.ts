@@ -6,8 +6,18 @@ export function organizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${siteConfig.url}/#organization`,
-    name: siteConfig.name,
+    name: siteConfig.legal.tradeName,
+    legalName: siteConfig.legal.legalName,
     url: siteConfig.url,
+    email: siteConfig.legal.email,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "109/364, Ram Krishna Nagar, R K Nagar",
+      addressLocality: "Kanpur Nagar",
+      addressRegion: "Uttar Pradesh",
+      postalCode: "208012",
+      addressCountry: "IN",
+    },
     logo: `${siteConfig.url}/logo.png`,
     description: siteConfig.description,
     sameAs: [siteConfig.discordUrl],
@@ -43,34 +53,6 @@ export function faqJsonLd(faqs: FaqItem[]) {
         text: faq.answer,
       },
     })),
-  };
-}
-
-export function articleJsonLd(input: {
-  title: string;
-  description: string;
-  slug: string;
-  publishedAt: string;
-  updatedAt?: string;
-}) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: input.title,
-    description: input.description,
-    datePublished: input.publishedAt,
-    dateModified: input.updatedAt ?? input.publishedAt,
-    author: {
-      "@type": "Organization",
-      name: siteConfig.name,
-    },
-    publisher: {
-      "@type": "Organization",
-      name: siteConfig.name,
-      url: siteConfig.url,
-      logo: `${siteConfig.url}/logo.png`,
-    },
-    mainEntityOfPage: `${siteConfig.url}/blog/${input.slug}`,
   };
 }
 

@@ -9,6 +9,14 @@ export const siteConfig = {
   description:
     "WallBang operates privately managed CS2 community and retake servers. Optional fixed-duration VIP membership provides priority/reserved server access and additional server/community privileges.",
   businessCategory: "CS2 community and retake server membership",
+  legal: {
+    tradeName: "WallBang",
+    legalName: "Shivani",
+    gst: "GST not applicable",
+    email: "admin@wallbang.xyz",
+    address:
+      "109/364, Ram Krishna Nagar, R K Nagar, Kanpur Nagar, Uttar Pradesh, 208012, India",
+  },
   keywords: [
     "WallBang",
     "wallbang.xyz",

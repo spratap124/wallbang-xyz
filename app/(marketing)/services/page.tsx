@@ -1,4 +1,5 @@
 import { LegalArticle } from "@/components/legal/legal-article";
+import { VipServicePrices } from "@/components/legal/vip-service-prices";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
@@ -14,6 +15,8 @@ export default function ServicesPage() {
       slug="services"
       breadcrumbName="Services"
       breadcrumbPath="/services"
-    />
+    >
+      <VipServicePrices />
+    </LegalArticle>
   );
 }

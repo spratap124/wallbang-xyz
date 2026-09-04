@@ -17,7 +17,7 @@ export const pricingFaqs: FaqItem[] = [
     id: "pay-to-win",
     question: "Is VIP pay-to-win?",
     answer:
-      "No. Cosmetics, chat tags, and member perks never change weapon performance, economy, or match rules.",
+      "No. Server-side visual effects, chat tags, and member perks never change weapon performance, economy, or match rules. Those effects have no Steam inventory value and are distinct from tradeable CS2 skins.",
   },
   {
     id: "how-to-buy",

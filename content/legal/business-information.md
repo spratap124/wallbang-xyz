@@ -1,6 +1,6 @@
 # Business Information
 
-**Last updated:** September 2, 2026
+**Last updated:** September 4, 2026
 
 This page provides publicly available business details for WallBang (wallbang.xyz).
 
@@ -14,6 +14,10 @@ WallBang
 
 Shivani
 
+## GST
+
+GST not applicable
+
 ## Business Category
 
 CS2 community and retake server membership
@@ -21,6 +25,8 @@ CS2 community and retake server membership
 ## What WallBang is
 
 WallBang operates privately managed Counter-Strike 2 community and retake servers.
+
+WallBang is not a gambling, betting, or wagering platform. WallBang does not offer gambling, betting, wagering, lottery, casino, real-money gaming, or any game of chance for money or prizes.
 
 ## What the customer purchases
 
@@ -35,9 +41,11 @@ VIP provides:
 - Priority / reserved server access
 - Additional server and community privileges for the selected servers, as shown at checkout
 
-VIP is a prepaid digital membership for a stated term. It is not an in-game financial product, wallet, or monetary benefit.
+VIP is a prepaid digital membership for a stated term. It is not an in-game financial product, wallet, or monetary benefit. It is not a stake, bet, wager, or means of winning or withdrawing money.
 
-WallBang does not sell physical products, Steam items, or CS2 skins.
+WallBang does not sell physical products, Steam Marketplace items, or tradeable CS2 skins.
+
+Where offered, VIP may include server-side visual effects that appear only on WallBang community servers. These effects have no Steam inventory value, cannot be traded, sold, or withdrawn, and are distinct from tradeable CS2 skins.
 
 ## How long VIP lasts
 
