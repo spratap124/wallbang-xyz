@@ -1,4 +1,4 @@
-import type { LoadoutCategory, SkinRarity, WearName, WeaponGroup } from "@/types/loadout";
+import type { LoadoutTab, SkinRarity, WearName, WeaponGroup } from "@/types/loadout";
 
 export const WEAR_RANGES: { name: WearName; min: number; max: number }[] = [
   { name: "Factory New", min: 0, max: 0.07 },
@@ -19,6 +19,21 @@ export function midFloatForWear(name: WearName): number {
   const range = WEAR_RANGES.find((r) => r.name === name);
   if (!range) return 0.15;
   return (range.min + Math.min(range.max, 0.99)) / 2;
+}
+
+export function shortWear(name: WearName): string {
+  switch (name) {
+    case "Factory New":
+      return "FN";
+    case "Minimal Wear":
+      return "MW";
+    case "Field-Tested":
+      return "FT";
+    case "Well-Worn":
+      return "WW";
+    case "Battle-Scarred":
+      return "BS";
+  }
 }
 
 export const RARITY_COLORS: Record<SkinRarity, string> = {
@@ -42,21 +57,42 @@ export const WEAPON_GROUPS: WeaponGroup[] = [
   "Grenades",
 ];
 
-export const LOADOUT_CATEGORIES: {
-  id: LoadoutCategory;
-  label: string;
-  icon: string;
-  comingSoon?: boolean;
-}[] = [
-  { id: "weapons", label: "Weapons", icon: "Crosshair" },
-  { id: "knives", label: "Knife", icon: "Sword" },
-  { id: "gloves", label: "Gloves", icon: "Hand" },
-  { id: "agents", label: "Agents", icon: "User" },
-  { id: "favorites", label: "Favorites", icon: "Star", comingSoon: true },
-  { id: "music", label: "Music Kits", icon: "Music", comingSoon: true },
-  { id: "graffiti", label: "Graffiti", icon: "Paintbrush", comingSoon: true },
-  { id: "pins", label: "Pins", icon: "Pin", comingSoon: true },
-];
+export const TAB_WEAPON_GROUP: Partial<Record<LoadoutTab, WeaponGroup>> = {
+  pistols: "Pistols",
+  smgs: "SMGs",
+  rifles: "Rifles",
+  heavy: "Heavy",
+  snipers: "Snipers",
+};
+
+export const WEAPON_GROUP_TAB: Partial<Record<WeaponGroup, LoadoutTab>> = {
+  Pistols: "pistols",
+  SMGs: "smgs",
+  Rifles: "rifles",
+  Heavy: "heavy",
+  Snipers: "snipers",
+};
+
+export function groupTypeLabel(group: WeaponGroup | string): string {
+  switch (group) {
+    case "Pistols":
+      return "Pistol";
+    case "SMGs":
+      return "SMG";
+    case "Rifles":
+      return "Rifle";
+    case "Snipers":
+      return "Sniper";
+    case "Knives":
+      return "Knife";
+    case "Gloves":
+      return "Gloves";
+    case "Heavy":
+      return "Heavy";
+    default:
+      return group;
+  }
+}
 
 export const DEFAULT_SKIN_FILTERS = {
   search: "",

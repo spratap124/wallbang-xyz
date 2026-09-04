@@ -22,10 +22,11 @@ import type {
   GameWeaponPatch,
   PatchGameLoadoutInput,
 } from "@/lib/validations/game-loadout";
-import type { EquippedAgent, EquippedItem, UserLoadoutState } from "@/types/loadout";
+import type { EquippedAgent, EquippedItem, LoadoutSide, UserLoadoutState } from "@/types/loadout";
 import {
   emptyUserLoadout,
   sanitizeUserLoadout,
+  updateSideLoadout,
 } from "@/types/player-loadout";
 
 const DEFAULT_WEAR = 0.15;
@@ -190,39 +191,53 @@ export async function mergeGameLoadoutPatch(
   current: UserLoadoutState,
   patch: PatchGameLoadoutInput,
 ): Promise<UserLoadoutState> {
-  const next: UserLoadoutState = {
-    ...current,
-    weapons: { ...current.weapons },
-  };
+  let next = sanitizeUserLoadout(current);
+  const sides: LoadoutSide[] = patch.side ? [patch.side] : ["CT", "T"];
 
-  if (patch.weapons) {
-    for (const [weaponId, weaponPatch] of Object.entries(patch.weapons)) {
-      next.weapons[weaponId] = await weaponPatchToEquipped({
-        ...weaponPatch,
-        weaponId,
-      });
+  for (const side of sides) {
+    if (patch.weapons) {
+      const weapons = { ...getSide(next, side).weapons };
+      for (const [weaponId, weaponPatch] of Object.entries(patch.weapons)) {
+        weapons[weaponId] = await weaponPatchToEquipped({
+          ...weaponPatch,
+          weaponId,
+        });
+      }
+      next = updateSideLoadout(next, side, (slot) => ({ ...slot, weapons }));
+    }
+
+    if (patch.knife !== undefined) {
+      const knife = patch.knife ? await knifePatchToEquipped(patch.knife) : null;
+      next = updateSideLoadout(next, side, (slot) => ({ ...slot, knife }));
+    }
+
+    if (patch.gloves !== undefined) {
+      const gloves = patch.gloves
+        ? await glovePatchToEquipped(patch.gloves)
+        : null;
+      next = updateSideLoadout(next, side, (slot) => ({ ...slot, gloves }));
     }
   }
 
-  if (patch.knife !== undefined) {
-    next.knife = patch.knife ? await knifePatchToEquipped(patch.knife) : null;
-  }
-
-  if (patch.gloves !== undefined) {
-    next.gloves = patch.gloves
-      ? await glovePatchToEquipped(patch.gloves)
-      : null;
-  }
-
   if (patch.agentCT !== undefined) {
-    next.agentCT = patch.agentCT ? agentPatchToEquipped(patch.agentCT) : null;
+    next = updateSideLoadout(next, "CT", (slot) => ({
+      ...slot,
+      agent: patch.agentCT ? agentPatchToEquipped(patch.agentCT) : null,
+    }));
   }
 
   if (patch.agentT !== undefined) {
-    next.agentT = patch.agentT ? agentPatchToEquipped(patch.agentT) : null;
+    next = updateSideLoadout(next, "T", (slot) => ({
+      ...slot,
+      agent: patch.agentT ? agentPatchToEquipped(patch.agentT) : null,
+    }));
   }
 
   return sanitizeUserLoadout(next);
+}
+
+function getSide(state: UserLoadoutState, side: LoadoutSide) {
+  return side === "CT" ? state.ct : state.t;
 }
 
 export function emptyLoadoutState(): UserLoadoutState {
