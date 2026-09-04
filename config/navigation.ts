@@ -27,10 +27,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
   },
   {
     title: "Resources",
-    items: [
-      { title: "Blog", href: "/blog" },
-      { title: "FAQ", href: "/faq" },
-    ],
+    items: [{ title: "FAQ", href: "/faq" }],
   },
   {
     title: "Legal",

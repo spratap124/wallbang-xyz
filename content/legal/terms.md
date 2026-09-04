@@ -1,6 +1,6 @@
 # Terms & Conditions
 
-**Effective Date:** September 2, 2026
+**Effective Date:** September 4, 2026
 
 Welcome to WallBang.
 
@@ -34,7 +34,17 @@ VIP begins according to the activation terms displayed on the purchase page and 
 
 VIP is not an in-game financial product, wallet, or monetary benefit.
 
-## 4. No Automatic Renewal
+Where offered, VIP may include server-side visual effects that appear only on WallBang community servers. These effects have no Steam inventory value, cannot be traded, sold, or withdrawn, and are distinct from tradeable CS2 skins. WallBang does not sell physical products, Steam Marketplace items, or tradeable CS2 skins.
+
+## 4. Not a gambling, betting, or wagering platform
+
+WallBang is not a gambling, betting, or wagering platform.
+
+WallBang does not offer gambling, betting, wagering, lottery, casino, real-money gaming, fantasy sports contests, or any game of chance for money or prizes. Players do not stake money, place bets, or play for winnings on WallBang.
+
+VIP membership is a prepaid digital membership for server access and community privileges. It is not a stake, bet, wager, ticket, or financial instrument. Customers cannot win, lose, cash out, or withdraw money through WallBang.
+
+## 5. No Automatic Renewal
 
 WallBang does not automatically charge customers for renewal.
 
@@ -42,51 +52,51 @@ A customer must make a new purchase to renew or extend VIP.
 
 Customers may renew VIP at any time by purchasing another available VIP plan.
 
-## 5. Account / Steam Information
+## 6. Account / Steam Information
 
 Where required to provide the service, WallBang may use the customer's Steam/SteamID information to associate VIP with their CS2 account.
 
 Customers are responsible for providing accurate information required for service delivery.
 
-## 6. Server Rules
+## 7. Server Rules
 
 Users must follow the WallBang server rules and applicable Counter-Strike 2/Steam rules.
 
 WallBang may restrict or suspend access where a user engages in cheating, exploitation, abuse, harassment, malicious activity, or other conduct that negatively affects the server or other players.
 
-## 7. Payments
+## 8. Payments
 
 Payments are processed through the payment gateway displayed during checkout.
 
 WallBang does not store customers' complete card, UPI, or banking credentials.
 
-## 8. Pricing
+## 9. Pricing
 
 All applicable prices are displayed on the website before the customer completes payment.
 
 WallBang reserves the right to change prices or modify available plans. Changes will not affect services that have already been purchased unless otherwise required by applicable law.
 
-## 9. Refunds
+## 10. Refunds
 
 Refund requests are handled according to the [WallBang Refund Policy](https://wallbang.xyz/refund).
 
 Customers should review the Refund Policy before making a purchase.
 
-## 10. Service Availability
+## 11. Service Availability
 
 WallBang makes reasonable efforts to keep its community and retake servers available but does not guarantee uninterrupted or error-free availability.
 
 Temporary downtime may occur due to maintenance, technical problems, infrastructure issues, network problems, game updates, or circumstances beyond our reasonable control.
 
-## 11. Changes to Services
+## 12. Changes to Services
 
 WallBang may modify, suspend, or discontinue features of the service where reasonably necessary.
 
-## 12. Changes to Terms
+## 13. Changes to Terms
 
 These Terms & Conditions may be updated from time to time. The latest version will be published on this website.
 
-## 13. Contact
+## 14. Contact
 
 For questions or support, contact:
 

@@ -2,6 +2,8 @@
 
 WallBang operates privately managed Counter-Strike 2 community and retake servers.
 
+WallBang is not a gambling, betting, or wagering platform.
+
 Players can connect to WallBang servers and take part in community retake sessions. Connecting does not require a purchase.
 
 Players who want priority/reserved server access and additional server/community privileges may purchase a fixed-duration VIP membership.

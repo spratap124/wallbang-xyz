@@ -17,7 +17,7 @@ export const faqs: FaqItem[] = [
     id: "what-does-vip-include",
     question: "What does VIP include?",
     answer:
-      "VIP provides priority/reserved server access and additional server/community privileges on the servers you select. Privileges may include a reserved slot, VIP chat tag, and server-only visual cosmetics. VIP is not an in-game financial product, wallet, or monetary benefit.",
+      "VIP provides priority/reserved server access and additional server/community privileges on the servers you select. Privileges may include a reserved slot, VIP chat tag, and server-side visual effects that appear only on WallBang servers. Those effects have no Steam inventory value and are distinct from tradeable CS2 skins. VIP is not an in-game financial product, wallet, or monetary benefit.",
   },
   {
     id: "how-long-vip",
@@ -65,7 +65,19 @@ export const faqs: FaqItem[] = [
     id: "pay-to-win",
     question: "Does VIP change how the game plays?",
     answer:
-      "No. VIP privileges such as cosmetics and reserved access do not change weapon performance, economy, or match rules. Those stay the same for every player.",
+      "No. VIP privileges such as server-side visual effects and reserved access do not change weapon performance, economy, or match rules. Those stay the same for every player.",
+  },
+  {
+    id: "cosmetics-vs-skins",
+    question: "Are WallBang cosmetics the same as Steam skins?",
+    answer:
+      "No. WallBang's server-only visual cosmetics are rendered and visible only while you're connected to a WallBang server. They are not Steam Workshop items, are not added to your Steam inventory, and cannot be traded, sold, or exchanged for cash or any other value. They're a visual feature of your VIP membership, not a tradeable in-game asset.",
+  },
+  {
+    id: "gambling",
+    question: "Is WallBang a gambling, betting, or wagering platform?",
+    answer:
+      "No. WallBang is not a gambling, betting, or wagering platform. It operates CS2 community and retake servers and sells an optional prepaid VIP membership for server access and community privileges. WallBang does not offer gambling, betting, wagering, or real-money gaming. Customers cannot win, lose, cash out, or withdraw money through WallBang.",
   },
   {
     id: "refunds",
