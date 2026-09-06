@@ -3,7 +3,10 @@ import "server-only";
 import type { Collection, Filter } from "mongodb";
 
 import { getDb } from "@/lib/mongo";
-import type { SteamPlayerSummary } from "@/lib/auth/steam-api";
+import {
+  fetchSteamPlayerSummary,
+  type SteamPlayerSummary,
+} from "@/lib/auth/steam-api";
 import type { AuthUser } from "@/types/auth";
 import type { RoleCode } from "@/types/permissions";
 
@@ -179,6 +182,55 @@ export async function listUsers(limit = 200): Promise<UserDoc[]> {
   const col = await users();
   const capped = Math.min(Math.max(limit, 1), 500);
   return col.find({}).sort({ lastLoginAt: -1 }).limit(capped).toArray();
+}
+
+function isDuplicateKeyError(err: unknown): boolean {
+  return Boolean(
+    err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code: unknown }).code === 11000,
+  );
+}
+
+/**
+ * Find a website user by SteamID, or create one from the Steam profile.
+ * Used so admins can grant roles to players who have not signed in yet.
+ */
+export async function ensureUserFromSteamId(steamId: string): Promise<UserDoc> {
+  const existing = await findUserBySteamId(steamId);
+  if (existing) return existing;
+
+  const profile = await fetchSteamPlayerSummary(steamId);
+
+  await ensureIndexes();
+  const col = await users();
+  const raced = await col.findOne({ steamId: profile.steamId });
+  if (raced) return raced;
+
+  const now = new Date();
+  const doc: UserDoc = {
+    _id: crypto.randomUUID(),
+    steamId: profile.steamId,
+    personaName: profile.personaName,
+    avatarUrl: profile.avatarUrl,
+    profileUrl: profile.profileUrl,
+    role: "USER",
+    createdAt: now,
+    updatedAt: now,
+    lastLoginAt: now,
+  };
+
+  try {
+    await col.insertOne(doc);
+    return doc;
+  } catch (err) {
+    if (isDuplicateKeyError(err)) {
+      const after = await col.findOne({ steamId: profile.steamId });
+      if (after) return after;
+    }
+    throw err;
+  }
 }
 
 /** Create or refresh a Steam-linked account after successful OpenID. */

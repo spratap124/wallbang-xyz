@@ -20,6 +20,7 @@ import {
 } from "@/lib/permissions/constants";
 import { seedPermissionsCatalog } from "@/lib/permissions/seed";
 import {
+  ensureUserFromSteamId,
   findUserById,
   findUserBySteamId,
   listUsers as listUserDocs,
@@ -286,6 +287,25 @@ export type GrantRoleInput = {
   expiresAt?: Date | null;
 };
 
+async function resolveGrantTarget(
+  input: Pick<GrantRoleInput, "targetUserId" | "targetSteamId">,
+): Promise<UserDoc | null> {
+  if (input.targetUserId) {
+    return findUserById(input.targetUserId);
+  }
+  if (!input.targetSteamId) return null;
+
+  const existing = await findUserBySteamId(input.targetSteamId);
+  if (existing) return existing;
+
+  const created = await ensureUserFromSteamId(input.targetSteamId);
+  await ensureBaselineUserRole({
+    id: created._id,
+    steamId: created.steamId,
+  });
+  return created;
+}
+
 export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissions> {
   await ready();
 
@@ -293,11 +313,7 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
     throw new Error("Invalid role code.");
   }
 
-  const user = input.targetUserId
-    ? await findUserById(input.targetUserId)
-    : input.targetSteamId
-      ? await findUserBySteamId(input.targetSteamId)
-      : null;
+  const user = await resolveGrantTarget(input);
 
   if (!user) {
     throw new Error("User not found.");
