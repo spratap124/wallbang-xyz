@@ -57,6 +57,12 @@ export function SkinCard({
           className="rounded-none"
           alt={`${skin.weapon} | ${skin.skinName}`}
         />
+        {isEquipped ? (
+          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-sky-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+            <Check className="size-3" />
+            Equipped
+          </span>
+        ) : null}
         <FavoriteButton
           active={isFavorite}
           onToggle={onToggleFavorite}

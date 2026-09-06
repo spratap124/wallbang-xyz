@@ -9,7 +9,8 @@ type KnifeGridProps = {
   filter: string;
   onSelectKnife: (knifeId: string) => void;
   selectedKnife?: string | null;
-  onPreview: (item: EquippedItem | null, knifeId: string) => void;
+  favorites?: string[];
+  onToggleFavorite?: (skinId: string) => void;
   loading?: boolean;
   error?: string | null;
 };
@@ -20,7 +21,8 @@ export function KnifeGrid({
   filter,
   onSelectKnife,
   selectedKnife,
-  onPreview,
+  favorites = [],
+  onToggleFavorite,
   loading = false,
   error = null,
 }: KnifeGridProps) {
@@ -66,26 +68,38 @@ export function KnifeGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {filtered.map((knife) => {
-        const eq =
-          equippedKnife?.weapon === knife.id ? equippedKnife : null;
-        return (
-          <WeaponCard
-            key={knife.id}
-            name={knife.name}
-            weaponId={knife.id}
-            defIndex={knife.defIndex}
-            equipped={eq}
-            large
-            selected={selectedKnife === knife.id}
-            onClick={() => {
-              onPreview(eq, knife.id);
-              onSelectKnife(knife.id);
-            }}
-          />
-        );
-      })}
+    <div>
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
+          Knife
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          {filtered.length} item{filtered.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {filtered.map((knife) => {
+          const eq =
+            equippedKnife?.weapon === knife.id ? equippedKnife : null;
+          return (
+            <WeaponCard
+              key={knife.id}
+              name={knife.name}
+              weaponId={knife.id}
+              defIndex={knife.defIndex}
+              equipped={eq}
+              selected={selectedKnife === knife.id}
+              isFavorite={eq ? favorites.includes(eq.skinId) : false}
+              onToggleFavorite={
+                eq && onToggleFavorite
+                  ? () => onToggleFavorite(eq.skinId)
+                  : undefined
+              }
+              onClick={() => onSelectKnife(knife.id)}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

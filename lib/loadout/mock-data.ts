@@ -388,25 +388,37 @@ export function createInitialLoadout(): UserLoadoutState {
   const equippedGloves = makeEquipped(gloves, midFloatForWear("Minimal Wear"));
 
   return {
-    weapons: {
-      "AK-47": equippedAk,
-      AWP: makeEquipped(awp, midFloatForWear("Field-Tested")),
-      "Desert Eagle": makeEquipped(deagle, midFloatForWear("Factory New")),
-      "M4A1-S": makeEquipped(m4, midFloatForWear("Minimal Wear"), true),
+    ct: {
+      weapons: {
+        ak47: equippedAk,
+        awp: makeEquipped(awp, midFloatForWear("Field-Tested")),
+        deagle: makeEquipped(deagle, midFloatForWear("Factory New")),
+        m4a1_silencer: makeEquipped(m4, midFloatForWear("Minimal Wear"), true),
+      },
+      knife: equippedKnife,
+      gloves: equippedGloves,
+      agent: {
+        agentId: "agent_buckshot",
+        name: "'Blueberries' Buckshot | NSWC SEAL",
+        faction: "CT",
+        updatedAt: new Date().toISOString(),
+      },
     },
-    knife: equippedKnife,
-    gloves: equippedGloves,
-    agentCT: {
-      agentId: "agent_buckshot",
-      name: "'Blueberries' Buckshot | NSWC SEAL",
-      faction: "CT",
-      updatedAt: new Date().toISOString(),
-    },
-    agentT: {
-      agentId: "agent_miami",
-      name: "Sir Bloody Miami Darryl | The Professionals",
-      faction: "T",
-      updatedAt: new Date().toISOString(),
+    t: {
+      weapons: {
+        ak47: equippedAk,
+        awp: makeEquipped(awp, midFloatForWear("Field-Tested")),
+        deagle: makeEquipped(deagle, midFloatForWear("Factory New")),
+        m4a1_silencer: makeEquipped(m4, midFloatForWear("Minimal Wear"), true),
+      },
+      knife: equippedKnife,
+      gloves: equippedGloves,
+      agent: {
+        agentId: "agent_miami",
+        name: "Sir Bloody Miami Darryl | The Professionals",
+        faction: "T",
+        updatedAt: new Date().toISOString(),
+      },
     },
     favorites: [ak.id, knife.id, gloves.id, m4.id],
     recentlyEquipped: [equippedAk, equippedGloves, equippedKnife],

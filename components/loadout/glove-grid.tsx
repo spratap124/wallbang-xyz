@@ -9,7 +9,8 @@ type GloveGridProps = {
   filter: string;
   onSelectGloves: (gloveId: string) => void;
   selectedGloves?: string | null;
-  onPreview: (item: EquippedItem | null, gloveId: string) => void;
+  favorites?: string[];
+  onToggleFavorite?: (skinId: string) => void;
   loading?: boolean;
   error?: string | null;
 };
@@ -20,7 +21,8 @@ export function GloveGrid({
   filter,
   onSelectGloves,
   selectedGloves,
-  onPreview,
+  favorites = [],
+  onToggleFavorite,
   loading = false,
   error = null,
 }: GloveGridProps) {
@@ -66,26 +68,39 @@ export function GloveGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {filtered.map((glove) => {
-        const eq =
-          equippedGloves?.weapon === glove.id ? equippedGloves : null;
-        return (
-          <WeaponCard
-            key={glove.id}
-            name={glove.name}
-            weaponId={glove.id}
-            defIndex={glove.defIndex}
-            equipped={eq}
-            large
-            selected={selectedGloves === glove.id}
-            onClick={() => {
-              onPreview(eq, glove.id);
-              onSelectGloves(glove.id);
-            }}
-          />
-        );
-      })}
+    <div>
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
+          Gloves
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          {filtered.length} item{filtered.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {filtered.map((glove) => {
+          const eq =
+            equippedGloves?.weapon === glove.id ? equippedGloves : null;
+          return (
+            <WeaponCard
+              key={glove.id}
+              name={glove.name}
+              weaponId={glove.id}
+              defIndex={glove.defIndex}
+              equipped={eq}
+              muted={!eq}
+              selected={selectedGloves === glove.id}
+              isFavorite={eq ? favorites.includes(eq.skinId) : false}
+              onToggleFavorite={
+                eq && onToggleFavorite
+                  ? () => onToggleFavorite(eq.skinId)
+                  : undefined
+              }
+              onClick={() => onSelectGloves(glove.id)}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

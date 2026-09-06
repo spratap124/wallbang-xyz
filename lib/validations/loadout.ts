@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { SkinRarity, WearName } from "@/types/loadout";
+import { sanitizeUserLoadout } from "@/types/player-loadout";
 
 const skinRarity = z.enum([
   "Consumer Grade",
@@ -47,7 +48,26 @@ const equippedAgentSchema = z
   })
   .strict();
 
-export const putLoadoutSchema = z
+const sideLoadoutSchema = z
+  .object({
+    weapons: z.record(z.string().max(64), equippedItemSchema).default({}),
+    knife: equippedItemSchema.nullable().default(null),
+    gloves: equippedItemSchema.nullable().default(null),
+    agent: equippedAgentSchema.nullable().default(null),
+  })
+  .strict();
+
+const sidedLoadoutSchema = z
+  .object({
+    ct: sideLoadoutSchema,
+    t: sideLoadoutSchema,
+    favorites: z.array(z.string().max(128)).max(100).default([]),
+    recentlyEquipped: z.array(equippedItemSchema).max(8).default([]),
+  })
+  .strict();
+
+/** Pre-CT/T documents still accepted, then migrated in sanitizeUserLoadout. */
+const legacyLoadoutSchema = z
   .object({
     weapons: z.record(z.string().max(64), equippedItemSchema).default({}),
     knife: equippedItemSchema.nullable().default(null),
@@ -58,5 +78,9 @@ export const putLoadoutSchema = z
     recentlyEquipped: z.array(equippedItemSchema).max(8).default([]),
   })
   .strict();
+
+export const putLoadoutSchema = z
+  .union([sidedLoadoutSchema, legacyLoadoutSchema])
+  .transform((value) => sanitizeUserLoadout(value));
 
 export type PutLoadoutSchema = z.infer<typeof putLoadoutSchema>;

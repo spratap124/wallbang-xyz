@@ -145,9 +145,44 @@ export function resolveAnySkinImage(weaponRef: {
     if (byId) return byId;
   }
   if (weaponRef.name) {
-    return index.byDisplayName[weaponRef.name];
+    const byName = index.byDisplayName[weaponRef.name];
+    if (byName) return byName;
   }
-  return undefined;
+  return resolveGloveFamilyImage(weaponRef);
+}
+
+const GLOVE_FAMILIES = [
+  "bloodhound",
+  "brokenfang",
+  "handwraps",
+  "specialist",
+  "driver",
+  "hydra",
+  "sport",
+  "moto",
+] as const;
+
+function resolveGloveFamilyImage(weaponRef: {
+  id?: string | null;
+  name?: string | null;
+}): string | undefined {
+  const index = getAnyImageIndex();
+  const blob = `${weaponRef.id ?? ""} ${weaponRef.name ?? ""}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  if (!blob) return undefined;
+  const family = GLOVE_FAMILIES.find((name) => blob.includes(name));
+  if (!family) return undefined;
+  return index.byWeaponId[family];
+}
+
+/** Default model, or any skin of that item (used for unequipped glove types). */
+export function resolvePreviewImage(weaponRef: {
+  defIndex?: number | null;
+  id?: string | null;
+  name?: string | null;
+}): string | undefined {
+  return resolveDefaultWeaponImage(weaponRef) ?? resolveAnySkinImage(weaponRef);
 }
 
 export function resolveAgentImage(name: string): string | undefined {

@@ -44,6 +44,19 @@ export type WearName =
 
 export type AgentFaction = "CT" | "T";
 
+export type LoadoutSide = "CT" | "T";
+
+export type LoadoutTab =
+  | "overview"
+  | "pistols"
+  | "smgs"
+  | "rifles"
+  | "heavy"
+  | "snipers"
+  | "knives"
+  | "gloves"
+  | "agents";
+
 export type Skin = {
   id: string;
   weapon: string;
@@ -98,12 +111,16 @@ export type EquippedAgent = {
   updatedAt: string;
 };
 
-export type UserLoadoutState = {
+export type SideLoadout = {
   weapons: Record<string, EquippedItem>;
   knife: EquippedItem | null;
   gloves: EquippedItem | null;
-  agentCT: EquippedAgent | null;
-  agentT: EquippedAgent | null;
+  agent: EquippedAgent | null;
+};
+
+export type UserLoadoutState = {
+  ct: SideLoadout;
+  t: SideLoadout;
   favorites: string[];
   recentlyEquipped: EquippedItem[];
 };

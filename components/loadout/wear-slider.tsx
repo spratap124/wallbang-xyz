@@ -1,14 +1,18 @@
 "use client";
 
-import { WEAR_RANGES, wearNameFromFloat } from "@/lib/loadout/constants";
+import {
+  shortWear,
+  WEAR_RANGES,
+  wearNameFromFloat,
+} from "@/lib/loadout/constants";
 import { cn } from "@/lib/utils";
-import type { WearName } from "@/types/loadout";
 
 type WearSliderProps = {
   value: number;
   onChange: (wear: number) => void;
   disabled?: boolean;
   className?: string;
+  label?: string;
 };
 
 export function WearSlider({
@@ -16,6 +20,7 @@ export function WearSlider({
   onChange,
   disabled = false,
   className,
+  label = "Wear",
 }: WearSliderProps) {
   const current = wearNameFromFloat(value);
 
@@ -23,7 +28,7 @@ export function WearSlider({
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Wear
+          {label}
         </span>
         <span className="font-mono text-xs text-foreground">
           {current} · {value.toFixed(4)}
@@ -53,7 +58,7 @@ export function WearSlider({
             className={cn(
               "rounded-md px-2 py-1 text-[10px] tracking-wide uppercase transition-colors",
               current === range.name
-                ? "bg-primary/15 text-primary"
+                ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               disabled && "pointer-events-none opacity-40",
             )}
@@ -64,19 +69,4 @@ export function WearSlider({
       </div>
     </div>
   );
-}
-
-function shortWear(name: WearName): string {
-  switch (name) {
-    case "Factory New":
-      return "FN";
-    case "Minimal Wear":
-      return "MW";
-    case "Field-Tested":
-      return "FT";
-    case "Well-Worn":
-      return "WW";
-    case "Battle-Scarred":
-      return "BS";
-  }
 }

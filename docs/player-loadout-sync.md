@@ -20,6 +20,8 @@ Header: `X-API-Key: <PLUGIN_API_KEY>` (same as presence and permissions routes).
 
 ### GET `/api/v1/player/:steamId` — loadout shape
 
+Loadouts are stored **per side** (`sides.CT` / `sides.T`). Flat `weapons` / `knife` / `gloves` remain the CT side so older plugins keep working. Apply `sides.CT` or `sides.T` on team assignment.
+
 ```json
 {
   "ok": true,
@@ -55,6 +57,10 @@ Header: `X-API-Key: <PLUGIN_API_KEY>` (same as presence and permissions routes).
       },
       "agentCT": { "agentId": "agent_jamison", "name": "Cmdr. Mae …", "faction": "CT" },
       "agentT": { "agentId": "agent_vypa", "name": "Vypa …", "faction": "T" },
+      "sides": {
+        "CT": { "weapons": {}, "knife": {}, "gloves": {}, "agent": {} },
+        "T": { "weapons": {}, "knife": {}, "gloves": {}, "agent": {} }
+      },
       "updatedAt": "2026-07-20T10:00:00.000Z"
     }
   }
@@ -65,7 +71,7 @@ Header: `X-API-Key: <PLUGIN_API_KEY>` (same as presence and permissions routes).
 
 ### PATCH `/api/v1/player/:steamId/loadout` — merge in-game picks
 
-Send only the slots that changed. Omitted slots are left unchanged.
+Send only the slots that changed. Omitted slots are left unchanged. Optional `"side": "CT" | "T"` scopes weapon/knife/glove patches to that side; omit it to update both (legacy).
 
 ```json
 {
