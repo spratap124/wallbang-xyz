@@ -7,7 +7,9 @@ import type {
   EquippedItem,
   LoadoutSide,
   SideLoadout,
+  SkinRarity,
   UserLoadoutState,
+  WearName,
 } from "@/types/loadout";
 
 /** Plugin-facing weapon skin (WallBang.Skins SkinSelection). */
@@ -186,18 +188,62 @@ export function toGameLoadout(
   };
 }
 
+const SKIN_RARITIES: readonly SkinRarity[] = [
+  "Consumer Grade",
+  "Industrial Grade",
+  "Mil-Spec",
+  "Restricted",
+  "Classified",
+  "Covert",
+  "Contraband",
+  "Extraordinary",
+  "Unknown",
+];
+
+const WEAR_NAMES: readonly WearName[] = [
+  "Factory New",
+  "Minimal Wear",
+  "Field-Tested",
+  "Well-Worn",
+  "Battle-Scarred",
+];
+
+export function coerceSkinRarity(value: unknown): SkinRarity {
+  if (value === "Mil-Spec Grade") return "Mil-Spec";
+  if (typeof value === "string" && SKIN_RARITIES.includes(value as SkinRarity)) {
+    return value as SkinRarity;
+  }
+  return "Unknown";
+}
+
+export function coerceWearName(value: unknown): WearName {
+  if (typeof value === "string" && WEAR_NAMES.includes(value as WearName)) {
+    return value as WearName;
+  }
+  return "Field-Tested";
+}
+
+/** Drop null / empty / oversized preview URLs so PUT validation can round-trip saved docs. */
+export function coerceEquippedImage(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const image = value.trim();
+  if (!image || image.length > 2048) return undefined;
+  return image;
+}
+
 export function sanitizeEquippedItem(item: EquippedItem): EquippedItem {
+  const image = coerceEquippedImage(item.image);
   return {
     weapon: item.weapon,
     paintKit: Math.max(0, Math.floor(item.paintKit)),
     skinId: item.skinId,
     skinName: item.skinName,
-    rarity: item.rarity,
+    rarity: coerceSkinRarity(item.rarity),
     wear: Math.min(1, Math.max(0, item.wear)),
-    wearName: item.wearName,
+    wearName: coerceWearName(item.wearName),
     stattrak: Boolean(item.stattrak),
     seed: Math.max(0, Math.min(999, Math.floor(item.seed))),
-    image: item.image,
+    ...(image ? { image } : {}),
     updatedAt: item.updatedAt || new Date().toISOString(),
   };
 }

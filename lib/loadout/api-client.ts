@@ -15,7 +15,11 @@ import type { Skin, WeaponDef } from "@/types/loadout";
 import { enrichSkinMeta, lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 
 type ApiOk<T> = { ok: true; data: T };
-type ApiErr = { ok: false; error: string };
+type ApiErr = {
+  ok: false;
+  error: string;
+  fieldErrors?: Record<string, string[]>;
+};
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
@@ -181,7 +185,10 @@ async function mutateJson<T>(
   const json = (await res.json()) as ApiOk<T> | ApiErr;
   if (!res.ok || !json.ok) {
     const msg = !json.ok ? json.error : `HTTP ${res.status}`;
-    throw new Error(msg);
+    const detail = !json.ok
+      ? Object.values(json.fieldErrors ?? {}).flat()[0]
+      : undefined;
+    throw new Error(detail ? `${msg} ${detail}` : msg);
   }
   return json.data;
 }
