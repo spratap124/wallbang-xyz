@@ -203,6 +203,8 @@ export type FleetOverviewSummary = {
 export type FleetOverviewRecentSession = ServerStatsRecentSession & {
   serverId: string;
   serverName: string;
+  /** Highest active role, or null if the player has no website account. */
+  role: RoleCode | null;
 };
 
 export type FleetOverviewServerCard = {

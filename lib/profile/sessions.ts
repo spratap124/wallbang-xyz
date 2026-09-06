@@ -537,6 +537,7 @@ export async function getFleetConnectionStats(input: {
       concurrentAtJoin: concurrentAtJoin(s, allSessions),
       serverId: s.serverId,
       serverName: s.serverName,
+      role: user?.role ?? null,
     };
   });
 
@@ -640,6 +641,7 @@ export async function listAdminSessions(input: {
       concurrentAtJoin: concurrentAtJoin(s, overlapPool),
       serverId: s.serverId,
       serverName: s.serverName,
+      role: user?.role ?? null,
     };
   });
 }

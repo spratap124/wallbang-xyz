@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminSessionsPanel } from "@/components/admin/admin-sessions-panel";
+import { getSession } from "@/lib/auth/session";
+import { hasPermission } from "@/lib/permissions/service";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata: Metadata = createPageMetadata({
@@ -11,7 +13,15 @@ export const metadata: Metadata = createPageMetadata({
   noIndex: true,
 });
 
-export default function AdminSessionsPage() {
+export default async function AdminSessionsPage() {
+  const user = await getSession();
+  const canManageRoles = user
+    ? await hasPermission({
+        userId: user.id,
+        permission: "manage_users",
+      })
+    : false;
+
   return (
     <div className="space-y-6">
       <div>
@@ -26,7 +36,7 @@ export default function AdminSessionsPage() {
       <Suspense
         fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
       >
-        <AdminSessionsPanel />
+        <AdminSessionsPanel canManageRoles={canManageRoles} />
       </Suspense>
     </div>
   );

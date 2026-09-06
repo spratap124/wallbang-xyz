@@ -4,9 +4,14 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  SessionRoleSheet,
+  type SessionRoleTarget,
+} from "@/components/admin/session-role-sheet";
 import { formatDateTime, formatDuration } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { cn } from "@/lib/utils";
+import type { RoleCode } from "@/types/permissions";
 import type {
   FleetOverviewRecentSession,
   ServerStatsRange,
@@ -22,9 +27,24 @@ async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
 }
 
+const ROLE_LABELS: Record<RoleCode, string> = {
+  USER: "User",
+  FOUNDING_MEMBER: "Founding Member",
+  VIP: "VIP",
+  MODERATOR: "Moderator",
+  ADMIN: "Admin",
+  OWNER: "Owner",
+};
+
 type ServerOption = { id: string; shortName: string };
 
-export function AdminSessionsPanel() {
+type AdminSessionsPanelProps = {
+  canManageRoles?: boolean;
+};
+
+export function AdminSessionsPanel({
+  canManageRoles = false,
+}: AdminSessionsPanelProps) {
   const searchParams = useSearchParams();
   const initialServerId = searchParams.get("serverId")?.trim() ?? "";
 
@@ -35,6 +55,7 @@ export function AdminSessionsPanel() {
   const [sessions, setSessions] = useState<FleetOverviewRecentSession[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [roleTarget, setRoleTarget] = useState<SessionRoleTarget | null>(null);
 
   useEffect(() => {
     if (initialServerId) setServerId(initialServerId);
@@ -77,6 +98,26 @@ export function AdminSessionsPanel() {
   useEffect(() => {
     load();
   }, [load]);
+
+  function applyRoleUpdate(next: SessionRoleTarget) {
+    setRoleTarget((current) =>
+      current && current.steamId === next.steamId ? next : current,
+    );
+    setSessions((current) =>
+      current.map((session) =>
+        session.steamId === next.steamId
+          ? {
+              ...session,
+              personaName: next.personaName,
+              avatarUrl: next.avatarUrl,
+              role: next.role,
+            }
+          : session,
+      ),
+    );
+  }
+
+  const columns = canManageRoles ? 9 : 8;
 
   return (
     <div className="space-y-6">
@@ -135,7 +176,7 @@ export function AdminSessionsPanel() {
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[48rem] text-left text-sm">
+        <table className="w-full min-w-[56rem] text-left text-sm">
           <thead className="border-b border-border bg-secondary/40 text-xs text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Player</th>
@@ -150,13 +191,19 @@ export function AdminSessionsPanel() {
               >
                 At join
               </th>
+              <th className="px-4 py-3 font-medium">Role</th>
+              {canManageRoles ? (
+                <th className="px-4 py-3 font-medium">
+                  <span className="sr-only">Actions</span>
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {sessions.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={columns}
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   {pending ? "Loading…" : "No sessions for this filter."}
@@ -237,12 +284,46 @@ export function AdminSessionsPanel() {
                       ? session.concurrentAtJoin
                       : "—"}
                   </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {session.role ? (
+                      <span className="text-foreground">{ROLE_LABELS[session.role]}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Unregistered</span>
+                    )}
+                  </td>
+                  {canManageRoles ? (
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setRoleTarget({
+                            steamId: session.steamId,
+                            personaName: session.personaName,
+                            avatarUrl: session.avatarUrl,
+                            role: session.role,
+                          })
+                        }
+                      >
+                        Edit role
+                      </Button>
+                    </td>
+                  ) : null}
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {canManageRoles ? (
+        <SessionRoleSheet
+          target={roleTarget}
+          onClose={() => setRoleTarget(null)}
+          onUpdated={applyRoleUpdate}
+        />
+      ) : null}
     </div>
   );
 }
