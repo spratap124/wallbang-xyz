@@ -19,7 +19,7 @@ export const roadmap: RoadmapPhase[] = [
     title: "VIP & Identity",
     status: "in-progress",
     items: [
-      "VIP membership with cosmetic-focused rewards (no pay-to-win)",
+      "VIP membership with reserved access and server privileges",
       "Steam login and secure account linking (site auth live)",
       "Core player statistics pipeline from live retake servers",
       "Early inventory foundations for knives, weapons, and gloves",
@@ -41,13 +41,13 @@ export const roadmap: RoadmapPhase[] = [
   {
     id: "phase-4",
     phase: "Phase 4",
-    title: "Competitive Platform",
+    title: "Community Features",
     status: "planned",
     items: [
-      "Expanded competitive matchmaking",
-      "Tournament brackets and event tooling",
+      "Expanded community matchmaking",
+      "Community event tooling",
       "Admin dashboard for operations and moderation",
-      "Cross-server progression at platform scale",
+      "Cross-server progression",
     ],
   },
 ];

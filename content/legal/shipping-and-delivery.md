@@ -1,20 +1,20 @@
 # Shipping & Delivery Policy
 
-**Last updated:** August 31, 2026
+**Last updated:** September 2, 2026
 
-## Digital services only
+## No physical shipping
 
-WallBang provides digital gaming services only. We do not sell or ship physical products.
+WallBang does not sell or ship physical products.
 
-VIP memberships and other eligible digital services are delivered electronically.
+VIP is a prepaid digital membership. After payment is confirmed, membership privileges are applied electronically to the customer's WallBang account for the purchased term.
 
 ## How delivery works
 
-After successful payment confirmation, the purchased prepaid VIP membership is activated for the customer's WallBang account according to the applicable product terms. No physical shipping or delivery is applicable to WallBang purchases.
+After successful payment confirmation, the purchased VIP membership is activated for the selected duration according to the product terms shown at checkout. No physical shipping applies.
 
 ## Activation issues
 
-If your VIP membership does not activate after a successful payment, contact us at [admin@wallbang.xyz](mailto:admin@wallbang.xyz) with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
+If VIP does not activate after a successful payment, contact us at [admin@wallbang.xyz](mailto:admin@wallbang.xyz) with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
 
 ## Related policies
 

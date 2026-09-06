@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Contact Us",
   description:
-    "Contact WallBang for CS2 retake server support, VIP access, payments, refunds, cancellations, and technical issues.",
+    "Contact WallBang for CS2 community server support, VIP membership, payments, refunds, cancellations, and technical issues.",
   path: "/contact",
 });
 

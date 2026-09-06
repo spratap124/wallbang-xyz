@@ -12,7 +12,7 @@ export const features: FeatureItem[] = [
     id: "vip",
     title: "VIP Membership",
     description:
-      "Prepaid 1-month, 3-month, 6-month, or 1-year VIP — cosmetics, reserved slot, and member perks, with no auto-renewal and no pay-to-win.",
+      "Prepaid 1-month, 3-month, 6-month, or 1-year VIP membership — reserved access and server/community privileges, paid once for the term you choose.",
     icon: "Crown",
   },
   {
@@ -47,14 +47,14 @@ export const features: FeatureItem[] = [
     id: "leaderboards",
     title: "Leaderboards",
     description:
-      "Seasonal and mode-based rankings that reward consistency, not one lucky night — built for serious competitors.",
+      "Seasonal and mode-based rankings built for consistent play on WallBang servers.",
     icon: "Trophy",
   },
   {
     id: "steam-login",
     title: "Steam Login",
     description:
-      "Secure Steam authentication for profiles, progress, and inventory — one identity across the WallBang platform.",
+      "Secure Steam authentication so VIP is applied to the account you use on WallBang servers.",
     icon: "LogIn",
   },
   {
@@ -75,7 +75,7 @@ export const features: FeatureItem[] = [
     id: "season-rankings",
     title: "Season Rankings",
     description:
-      "Timed competitive seasons with resets, rewards, and clear ladders so the meta stays fresh and motivating.",
+      "Timed seasons with resets and clear ladders so rankings stay fresh.",
     icon: "Calendar",
   },
   {
@@ -94,9 +94,9 @@ export const features: FeatureItem[] = [
   },
   {
     id: "tournaments",
-    title: "Future Tournament Support",
+    title: "Community Events",
     description:
-      "Architecture ready for brackets, matchmaking, and competitive events as WallBang grows into a full platform.",
+      "Architecture ready for community match events as WallBang grows.",
     icon: "Medal",
   },
 ];

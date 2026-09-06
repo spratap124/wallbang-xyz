@@ -1,4 +1,3 @@
-import { ComingSoonSection } from "@/components/home/coming-soon-section";
 import { FaqSection } from "@/components/home/faq-section";
 import { FeaturesSection } from "@/components/home/features-section";
 import { HeroSection } from "@/components/home/hero-section";
@@ -9,6 +8,7 @@ import { LiveServersProvider } from "@/components/servers/live-servers-provider"
 import { JsonLd } from "@/components/shared/json-ld";
 import { homeFaqs } from "@/content/faq";
 import { siteConfig } from "@/config/site";
+import { isFeaturesPageEnabled } from "@/lib/platform/feature-flags";
 import { faqJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
 
@@ -18,7 +18,9 @@ export const metadata = createPageMetadata({
   path: "/",
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  const showFeaturesPage = await isFeaturesPageEnabled().catch(() => false);
+
   return (
     <>
       <JsonLd id="ld-home-faq" data={faqJsonLd(homeFaqs)} />
@@ -26,10 +28,9 @@ export default function HomePage() {
         <HeroSection />
         <ServersSection />
       </LiveServersProvider>
-      <FeaturesSection limit={6} />
+      <FeaturesSection limit={2} showViewAll={showFeaturesPage} />
       <WhySection />
       <FaqSection items={homeFaqs} />
-      <ComingSoonSection />
       <WaitlistSection />
     </>
   );

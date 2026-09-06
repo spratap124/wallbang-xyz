@@ -1,17 +1,24 @@
+import { redirect } from "next/navigation";
+
 import { FeaturesSection } from "@/components/home/features-section";
 import { Container, SectionHeading } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
+import { isFeaturesPageEnabled } from "@/lib/platform/feature-flags";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
   title: "Features",
   description:
-    "Explore WallBang CS2 platform features: low latency India retake servers, VIP, skins, Steam login, statistics, leaderboards, and tournament-ready architecture.",
+    "Explore WallBang CS2 community servers: low-latency India retakes, optional VIP membership, Steam login, statistics, and leaderboards.",
   path: "/features",
 });
 
-export default function FeaturesPage() {
+export default async function FeaturesPage() {
+  if (!(await isFeaturesPageEnabled())) {
+    redirect("/");
+  }
+
   return (
     <div className="py-16 sm:py-20">
       <JsonLd
@@ -25,7 +32,7 @@ export default function FeaturesPage() {
         <SectionHeading
           eyebrow="Features"
           title="Everything WallBang is building"
-          description="A competitive CS2 platform stack — from India-first retakes to VIP cosmetics, stats, leaderboards, and future tournaments."
+          description="India-first community and retake servers, optional VIP membership, stats, and the features we are building next."
         />
       </Container>
       <FeaturesSection showViewAll={false} />

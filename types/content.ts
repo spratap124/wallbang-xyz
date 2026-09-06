@@ -18,19 +18,3 @@ export type FaqItem = {
   question: string;
   answer: string;
 };
-
-export type BlogFrontmatter = {
-  title: string;
-  description: string;
-  publishedAt: string;
-  updatedAt?: string;
-  author: string;
-  tags: string[];
-  draft?: boolean;
-};
-
-export type BlogPost = BlogFrontmatter & {
-  slug: string;
-  content: string;
-  readingTime: string;
-};

@@ -26,6 +26,10 @@ type SiteHeaderProps = {
   steamAuthEnabled: boolean;
   showAdmin?: boolean;
   showVip?: boolean;
+  showLoadout?: boolean;
+  showFeatures?: boolean;
+  showProfile?: boolean;
+  showSettings?: boolean;
 };
 
 export function SiteHeader({
@@ -33,9 +37,17 @@ export function SiteHeader({
   steamAuthEnabled,
   showAdmin = false,
   showVip = false,
+  showLoadout = false,
+  showFeatures = false,
+  showProfile = false,
+  showSettings = false,
 }: SiteHeaderProps) {
   const pathname = usePathname();
-  const nav = filterNavItems(mainNav, { vipPage: showVip });
+  const nav = filterNavItems(mainNav, {
+    vipPage: showVip,
+    loadoutPage: showLoadout,
+    featuresPage: showFeatures,
+  });
 
   return (
     <header className="sticky top-0 z-50 overflow-visible border-b border-border/80 bg-background/80 backdrop-blur-md">
@@ -67,6 +79,8 @@ export function SiteHeader({
             enabled={steamAuthEnabled}
             showAdmin={showAdmin}
             showVip={showVip}
+            showProfile={showProfile}
+            showSettings={showSettings}
           />
 
           <Sheet>
@@ -103,6 +117,8 @@ export function SiteHeader({
                   enabled={steamAuthEnabled}
                   showAdmin={showAdmin}
                   showVip={showVip}
+                  showProfile={showProfile}
+                  showSettings={showSettings}
                 />
               </nav>
             </SheetContent>

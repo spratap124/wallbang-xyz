@@ -2,28 +2,16 @@ import { Container, SectionHeading } from "@/components/shared/primitives";
 
 const reasons = [
   {
-    title: "Fair competition",
-    body: "No pay-to-win. VIP and cosmetics never rewrite the competitive ruleset — integrity comes first.",
+    title: "Clear membership",
+    body: "VIP is a fixed-duration membership for reserved access and server privileges — paid once for the term you choose.",
   },
   {
-    title: "Modern technology",
-    body: "CounterStrikeSharp, Metamod, and a production web stack designed to grow into auth, stats, and tournaments.",
+    title: "Community servers",
+    body: "Privately managed CS2 community and retake servers. Connecting does not require a purchase.",
   },
   {
     title: "Performance",
-    body: "India-first low latency servers so practice feels like the real fight — not a high-ping approximation.",
-  },
-  {
-    title: "Transparent development",
-    body: "Public roadmap, changelog, and Discord feedback loops. You can see what ships next.",
-  },
-  {
-    title: "Community feedback",
-    body: "WallBang is shaped with players, not around them. Community-driven priorities keep the product honest.",
-  },
-  {
-    title: "Long-term platform",
-    body: "Not another disposable server IP. A foundation for profiles, leaderboards, inventory, and competitive events.",
+    body: "India-first low latency servers so retake sessions feel responsive.",
   },
 ];
 
@@ -33,8 +21,8 @@ export function WhySection() {
       <Container>
         <SectionHeading
           eyebrow="Why WallBang"
-          title="Why another CS2 platform?"
-          description="Because serious players deserve infrastructure that respects fairness, latency, and long-term progression — especially in India."
+          title="A CS2 community built to last"
+          description="Privately managed community and retake servers in India, with an optional VIP membership for players who want reserved access and extra privileges."
         />
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

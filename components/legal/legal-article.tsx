@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import {
@@ -14,12 +16,14 @@ type LegalArticleProps = {
   slug: LegalDocumentSlug;
   breadcrumbName: string;
   breadcrumbPath: string;
+  children?: ReactNode;
 };
 
 export function LegalArticle({
   slug,
   breadcrumbName,
   breadcrumbPath,
+  children,
 }: LegalArticleProps) {
   const html = renderSimpleMarkdown(getLegalDocument(slug));
 
@@ -37,6 +41,7 @@ export function LegalArticle({
           className={articleClassName}
           dangerouslySetInnerHTML={{ __html: html }}
         />
+        {children}
       </Container>
     </div>
   );

@@ -1,38 +1,53 @@
 # Our Services
 
-WallBang provides online gaming services for Counter-Strike 2 (CS2), including access to our dedicated retake game server.
+WallBang operates privately managed Counter-Strike 2 community and retake servers. Customers may purchase a fixed-duration VIP membership for priority/reserved server access and additional server/community privileges.
 
-## CS2 Retake Server
+WallBang is not a gambling, betting, or wagering platform. WallBang does not offer gambling, betting, wagering, or real-money gaming.
 
-Players can connect to the WallBang CS2 retake server and participate in retake-based multiplayer matches.
+## Community and retake servers
 
-**Server IP:** 200.97.169.27:27015
+Players can connect to WallBang CS2 community and retake servers.
 
-## VIP Access
+Connecting to a server does not require a purchase.
 
-WallBang offers optional prepaid VIP access for players who want additional VIP features on the server.
+## What you can purchase
 
-VIP access is available for selected durations displayed on the website at the time of purchase.
+WallBang sells an optional prepaid VIP membership.
 
-Depending on the selected VIP plan, benefits may include additional server features, priority/features available to VIP players, or other benefits described on the purchase page.
+VIP is a fixed-duration membership. It provides priority/reserved server access and additional server/community privileges on the selected servers.
 
-## VIP Duration
+VIP is not an in-game financial product, wallet, or monetary benefit. It is not a stake, bet, wager, or means of winning or withdrawing money.
 
-VIP access is provided for the duration selected and paid for by the customer.
+## What you receive
 
-Available durations:
+Depending on the plan shown at checkout, VIP may include:
 
-- 1 Month
-- 3 Months
-- 6 Months
-- 1 Year
+- Priority / reserved access when servers are full
+- Additional server and community privileges
 
-The exact available plans, duration, features, and prices are displayed on the website before payment.
+The exact privileges for each plan are displayed on the purchase page before payment.
 
-## Expiry and Renewal
+## How long VIP lasts
 
-VIP access is not automatically renewed.
+VIP lasts for the duration selected and paid for at checkout:
 
-After the purchased duration expires, VIP access will be revoked automatically.
+- 1 month
+- 3 months
+- 6 months
+- 1 year
 
-Customers may purchase/renew VIP access again at any time through the website.
+The available plans, durations, privileges, and prices are shown on the [Pricing](https://wallbang.xyz/pricing) page and in the price list at the bottom of this page.
+
+## Expiry and renewal
+
+VIP is paid once for the selected term. It is not automatically renewed and customers are not charged again unless they make a new purchase.
+
+When the purchased duration ends, VIP privileges end automatically.
+
+Customers may purchase another VIP term at any time through the website.
+
+## Refunds, cancellation, and contact
+
+- [Refund Policy](https://wallbang.xyz/refund)
+- [Cancellation Policy](https://wallbang.xyz/cancellation)
+- [Contact Us](https://wallbang.xyz/contact)

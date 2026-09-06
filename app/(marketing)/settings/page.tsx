@@ -12,10 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { featureFlags } from "@/config/features.flags";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
-import { isVipPageEnabled } from "@/lib/platform/feature-flags";
+import { isProfilePageEnabled, isSettingsPageEnabled, isVipPageEnabled } from "@/lib/platform/feature-flags";
 import { ensurePlayerDomain, getMyProfile } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
 
@@ -27,7 +26,7 @@ export const metadata = createPageMetadata({
 });
 
 export default async function SettingsPage() {
-  if (!featureFlags.playerProfiles) {
+  if (!(await isSettingsPageEnabled())) {
     redirect("/");
   }
   if (!isMongoConfigured()) {
@@ -45,7 +44,10 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
-  const showVip = await isVipPageEnabled();
+  const [showVip, showProfile] = await Promise.all([
+    isVipPageEnabled(),
+    isProfilePageEnabled(),
+  ]);
 
   return (
     <div className="py-10 sm:py-14">
@@ -111,21 +113,23 @@ export default async function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Public profile</p>
-                    <p className="text-xs text-muted-foreground">
-                      View how others see you
-                    </p>
+                {showProfile ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">Public profile</p>
+                      <p className="text-xs text-muted-foreground">
+                        View how others see you
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<Link href="/profile" />}
+                    >
+                      Open profile
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    render={<Link href="/profile" />}
-                  >
-                    Open profile
-                  </Button>
-                </div>
+                ) : null}
 
                 <div className="rounded-lg border border-border/70 px-4 py-3">
                   <p className="text-xs tracking-wide text-muted-foreground uppercase">

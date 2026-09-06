@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "WallBang Business Information",
   description:
-    "WallBang business information — brand name, legal operator, business category, support contact, and registered address for wallbang.xyz.",
+    "WallBang business information — brand name, legal operator, what we sell, VIP membership terms, support contact, and registered address.",
   path: "/business-information",
 });
 

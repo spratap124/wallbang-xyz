@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { featureFlags } from "@/config/features.flags";
 import { isSteamAuthConfigured } from "@/lib/auth/config";
 import { getSession } from "@/lib/auth/session";
-import { isVipPageEnabled } from "@/lib/platform/feature-flags";
+import { getRuntimeFeatureFlags } from "@/lib/platform/feature-flags";
 import { hasPermission } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 
@@ -25,9 +25,9 @@ export default async function MarketingLayout({
 }>) {
   await connection();
   const steamAuthEnabled = featureFlags.steamAuth && isSteamAuthConfigured();
-  const [user, showVip] = await Promise.all([
+  const [user, flags] = await Promise.all([
     steamAuthEnabled ? getSession() : Promise.resolve(null),
-    isVipPageEnabled().catch(() => featureFlags.vipPage),
+    getRuntimeFeatureFlags().catch(() => featureFlags),
   ]);
 
   let showAdmin = false;
@@ -52,13 +52,21 @@ export default async function MarketingLayout({
         user={user}
         steamAuthEnabled={steamAuthEnabled}
         showAdmin={showAdmin}
-        showVip={showVip}
+        showVip={flags.vipPage}
+        showLoadout={flags.loadoutPage}
+        showFeatures={flags.featuresPage}
+        showProfile={flags.profilePage}
+        showSettings={flags.settingsPage}
       />
       <Suspense fallback={null}>
         <AuthErrorBanner />
       </Suspense>
       <main id="main-content">{children}</main>
-      <SiteFooter showVip={showVip} />
+      <SiteFooter
+        showVip={flags.vipPage}
+        showLoadout={flags.loadoutPage}
+        showFeatures={flags.featuresPage}
+      />
     </>
   );
 }

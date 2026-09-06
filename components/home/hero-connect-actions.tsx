@@ -19,7 +19,7 @@ function pickPrimary(live: ServerSummary[]): ServerSummary | null {
   return online[0] ?? featured;
 }
 
-/** Play Now, Discord, and console connect — connect target from live fleet. */
+/** Connect, Discord, and console connect — connect target from live fleet. */
 export function HeroConnectActions() {
   const { servers: live } = useLiveServers();
   const primary = pickPrimary(live);
@@ -39,7 +39,7 @@ export function HeroConnectActions() {
           )}
         >
           <Play className="size-4 fill-current" aria-hidden="true" />
-          Play Now
+          Connect
         </a>
         <a
           href={siteConfig.discordUrl}

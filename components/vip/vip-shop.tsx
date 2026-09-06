@@ -384,7 +384,7 @@ export function VipShop({
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
-            All plans are prepaid. VIP access ends on expiry. No auto-renewal.
+            All plans are prepaid for a stated term. VIP ends when that term ends. It is not automatically renewed.
           </p>
         </section>
       </div>
@@ -454,7 +454,7 @@ export function VipShop({
               ? formatInrFromPaise(duration.amountPaise)
               : "—"}
           </p>
-          <p className="text-xs text-muted-foreground">Incl. taxes</p>
+          <p className="text-xs text-muted-foreground">Prepaid, paid once</p>
           {quoteError ? (
             <p className="mt-1 text-xs text-destructive">{quoteError}</p>
           ) : null}

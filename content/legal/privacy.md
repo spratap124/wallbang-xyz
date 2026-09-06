@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective Date:** August 31, 2026
+**Effective Date:** September 2, 2026
 
 WallBang respects your privacy and is committed to protecting information provided when using [wallbang.xyz](https://wallbang.xyz) and our services.
 
@@ -55,7 +55,7 @@ Our website may use cookies or similar technologies required for functionality, 
 
 ## 7. Third-Party Services
 
-Our website may contain or use third-party services, including payment processors and gaming/Steam-related services.
+Our website may contain or use third-party services, including payment processors and Steam-related services.
 
 These third parties may have their own terms and privacy policies.
 

@@ -1,9 +1,9 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ProfilePageView } from "@/components/profile/profile-page-view";
-import { featureFlags } from "@/config/features.flags";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
+import { isProfilePageEnabled, isSettingsPageEnabled } from "@/lib/platform/feature-flags";
 import {
   getPlayerActivity,
   getPlayerProfile,
@@ -47,8 +47,8 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function PublicProfilePage({ params }: PageProps) {
-  if (!featureFlags.playerProfiles || !isMongoConfigured()) {
-    notFound();
+  if (!(await isProfilePageEnabled()) || !isMongoConfigured()) {
+    redirect("/");
   }
 
   const { steamId } = await params;
@@ -77,11 +77,14 @@ export default async function PublicProfilePage({ params }: PageProps) {
     createdAt: item.createdAt.toISOString(),
   }));
 
+  const showSettings = await isSettingsPageEnabled();
+
   return (
     <ProfilePageView
       profile={profile}
       activity={activity}
       activityPrivate={!canSeeActivity}
+      showSettings={showSettings}
     />
   );
 }

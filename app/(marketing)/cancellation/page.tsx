@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Cancellation Policy",
   description:
-    "WallBang cancellation policy for prepaid VIP access: cancellation before activation, no automatic renewal, and expiry terms.",
+    "WallBang cancellation policy for prepaid VIP membership: cancellation before activation, no automatic renewal, and expiry terms.",
   path: "/cancellation",
 });
 

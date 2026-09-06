@@ -37,8 +37,8 @@ export function LiveServers({
             <SectionHeading
               className="mb-0"
               eyebrow="Live servers"
-              title="Jump into a retake right now"
-              description="Click connect to open Counter-Strike 2 through Steam and join automatically. Status refreshes every 10 seconds."
+              title="Connect to a live retake server"
+              description="Click connect to open Counter-Strike 2 through Steam and join a WallBang community server. Status refreshes every 10 seconds."
             />
             <LiveIndicator hasLoaded={hasLoaded} refreshing={refreshing} />
           </div>

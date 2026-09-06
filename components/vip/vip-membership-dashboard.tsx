@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+
 import { buttonVariants } from "@/components/ui/button";
+import { pricingCheckoutHref } from "@/lib/payments/pricing-href";
 import {
   formatDaysRemaining,
   formatVipExpiryDate,
@@ -19,7 +22,6 @@ export type VipRenewTarget = {
 
 type VipMembershipDashboardProps = {
   membership: VipMembershipView | null;
-  onRenew: (target: VipRenewTarget) => void;
 };
 
 function StatusDot({ active }: { active: boolean }) {
@@ -36,10 +38,8 @@ function StatusDot({ active }: { active: boolean }) {
 
 function EntitlementCard({
   entitlement,
-  onRenew,
 }: {
   entitlement: VipEntitlement;
-  onRenew: (target: VipRenewTarget) => void;
 }) {
   const active = entitlement.status === "active";
   const daysRemaining =
@@ -118,13 +118,12 @@ function EntitlementCard({
       ) : null}
 
       {active && entitlement.kind !== "lifetime" ? (
-        <button
-          type="button"
-          onClick={() => onRenew(renewTarget)}
+        <Link
+          href={pricingCheckoutHref(renewTarget)}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4")}
         >
           Renew
-        </button>
+        </Link>
       ) : null}
     </article>
   );
@@ -132,7 +131,6 @@ function EntitlementCard({
 
 export function VipMembershipDashboard({
   membership,
-  onRenew,
 }: VipMembershipDashboardProps) {
   if (!membership) {
     return (
@@ -169,7 +167,6 @@ export function VipMembershipDashboard({
                         : "general"
                 }
                 entitlement={entitlement}
-                onRenew={onRenew}
               />
             ))}
           </div>
@@ -211,8 +208,8 @@ export function VipMembershipDashboard({
           No active VIP access
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          You don&apos;t currently have VIP access. Choose a server and duration
-          below to get started.
+          You don&apos;t currently have VIP access. Open Pricing to pick a
+          server and duration.
         </p>
       </div>
     </section>

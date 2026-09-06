@@ -1,10 +1,11 @@
 import { LegalArticle } from "@/components/legal/legal-article";
+import { VipServicePrices } from "@/components/legal/vip-service-prices";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
   title: "Our Services",
   description:
-    "WallBang CS2 retake server access and optional prepaid VIP plans, including duration, expiry, and renewal terms.",
+    "WallBang CS2 community and retake servers, plus optional fixed-duration VIP membership for priority/reserved access and server privileges.",
   path: "/services",
 });
 
@@ -14,6 +15,8 @@ export default function ServicesPage() {
       slug="services"
       breadcrumbName="Services"
       breadcrumbPath="/services"
-    />
+    >
+      <VipServicePrices />
+    </LegalArticle>
   );
 }
