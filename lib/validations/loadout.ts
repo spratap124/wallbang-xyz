@@ -1,27 +1,11 @@
 import { z } from "zod";
 
-import type { SkinRarity, WearName } from "@/types/loadout";
-import { sanitizeUserLoadout } from "@/types/player-loadout";
-
-const skinRarity = z.enum([
-  "Consumer Grade",
-  "Industrial Grade",
-  "Mil-Spec",
-  "Restricted",
-  "Classified",
-  "Covert",
-  "Contraband",
-  "Extraordinary",
-  "Unknown",
-]) satisfies z.ZodType<SkinRarity>;
-
-const wearName = z.enum([
-  "Factory New",
-  "Minimal Wear",
-  "Field-Tested",
-  "Well-Worn",
-  "Battle-Scarred",
-]) satisfies z.ZodType<WearName>;
+import {
+  coerceEquippedImage,
+  coerceSkinRarity,
+  coerceWearName,
+  sanitizeUserLoadout,
+} from "@/types/player-loadout";
 
 const equippedItemSchema = z
   .object({
@@ -29,15 +13,21 @@ const equippedItemSchema = z
     paintKit: z.number().int().min(0).max(100_000),
     skinId: z.string().trim().min(1).max(128),
     skinName: z.string().trim().min(1).max(128),
-    rarity: skinRarity,
+    rarity: z.string().transform(coerceSkinRarity),
     wear: z.number().min(0).max(1),
-    wearName,
+    wearName: z.string().transform(coerceWearName),
     stattrak: z.boolean(),
-    seed: z.number().int().min(0).max(999),
-    image: z.string().max(2048).optional(),
+    seed: z
+      .number()
+      .transform((value) => Math.max(0, Math.min(999, Math.floor(value)))),
+    image: z
+      .string()
+      .max(2048)
+      .nullish()
+      .transform((value) => coerceEquippedImage(value)),
     updatedAt: z.string().min(1).max(64),
   })
-  .strict();
+  .strip();
 
 const equippedAgentSchema = z
   .object({
@@ -46,7 +36,18 @@ const equippedAgentSchema = z
     faction: z.enum(["CT", "T"]),
     updatedAt: z.string().min(1).max(64),
   })
-  .strict();
+  .strip();
+
+function parseRecentItem(item: unknown) {
+  const parsed = equippedItemSchema.safeParse(item);
+  return parsed.success ? parsed.data : null;
+}
+
+const recentItemsSchema = z
+  .array(z.unknown())
+  .max(8)
+  .default([])
+  .transform((items) => items.map(parseRecentItem).filter((item) => item != null));
 
 const sideLoadoutSchema = z
   .object({
@@ -55,14 +56,14 @@ const sideLoadoutSchema = z
     gloves: equippedItemSchema.nullable().default(null),
     agent: equippedAgentSchema.nullable().default(null),
   })
-  .strict();
+  .strip();
 
 const sidedLoadoutSchema = z
   .object({
     ct: sideLoadoutSchema,
     t: sideLoadoutSchema,
     favorites: z.array(z.string().max(128)).max(100).default([]),
-    recentlyEquipped: z.array(equippedItemSchema).max(8).default([]),
+    recentlyEquipped: recentItemsSchema,
   })
   .strict();
 
@@ -75,7 +76,7 @@ const legacyLoadoutSchema = z
     agentCT: equippedAgentSchema.nullable().default(null),
     agentT: equippedAgentSchema.nullable().default(null),
     favorites: z.array(z.string().max(128)).max(100).default([]),
-    recentlyEquipped: z.array(equippedItemSchema).max(8).default([]),
+    recentlyEquipped: recentItemsSchema,
   })
   .strict();
 

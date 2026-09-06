@@ -39,11 +39,15 @@ export async function PUT(request: Request): Promise<Response> {
 
   const parsed = putLoadoutSchema.safeParse(body);
   if (!parsed.success) {
-    return jsonError(
-      "Validation failed.",
-      400,
-      parsed.error.flatten().fieldErrors as Record<string, string[]>,
-    );
+    const fieldErrors: Record<string, string[]> = {};
+    for (const issue of parsed.error.issues) {
+      const key = issue.path.length
+        ? issue.path.map(String).join(".")
+        : "_errors";
+      fieldErrors[key] = fieldErrors[key] ?? [];
+      fieldErrors[key].push(issue.message);
+    }
+    return jsonError("Validation failed.", 400, fieldErrors);
   }
 
   const data = await savePlayerLoadout(auth.user, parsed.data);
