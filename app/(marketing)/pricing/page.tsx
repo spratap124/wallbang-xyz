@@ -23,6 +23,7 @@ import {
 } from "@/components/vip/vip-shop";
 import { getVipShopCatalog } from "@/config/vip-plans";
 import { siteConfig } from "@/config/site";
+import { hostedAccessPlanLabel } from "@/content/business";
 import { pricingFaqs } from "@/content/pricing";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
@@ -41,7 +42,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Pricing",
   description:
-    "Prepaid WallBang VIP pricing — pick a server, choose 1 / 3 / 6 months or 1 year, and pay once. No auto-renewal.",
+    "Prepaid hosted server access for WallBang Counter-Strike 2 community servers in India. Pick a server, choose 1 / 3 / 6 months or 1 year, and pay once. No auto-renewal. We do not sell the game or in-game items.",
   path: "/pricing",
 });
 
@@ -53,7 +54,7 @@ const howItWorks = [
   {
     icon: Server,
     title: "Select servers",
-    body: "Pick the server(s) you want VIP access to.",
+    body: "Pick the WallBang community server(s) you want hosted access to.",
   },
   {
     icon: Timer,
@@ -67,8 +68,8 @@ const howItWorks = [
   },
   {
     icon: Sparkles,
-    title: "Enjoy VIP",
-    body: "VIP turns off when the term ends. Renew anytime.",
+    title: "Enjoy access",
+    body: "Reserved access lasts for the term you paid. Renew anytime.",
   },
 ] as const;
 
@@ -126,7 +127,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
   )
     .filter((option) => option.amountPaise > 0)
     .map((option) => ({
-      name: option.name,
+      name: hostedAccessPlanLabel(option.name),
       pricePaise: option.amountPaise,
     }));
 
@@ -168,7 +169,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                   <span className="font-medium text-foreground">
                     {session.personaName}
                   </span>
-                  . VIP will be applied to this Steam account.
+                  . Hosted server access will be applied to this Steam account.
                 </p>
               </div>
             </div>
@@ -180,7 +181,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                   <span className="font-semibold">Sign in with Steam</span>
                   <span className="text-muted-foreground">
                     {" "}
-                    — Buy VIP on the same account you use in-game.
+                    — Get hosted server access on the same Steam account you use in Counter-Strike 2.
                   </span>
                 </p>
               </div>
@@ -263,7 +264,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
         items={pricingFaqs}
         showViewAll
         title="Pricing questions"
-        description="Prepaid terms, perks, and how checkout works."
+        description="Prepaid terms, what you receive, and how checkout works."
       />
     </div>
   );

@@ -1,6 +1,6 @@
 # Contact Us
 
-For questions about WallBang community and retake servers, VIP membership, payments, refunds, cancellations, or technical issues, please contact us.
+For questions about WallBang hosted Counter-Strike 2 community servers, Hosted Server Access, payments, refunds, cancellations, or technical issues, please contact us.
 
 - **Trade Name:** WallBang
 - **Operator:** Shivani

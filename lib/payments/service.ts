@@ -28,6 +28,10 @@ import {
 } from "@/lib/permissions/service";
 import { rateLimit } from "@/lib/rate-limit";
 import { getGameServers } from "@/lib/servers/registry";
+import {
+  checkoutProductDescription,
+  checkoutProductName,
+} from "@/content/business";
 import type {
   PaymentDoc,
   PaymentStatus,
@@ -144,11 +148,11 @@ export async function createVipOrder(input: {
   const serverId = quote.serverId;
   const serverIds =
     quote.accessType === "INDIVIDUAL_SERVER" && serverId ? [serverId] : [];
-  const checkoutName = "WallBang VIP";
-  const checkoutDescription =
-    quote.accessType === "ALL_RETAKES"
-      ? `${quote.durationDays} days · All Retakes`
-      : `${quote.durationDays} days · ${serverId ?? "server"}`;
+  const checkoutName = checkoutProductName;
+  const checkoutDescription = checkoutProductDescription({
+    durationDays: quote.durationDays,
+    accessType: quote.accessType,
+  });
 
   const payments = await paymentsCollection();
   const reuseAfter = new Date(Date.now() - REUSE_ORDER_MS);

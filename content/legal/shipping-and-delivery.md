@@ -6,15 +6,15 @@
 
 WallBang does not sell or ship physical products.
 
-VIP is a prepaid digital membership. After payment is confirmed, membership privileges are applied electronically to the customer's WallBang account for the purchased term.
+Hosted Server Access is prepaid access to WallBang's independently operated Counter-Strike 2 community servers. After payment is confirmed, reserved server access and related privileges are applied electronically to the customer's WallBang account for the purchased term.
 
 ## How delivery works
 
-After successful payment confirmation, the purchased VIP membership is activated for the selected duration according to the product terms shown at checkout. No physical shipping applies.
+After successful payment confirmation, the purchased hosted server access is activated for the selected duration according to the product terms shown at checkout. No physical shipping applies.
 
 ## Activation issues
 
-If VIP does not activate after a successful payment, contact us at [admin@wallbang.xyz](mailto:admin@wallbang.xyz) with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
+If hosted server access does not activate after a successful payment, contact us at [admin@wallbang.xyz](mailto:admin@wallbang.xyz) with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
 
 ## Related policies
 

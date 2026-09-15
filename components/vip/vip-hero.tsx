@@ -6,7 +6,7 @@ import { Container } from "@/components/shared/primitives";
 const trustItems = [
   {
     icon: Shield,
-    title: "Premium retake servers",
+    title: "Premium community servers",
     body: "Low ping. High performance.",
   },
   {
@@ -16,13 +16,13 @@ const trustItems = [
   },
   {
     icon: Zap,
-    title: "Instant VIP Activation",
+    title: "Instant access activation",
     body: "Access granted right after payment.",
   },
   {
     icon: RefreshCcw,
     title: "You're in control",
-    body: "VIP ends when the term ends.",
+    body: "Access ends when the term ends.",
   },
 ] as const;
 
@@ -59,11 +59,16 @@ export function VipHero() {
           <div className="absolute inset-0 flex items-center">
             <Container>
               <h1 className="max-w-lg text-4xl font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Unlock WallBang VIP membership
+                Hosted Server Access
               </h1>
-              <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Choose servers, pick a duration, and pay once for that term.
-                VIP is a membership for reserved access and server privileges — not automatically renewed.
+              <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Prepaid access to WallBang&apos;s independently operated
+                Counter-Strike 2 community servers in India. Choose a duration
+                and pay once for that term — not automatically renewed.
+              </p>
+              <p className="mt-3 max-w-md text-xs leading-relaxed text-foreground/80 sm:text-sm">
+                WallBang operates the server infrastructure. We do not sell or
+                distribute Counter-Strike 2, game licenses, or in-game items.
               </p>
             </Container>
           </div>

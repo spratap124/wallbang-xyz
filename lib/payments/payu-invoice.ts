@@ -5,6 +5,7 @@ import { formatInrFromPaise } from "@/lib/payments/format";
 import { generateInvoiceNumber } from "@/lib/payments/invoice-number";
 import { syncPayuInvoiceNumber } from "@/lib/payments/payu-postservice";
 import { getVipDurationMeta } from "@/lib/payments/vip-pricing";
+import { hostedAccessDaysLabel, hostedAccessPlanLabel } from "@/content/business";
 import type { PaymentDoc } from "@/types/payments";
 
 export type PaymentInvoiceView = {
@@ -27,11 +28,16 @@ export function buildPaymentInvoiceView(payment: PaymentDoc): PaymentInvoiceView
   if (!payment.invoiceNumber || !payment.paidAt) return null;
 
   const planMeta = getVipDurationMeta(payment.plan);
-  const planLabel = planMeta?.name ?? payment.plan;
+  const planLabel = planMeta
+    ? hostedAccessPlanLabel(planMeta.name)
+    : payment.plan;
   const accessLabel =
     payment.accessType === "ALL_RETAKES"
       ? "All Retake Servers"
       : payment.serverId ?? payment.bundleId;
+  const daysLabel = planMeta
+    ? hostedAccessDaysLabel(planMeta.durationDays)
+    : "Hosted Server Access";
 
   return {
     invoiceNumber: payment.invoiceNumber,
@@ -39,7 +45,7 @@ export function buildPaymentInvoiceView(payment: PaymentDoc): PaymentInvoiceView
     paymentId: payment._id,
     customerEmail: payment.email ?? null,
     steamId: payment.steamId,
-    productDescription: `Prepaid VIP membership — ${planLabel} (${accessLabel})`,
+    productDescription: `${daysLabel} (${accessLabel})`,
     planLabel,
     amountPaise: payment.amount,
     amountFormatted: formatInrFromPaise(payment.amount),

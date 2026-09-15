@@ -39,7 +39,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Launch VIP",
   description:
-    "Become one of WallBang's first 100 players and unlock 3 months of Launch VIP. Sign in with Steam to claim this limited-time membership.",
+    "Become one of WallBang's first 100 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
   path: "/offers",
 });
 
@@ -336,7 +336,7 @@ export default async function LaunchOfferPage({
                 </>
               ) : null}
               .{showVip
-                ? " You can buy prepaid VIP anytime, or join Discord for community updates."
+                ? " You can get prepaid hosted server access anytime, or join Discord for community updates."
                 : " Join Discord for community updates."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
@@ -345,7 +345,7 @@ export default async function LaunchOfferPage({
                   href="/pricing"
                   className={cn(buttonVariants())}
                 >
-                  Buy prepaid VIP
+                  Get hosted server access
                 </a>
               ) : null}
               <a
@@ -559,7 +559,7 @@ export default async function LaunchOfferPage({
                   <div className="mb-4 flex items-center gap-2">
                     <Crown className="size-5 text-red-500" />
                     <h2 className="text-lg font-semibold tracking-tight">
-                      Launch VIP membership
+                      Launch hosted server access
                     </h2>
                   </div>
                   <p className="text-sm leading-relaxed text-muted-foreground sm:text-[15px]">

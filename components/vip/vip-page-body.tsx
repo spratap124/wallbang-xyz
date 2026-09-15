@@ -19,7 +19,9 @@ export function VipPageBody({
 }: VipPageBodyProps) {
   const buyHref = pricingCheckoutHref();
   const buyLabel =
-    membership?.hasActiveVip && !membership.lifetime ? "Renew VIP" : "Buy VIP";
+    membership?.hasActiveVip && !membership.lifetime
+      ? "Renew access"
+      : "Get hosted access";
 
   return (
     <>
@@ -31,11 +33,13 @@ export function VipPageBody({
         <section className="mt-2 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-card/60 px-6 py-6 sm:flex-row sm:items-center">
           <div>
             <p className="font-semibold">
-              {membership?.hasActiveVip ? "Extend your VIP" : "Want VIP access?"}
+              {membership?.hasActiveVip
+                ? "Extend your hosted server access"
+                : "Want reserved server access?"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose a server and duration on the Pricing page, then pay once.
-              No auto-renewal.
+              Choose a server and duration on the Pricing page, then pay once
+              for that term. No auto-renewal.
             </p>
           </div>
           <Link

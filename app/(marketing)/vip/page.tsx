@@ -26,7 +26,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "VIP",
   description:
-    "View your WallBang VIP membership status and expiry. VIP is a prepaid, fixed-duration membership for reserved server access and community privileges — paid once for the term you choose.",
+    "View your WallBang hosted server access status and expiry. Prepaid, fixed-duration access to independently operated Counter-Strike 2 community servers in India.",
   path: "/vip",
 });
 
@@ -99,7 +99,7 @@ export default async function VipPage() {
                 <span className="font-medium text-foreground">
                   {session.personaName}
                 </span>
-                . VIP on this page is for this Steam account.
+                . Hosted server access on this page is for this Steam account.
               </p>
             </div>
           </div>
@@ -111,7 +111,7 @@ export default async function VipPage() {
                 <span className="font-semibold">Sign in with Steam</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  — View VIP status for the account you use in-game.
+                  — View hosted server access for the account you use in Counter-Strike 2.
                 </span>
               </p>
             </div>

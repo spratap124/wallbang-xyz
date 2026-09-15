@@ -75,9 +75,9 @@ export function vipPricingJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: "WallBang VIP",
+    name: "WallBang Hosted Server Access",
     description:
-      "Prepaid WallBang VIP for CS2 retake servers. Pay once for 1, 3, or 6 months, or 1 year. No auto-renewal.",
+      "Prepaid hosted server access for WallBang Counter-Strike 2 community servers in India. Pay once for 1, 3, or 6 months, or 1 year. No auto-renewal. Does not include the game, licenses, or in-game items.",
     brand: {
       "@type": "Brand",
       name: siteConfig.name,

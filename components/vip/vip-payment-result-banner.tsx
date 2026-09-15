@@ -40,13 +40,13 @@ const OUTCOME_COPY: Record<
 > = {
   success: {
     title: "Payment successful",
-    body: "Your prepaid VIP membership is now active. Your payment invoice is ready below.",
+    body: "Your prepaid hosted server access is now active. Your payment invoice is ready below.",
     icon: CheckCircle2,
     tone: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
   },
   failure: {
     title: "Payment not completed",
-    body: "Your payment was cancelled or did not go through. No VIP was activated — you can try again on the Pricing page.",
+    body: "Your payment was cancelled or did not go through. No hosted server access was activated — you can try again on the Pricing page.",
     icon: XCircle,
     tone: "border-destructive/30 bg-destructive/10 text-destructive",
   },

@@ -58,7 +58,7 @@ export function FeaturesSection({
           <SectionHeading
             eyebrow="Features"
             title="Built for community retakes"
-            description="Public retake servers today. Optional VIP membership for reserved access and server privileges."
+            description="Public Counter-Strike 2 retake servers today. Optional hosted server access for reserved slots and server privileges."
             className="mb-0"
           />
           {showViewAll ? (

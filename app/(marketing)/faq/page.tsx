@@ -8,7 +8,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "FAQ",
   description:
-    "Frequently asked questions about WallBang: CS2 retake servers, India regions, VIP, free access, Steam login, statistics, and launch timing.",
+    "Frequently asked questions about WallBang: India-hosted Counter-Strike 2 community servers, what you pay for, whether you need to own CS2, and Valve affiliation.",
   path: "/faq",
 });
 
@@ -27,7 +27,7 @@ export default function FaqPage() {
         <SectionHeading
           eyebrow="FAQ"
           title="Frequently asked questions"
-          description="Answers about WallBang, CS2 community retakes in India, VIP membership, duration, and refunds."
+          description="Answers about WallBang hosted Counter-Strike 2 community servers in India, Hosted Server Access, duration, and refunds."
         />
       </Container>
       <FaqSection items={faqs} showViewAll={false} />

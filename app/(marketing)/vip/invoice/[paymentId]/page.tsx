@@ -18,7 +18,7 @@ import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
   title: "Payment Invoice",
-  description: "WallBang VIP payment invoice.",
+  description: "WallBang hosted server access payment invoice.",
   path: "/vip/invoice",
   noIndex: true,
 });
@@ -148,8 +148,10 @@ export default async function VipInvoicePage({ params }: InvoicePageProps) {
                   <td className="px-4 py-4">
                     <p className="font-medium">{invoice.productDescription}</p>
                     <p className="mt-1 text-xs text-muted-foreground print:text-gray-600">
-                      Digital delivery — prepaid VIP membership for WallBang CS2
-                      community servers. No physical goods shipped.
+                      Digital delivery — prepaid hosted server access for
+                      WallBang Counter-Strike 2 community servers. Does not
+                      include the game, licenses, or in-game items. No physical
+                      goods shipped.
                     </p>
                   </td>
                   <td className="px-4 py-4 text-right font-medium">
@@ -169,8 +171,8 @@ export default async function VipInvoicePage({ params }: InvoicePageProps) {
           </div>
 
           <p className="mt-6 text-xs leading-relaxed text-muted-foreground print:text-gray-600">
-            This is a computer-generated invoice for your prepaid digital VIP
-            purchase on WallBang. For billing support, contact{" "}
+            This is a computer-generated invoice for prepaid hosted server
+            access on WallBang. For billing support, contact{" "}
             <a href="mailto:admin@wallbang.xyz" className="text-primary">
               admin@wallbang.xyz
             </a>

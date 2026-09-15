@@ -2,16 +2,16 @@ import { Container, SectionHeading } from "@/components/shared/primitives";
 
 const reasons = [
   {
-    title: "Clear membership",
-    body: "VIP is a fixed-duration membership for reserved access and server privileges — paid once for the term you choose.",
+    title: "Clear hosted access",
+    body: "You pay once for reserved access to WallBang-hosted community servers for a stated term — not for the game or in-game items.",
   },
   {
     title: "Community servers",
-    body: "Privately managed CS2 community and retake servers. Connecting does not require a purchase.",
+    body: "Independently operated Counter-Strike 2 community and retake servers in India. Connecting does not require a purchase.",
   },
   {
-    title: "Performance",
-    body: "India-first low latency servers so retake sessions feel responsive.",
+    title: "India-hosted performance",
+    body: "Low-latency Indian server infrastructure so retake sessions feel responsive.",
   },
 ];
 
@@ -21,8 +21,8 @@ export function WhySection() {
       <Container>
         <SectionHeading
           eyebrow="Why WallBang"
-          title="A CS2 community built to last"
-          description="Privately managed community and retake servers in India, with an optional VIP membership for players who want reserved access and extra privileges."
+          title="CS2 servers. Independent hosting."
+          description="Counter-Strike 2 is the game we support. WallBang is the independent company operating and hosting the community server infrastructure in India."
         />
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

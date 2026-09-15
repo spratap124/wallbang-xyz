@@ -15,6 +15,9 @@ import {
 } from "@/lib/payments/payu";
 import { rateLimit } from "@/lib/rate-limit";
 import { getGameServers } from "@/lib/servers/registry";
+import {
+  checkoutProductDescription,
+} from "@/content/business";
 import type { PaymentDoc } from "@/types/payments";
 
 const REUSE_ORDER_MS = 30 * 60 * 1000;
@@ -102,10 +105,10 @@ export async function createPayuVipOrder(input: {
   const serverId = quote.serverId;
   const serverIds =
     quote.accessType === "INDIVIDUAL_SERVER" && serverId ? [serverId] : [];
-  const checkoutDescription =
-    quote.accessType === "ALL_RETAKES"
-      ? `${quote.durationDays} days · All Retakes`
-      : `${quote.durationDays} days · ${serverId ?? "server"}`;
+  const checkoutDescription = checkoutProductDescription({
+    durationDays: quote.durationDays,
+    accessType: quote.accessType,
+  });
 
   const callbackUrl = `${siteBaseUrl()}/api/v1/payments/payu/callback`;
   const payments = await paymentsCollection();

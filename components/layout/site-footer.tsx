@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Logo } from "@/components/shared/primitives";
 import { filterFooterNav, footerNav } from "@/config/navigation";
 import { siteConfig } from "@/config/site";
+import { valveDisclaimer } from "@/content/business";
 
 type SiteFooterProps = {
   showVip?: boolean;
@@ -96,15 +97,18 @@ export function SiteFooter({
       </div>
 
       <div className="border-t border-border">
-        <div className="container-wb flex flex-col gap-2 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © {new Date().getFullYear()} {siteConfig.legal.tradeName}. Not
-            affiliated with Valve.
-          </p>
+        <div className="container-wb flex flex-col gap-3 py-4 text-xs text-muted-foreground sm:flex-row sm:items-start sm:justify-between">
+          <div className="max-w-2xl space-y-1.5">
+            <p>
+              © {new Date().getFullYear()} {siteConfig.legal.tradeName}. Independent
+              Counter-Strike 2 community server operator.
+            </p>
+            <p>{valveDisclaimer}</p>
+          </div>
           <a
             href={siteConfig.discordUrl}
             rel="noopener noreferrer"
-            className="hover:text-foreground"
+            className="shrink-0 hover:text-foreground"
           >
             Discord
           </a>

@@ -19,7 +19,7 @@ export const roadmap: RoadmapPhase[] = [
     title: "VIP & Identity",
     status: "in-progress",
     items: [
-      "VIP membership with reserved access and server privileges",
+      "Hosted server access with reserved slots and server privileges",
       "Steam login and secure account linking (site auth live)",
       "Core player statistics pipeline from live retake servers",
       "Early inventory foundations for knives, weapons, and gloves",

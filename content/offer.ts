@@ -15,7 +15,7 @@ export const launchOfferSteps = [
     step: 1,
     title: "Sign in with Steam",
     description:
-      "Create your WallBang account using Steam. This links your player identity for VIP and server access.",
+      "Create your WallBang account using Steam. This links your player identity for hosted server access.",
     successLabel: "Steam account connected",
   },
   {

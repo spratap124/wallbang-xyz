@@ -4,11 +4,12 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://wallbang.xyz",
   discordUrl:
     process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/KY2dRw8Yh4",
-  tagline: "Privately managed Counter-Strike 2 community and retake servers.",
-  heroSubtitle: "CS2 Community Servers",
+  tagline:
+    "India-hosted game server infrastructure for Counter-Strike 2 community servers.",
+  heroSubtitle: "India-Hosted Game Server Infrastructure",
   description:
-    "WallBang operates privately managed CS2 community and retake servers. Optional fixed-duration VIP membership provides priority/reserved server access and additional server/community privileges.",
-  businessCategory: "CS2 community and retake server membership",
+    "WallBang operates independently managed Counter-Strike 2 community servers hosted in India. Pay for fixed-duration hosted server access — not the game, licenses, or in-game items.",
+  businessCategory: "Game-server hosting / community server access",
   legal: {
     tradeName: "WallBang",
     legalName: "Shivani",
@@ -20,11 +21,11 @@ export const siteConfig = {
   keywords: [
     "WallBang",
     "wallbang.xyz",
+    "CS2 community servers",
+    "Counter-Strike 2 server hosting India",
     "CS2 Retake Server",
-    "CS2 Community Servers",
-    "Counter Strike 2 Retakes",
-    "CS2 India",
-    "CS2 VIP membership",
+    "India CS2 servers",
+    "hosted game server access",
     "Counter Strike 2 community",
   ] as const,
   locale: "en_IN",
@@ -33,11 +34,11 @@ export const siteConfig = {
     discord: process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/KY2dRw8Yh4",
   },
   supportingPoints: [
-    "Low latency community and retake servers.",
-    "Optional fixed-duration VIP membership.",
-    "Priority and reserved server access for VIP.",
-    "Community-driven development.",
-    "Built for Counter-Strike 2 community players.",
+    "India-hosted Counter-Strike 2 community server infrastructure.",
+    "Optional fixed-duration hosted server access.",
+    "Reserved slots and server/community privileges for the paid term.",
+    "Independent operator — not affiliated with Valve.",
+    "We do not sell the game, licenses, or in-game items.",
   ] as const,
 } as const;
 
