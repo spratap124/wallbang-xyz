@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "WallBang Shipping & Digital Delivery Policy",
   description:
-    "WallBang delivery policy — VIP membership is applied electronically. No physical products are shipped.",
+    "WallBang delivery policy — hosted server access is applied electronically. No physical products are shipped.",
   path: "/shipping-and-delivery",
 });
 

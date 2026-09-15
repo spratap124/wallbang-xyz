@@ -1,16 +1,17 @@
 import Image from "next/image";
-import { MapPin, ShieldCheck, Sparkles, Sword } from "lucide-react";
+import { MapPin, Server, ShieldCheck, Sparkles } from "lucide-react";
 
 import { HeroConnectActions } from "@/components/home/hero-connect-actions";
 import { HeroFleetStats } from "@/components/home/hero-fleet-stats";
 import { LiveServerCard } from "@/components/home/live-server-card";
 import { BrandLogo, BrandMark } from "@/components/shared/primitives";
 import { getMapImage } from "@/config/servers";
+import { notAGameStore } from "@/content/business";
 import { getFeaturedRegisteredServer } from "@/lib/servers/registry";
 
 const featurePills = [
   { icon: Sparkles, label: "Community retakes" },
-  { icon: Sword, label: "Optional VIP membership" },
+  { icon: Server, label: "Hosted server access" },
   { icon: ShieldCheck, label: "Reserved server access" },
   { icon: MapPin, label: "India hosted" },
 ];
@@ -58,15 +59,18 @@ export async function HeroSection() {
             priority
           />
           <BrandMark
-            as="h1"
+            as="p"
             className="animate-rise text-5xl [animation-delay:110ms] sm:text-6xl lg:text-7xl"
           />
-          <p className="animate-rise mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl [animation-delay:140ms]">
-            Privately managed Counter-Strike 2 community and retake servers
-          </p>
+          <h1 className="animate-rise mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl [animation-delay:140ms]">
+            India-Hosted Game Server Infrastructure
+          </h1>
           <p className="animate-rise mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty [animation-delay:200ms]">
-            Connect for free. Optional fixed-duration VIP membership adds priority/reserved
-            server access and additional server/community privileges.
+            Privately managed Counter-Strike 2 community servers hosted in India
+            for reliable, low-latency gameplay.
+          </p>
+          <p className="animate-rise mt-3 max-w-xl rounded-lg border border-border/70 bg-card/50 px-3 py-2.5 text-sm leading-relaxed text-foreground/90 backdrop-blur-sm [animation-delay:220ms]">
+            {notAGameStore}
           </p>
 
           {/* Feature pills */}

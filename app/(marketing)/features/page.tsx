@@ -10,7 +10,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Features",
   description:
-    "Explore WallBang CS2 community servers: low-latency India retakes, optional VIP membership, Steam login, statistics, and leaderboards.",
+    "Explore WallBang Counter-Strike 2 community servers: India-hosted infrastructure, optional hosted server access, Steam login, statistics, and leaderboards.",
   path: "/features",
 });
 
@@ -32,7 +32,7 @@ export default async function FeaturesPage() {
         <SectionHeading
           eyebrow="Features"
           title="Everything WallBang is building"
-          description="India-first community and retake servers, optional VIP membership, stats, and the features we are building next."
+          description="India-hosted Counter-Strike 2 community servers, optional hosted server access, stats, and the features we are building next."
         />
       </Container>
       <FeaturesSection showViewAll={false} />

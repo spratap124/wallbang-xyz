@@ -38,7 +38,7 @@ export function LiveServers({
               className="mb-0"
               eyebrow="Live servers"
               title="Connect to a live retake server"
-              description="Click connect to open Counter-Strike 2 through Steam and join a WallBang community server. Status refreshes every 10 seconds."
+              description="Click connect to open Counter-Strike 2 through Steam and join a WallBang community server. You must already own the game. Status refreshes every 10 seconds."
             />
             <LiveIndicator hasLoaded={hasLoaded} refreshing={refreshing} />
           </div>

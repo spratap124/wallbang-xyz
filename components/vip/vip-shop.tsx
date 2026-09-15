@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { getMapImage } from "@/config/servers";
+import {
+  hostedAccessDaysLabel,
+  hostedAccessPlanBlurb,
+  hostedAccessProduct,
+} from "@/content/business";
 import { vipPerks } from "@/content/vip";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { formatInrFromPaise } from "@/lib/payments/format";
@@ -109,6 +114,9 @@ function DurationCards({
               </span>
             ) : null}
             <span className="text-sm font-medium">{item.name}</span>
+            <span className="mt-0.5 text-[0.65rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+              {hostedAccessProduct}
+            </span>
             <span className="mt-2 text-2xl font-semibold tracking-tight">
               {formatInrFromPaise(item.amountPaise)}
             </span>
@@ -234,7 +242,7 @@ export function VipShop({
   if (catalog.servers.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No VIP servers are listed yet.
+        No hosted-access servers are listed yet.
       </p>
     );
   }
@@ -353,7 +361,7 @@ export function VipShop({
               <p className="font-semibold">All Retakes</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Access all currently available premium retake servers during your
-                active VIP period.
+                active access period.
               </p>
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {catalog.allRetakes.durations.map((option) => (
@@ -384,7 +392,9 @@ export function VipShop({
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
-            All plans are prepaid for a stated term. VIP ends when that term ends. It is not automatically renewed.
+            {duration
+              ? `${hostedAccessDaysLabel(duration.durationDays)}. ${hostedAccessPlanBlurb(duration.durationDays)} Prepaid once; not automatically renewed.`
+              : "All plans are prepaid for a stated term. Access ends when that term ends. It is not automatically renewed."}
           </p>
         </section>
       </div>
@@ -443,7 +453,9 @@ export function VipShop({
             </a>
           </div>
           <p className="mt-2 text-sm font-medium">
-            {duration?.name ?? durationLabels[durationId]}
+            {duration
+              ? `${duration.name} — ${hostedAccessProduct}`
+              : `${durationLabels[durationId]} — ${hostedAccessProduct}`}
           </p>
         </div>
 
@@ -462,7 +474,7 @@ export function VipShop({
 
         <div className="rounded-xl bg-secondary/60 p-4">
           <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-            VIP benefits
+            Hosted access benefits
           </p>
           <ul className="mt-3 space-y-2">
             {vipPerks.map((perk) => (

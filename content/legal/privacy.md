@@ -2,7 +2,7 @@
 
 **Effective Date:** September 2, 2026
 
-WallBang respects your privacy and is committed to protecting information provided when using [wallbang.xyz](https://wallbang.xyz) and our services.
+WallBang respects your privacy and is committed to protecting information provided when using [wallbang.xyz](https://wallbang.xyz) and our hosted game-server services.
 
 ## 1. Information We May Collect
 
@@ -28,9 +28,9 @@ Payment providers may process payment information according to their own privacy
 
 Information may be used to:
 
-- Provide purchased services
-- Activate and manage VIP access
-- Associate VIP access with the appropriate Steam account
+- Provide purchased hosted server access
+- Activate and manage reserved server access
+- Associate hosted server access with the appropriate Steam account
 - Process and verify transactions
 - Respond to customer support requests
 - Prevent fraud and abuse

@@ -6,6 +6,7 @@ import {
   readPricingEnv,
 } from "@/lib/payments/vip-pricing";
 import { formatInrFromPaise } from "@/lib/payments/format";
+import { hostedAccessPlanLabel } from "@/content/business";
 import { cn } from "@/lib/utils";
 import type { VipPlanId } from "@/types/vip";
 
@@ -15,10 +16,10 @@ export function VipServicePrices() {
 
   return (
     <section className="mt-10 max-w-3xl border-t border-border pt-10">
-      <h2 className="text-2xl font-semibold">VIP membership pricing</h2>
+      <h2 className="text-2xl font-semibold">Hosted server access pricing</h2>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        Prepaid VIP for one WallBang community/retake server. Paid once for the
-        term. No automatic renewal. Current prices:
+        Prepaid access to one WallBang Counter-Strike 2 community server. Paid
+        once for the term. No automatic renewal. Current prices:
       </p>
       <ul className="mt-5 divide-y divide-border border border-border">
         {plans.map((plan) => {
@@ -29,7 +30,9 @@ export function VipServicePrices() {
               key={plan.id}
               className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
             >
-              <span className="font-medium text-foreground">{plan.name}</span>
+              <span className="font-medium text-foreground">
+                {hostedAccessPlanLabel(plan.name)}
+              </span>
               <span className="font-mono text-muted-foreground">
                 {formatInrFromPaise(amount)}
               </span>

@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Terms & Conditions",
   description:
-    "WallBang terms for CS2 community and retake servers, prepaid VIP membership, payments, and server rules.",
+    "WallBang terms for hosted Counter-Strike 2 community servers, prepaid Hosted Server Access, payments, and server rules.",
   path: "/terms",
 });
 

@@ -32,6 +32,7 @@ export type VipDurationOption = {
   id: VipPlanId;
   name: string;
   months: number;
+  durationDays: number;
   badge?: "popular" | "best-value";
   amountPaise: number;
   perMonthPaise: number | null;

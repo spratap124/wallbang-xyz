@@ -7,7 +7,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Roadmap",
   description:
-    "WallBang CS2 roadmap: live Mumbai retakes, VIP membership and Steam login next, then player profiles and leaderboards.",
+    "WallBang CS2 roadmap: live Mumbai community servers, hosted server access and Steam login next, then player profiles and leaderboards.",
   path: "/roadmap",
 });
 

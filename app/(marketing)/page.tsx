@@ -3,6 +3,8 @@ import { FeaturesSection } from "@/components/home/features-section";
 import { HeroSection } from "@/components/home/hero-section";
 import { ServersSection } from "@/components/home/servers-section";
 import { WaitlistSection } from "@/components/home/waitlist-section";
+import { WhatWeProvideSection } from "@/components/home/what-we-provide-section";
+import { WhatYouPayForSection } from "@/components/home/what-you-pay-for-section";
 import { WhySection } from "@/components/home/why-section";
 import { LiveServersProvider } from "@/components/servers/live-servers-provider";
 import { JsonLd } from "@/components/shared/json-ld";
@@ -28,6 +30,8 @@ export default async function HomePage() {
         <HeroSection />
         <ServersSection />
       </LiveServersProvider>
+      <WhatWeProvideSection />
+      <WhatYouPayForSection />
       <FeaturesSection limit={2} showViewAll={showFeaturesPage} />
       <WhySection />
       <FaqSection items={homeFaqs} />

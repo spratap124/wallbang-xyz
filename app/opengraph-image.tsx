@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "WallBang — The Next Generation Counter-Strike 2 Competitive Platform";
+export const alt = "WallBang — India-hosted Counter-Strike 2 community server infrastructure";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -35,7 +35,7 @@ export default function OpenGraphImage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: -2 }}>WallBang</div>
           <div style={{ fontSize: 34, color: "#9AA3AD", maxWidth: 900, lineHeight: 1.3 }}>
-            The Next Generation Counter-Strike 2 Competitive Platform.
+            India-hosted Counter-Strike 2 community server infrastructure.
           </div>
         </div>
         <div style={{ display: "flex", fontSize: 24, color: "#9AA3AD" }}>wallbang.xyz</div>

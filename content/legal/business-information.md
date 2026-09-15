@@ -20,43 +20,49 @@ GST not applicable
 
 ## Business Category
 
-CS2 community and retake server membership
+Game-server hosting / community server access
 
 ## What WallBang is
 
-WallBang operates privately managed Counter-Strike 2 community and retake servers.
+WallBang is an independent game-server hosting and community platform. We operate independently managed Counter-Strike 2 community servers hosted in India.
+
+WallBang handles server deployment, infrastructure, configuration, administration, maintenance, and community access.
 
 WallBang is not a gambling, betting, or wagering platform. WallBang does not offer gambling, betting, wagering, lottery, casino, real-money gaming, or any game of chance for money or prizes.
 
+Counter-Strike 2 is a trademark of Valve Corporation. WallBang is an independent community server operator and is not affiliated with, endorsed by, or sponsored by Valve Corporation.
+
 ## What the customer purchases
 
-Customers may purchase a fixed-duration VIP membership.
+Customers may purchase Hosted Server Access — prepaid, fixed-duration access to WallBang's independently operated game-server infrastructure.
 
-VIP is optional. Connecting to WallBang community and retake servers does not require a purchase.
+Hosted Server Access is optional. Connecting to WallBang community servers does not require a purchase.
+
+WallBang does not sell or distribute Counter-Strike 2, game licenses, Steam accounts, skins, weapons, in-game currency, or other digital game content.
 
 ## What the customer receives
 
-VIP provides:
+Hosted Server Access provides:
 
-- Priority / reserved server access
+- Reserved server access
 - Additional server and community privileges for the selected servers, as shown at checkout
 
-VIP is a prepaid digital membership for a stated term. It is not an in-game financial product, wallet, or monetary benefit. It is not a stake, bet, wager, or means of winning or withdrawing money.
+This is prepaid access to hosted game-server infrastructure for a stated term. It is not an in-game purchase, wallet, or monetary benefit. It is not a stake, bet, wager, or means of winning or withdrawing money.
 
 WallBang does not sell physical products, Steam Marketplace items, or tradeable CS2 skins.
 
-Where offered, VIP may include server-side visual effects that appear only on WallBang community servers. These effects have no Steam inventory value, cannot be traded, sold, or withdrawn, and are distinct from tradeable CS2 skins.
+Where offered, access may include server-side visual effects that appear only on WallBang community servers. These effects have no Steam inventory value, cannot be traded, sold, or withdrawn, and are distinct from tradeable CS2 skins.
 
-## How long VIP lasts
+## How long access lasts
 
-VIP lasts for the duration selected at checkout:
+Hosted Server Access lasts for the duration selected at checkout:
 
-- 1 month
-- 3 months
-- 6 months
-- 1 year
+- 1 Month — Hosted Server Access
+- 3 Months — Hosted Server Access
+- 6 Months — Hosted Server Access
+- 1 Year — Hosted Server Access
 
-VIP is paid once for that term. It is not automatically renewed. When the term ends, VIP privileges end. The customer may purchase another term if they want to continue.
+Access is paid once for that term. It is not automatically renewed. When the term ends, reserved access and related privileges end. The customer may purchase another term if they want to continue.
 
 ## Refunds and cancellation
 

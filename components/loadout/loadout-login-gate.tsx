@@ -41,9 +41,10 @@ export function LoadoutLoginGate({ steamAvailable }: LoadoutLoginGateProps) {
             Steam login required
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            Sign in with Steam to build your personal CS2 loadout and sync
-            skins, knives, gloves, and agents with WallBang game servers when
-            you join.
+            Sign in with Steam to build your personal Counter-Strike 2 loadout and
+            sync server-side cosmetics with WallBang community servers when you
+            join. These are visual features on our servers, not Steam inventory
+            items for sale.
           </p>
 
           <ul className="space-y-2 text-sm text-muted-foreground">

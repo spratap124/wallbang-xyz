@@ -5,7 +5,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Our Services",
   description:
-    "WallBang CS2 community and retake servers, plus optional fixed-duration VIP membership for priority/reserved access and server privileges.",
+    "WallBang hosted Counter-Strike 2 community servers in India, plus optional fixed-duration Hosted Server Access for reserved slots and server privileges.",
   path: "/services",
 });
 

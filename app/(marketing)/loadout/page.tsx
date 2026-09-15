@@ -13,7 +13,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Loadout",
   description:
-    "Build your personal CS2 loadout on WallBang — equip weapon skins, knives, gloves, and agents. Changes sync to our servers when you join.",
+    "Build your personal Counter-Strike 2 loadout on WallBang community servers — equip server-side weapon cosmetics, knives, gloves, and agents. These are not Steam inventory items and are not sold as game content.",
   path: "/loadout",
   noIndex: true,
 });

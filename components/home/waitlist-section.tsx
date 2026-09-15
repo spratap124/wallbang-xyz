@@ -48,7 +48,7 @@ export function WaitlistSection() {
           <SectionHeading
             eyebrow="Waitlist"
             title="Stay in the loop"
-            description="Leave your name and email for notices about new servers and membership updates. Discord remains the primary channel."
+            description="Leave your name and email for notices about new servers and hosted access updates. Discord remains the primary channel."
             className="mb-0"
           />
 

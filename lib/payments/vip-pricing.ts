@@ -123,6 +123,7 @@ function toDurationOptions(
       id: meta.id,
       name: meta.name,
       months: meta.months,
+      durationDays: meta.durationDays,
       badge: meta.badge,
       amountPaise,
       perMonthPaise:
@@ -183,6 +184,7 @@ export function buildVipShopQuote(input: {
           id: meta.id,
           name: meta.name,
           months: meta.months,
+          durationDays: meta.durationDays,
           badge: meta.badge,
           amountPaise: 0,
           perMonthPaise: null,
