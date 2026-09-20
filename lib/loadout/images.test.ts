@@ -15,25 +15,29 @@ describe("resolveSkinPreview", () => {
     assert.equal(preview, exact);
   });
 
-  it("fills Survival Knife Gamma Doppler from another knife's paint kit", () => {
-    const exact = resolveSkinImage({ id: "survival", defIndex: 518 }, 568);
-    const preview = resolveSkinPreview(
-      { id: "survival", defIndex: 518, name: "Survival Knife" },
-      568,
-      "Gamma Doppler",
-    );
-    assert.equal(exact, undefined);
-    assert.ok(preview);
-    assert.match(preview, /^https:\/\/community\.akamai\.steamstatic\.com\//);
-  });
-
-  it("fills Survival Knife Lore from another knife when the paint kit is shared", () => {
-    const preview = resolveSkinPreview(
-      { id: "survival", defIndex: 518, name: "Survival Knife" },
+  it("does not show another knife as Nomad Lore or Gamma Doppler", () => {
+    const lore = resolveSkinPreview(
+      { id: "nomad", defIndex: 521, name: "Nomad Knife" },
       561,
       "Lore",
     );
+    const gamma = resolveSkinPreview(
+      { id: "nomad", defIndex: 521, name: "Nomad Knife" },
+      568,
+      "Gamma Doppler",
+    );
+    assert.equal(lore, undefined);
+    assert.equal(gamma, undefined);
+  });
+
+  it("keeps Flip Knife Gamma Doppler on the Flip model", () => {
+    const preview = resolveSkinPreview(
+      { id: "flip", defIndex: 505, name: "Flip Knife" },
+      568,
+      "Gamma Doppler",
+    );
     assert.ok(preview);
+    assert.match(preview, /^https:\/\/community\.akamai\.steamstatic\.com\//);
   });
 
   it("resolves Sport Gloves Blaze from the official paint kit", () => {

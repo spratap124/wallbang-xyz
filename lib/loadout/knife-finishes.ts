@@ -1,3 +1,4 @@
+import { officialKnifeFinishNames } from "@/lib/loadout/images";
 import type {
   CatalogKnife,
   KnifeFinish,
@@ -84,12 +85,11 @@ export function expandKnifeFinishRows(finish: KnifeFinish): KnifeFinishRow[] {
  * Resolve finishes for a knife model.
  *
  * Default knives (`finishSet` empty) have no cosmetics.
- * Every other knife gets the full finish catalog: case-era subsets like
- * `chroma` omit Gamma Doppler / Lore / Autotronic even though those paint
- * kits exist and apply in-game (Flip Knife, Karambit, Bayonet, …).
+ * Other knives keep every official Steam finish for that model: Flip still
+ * gets Gamma Doppler / Lore (chroma sets omit them), Nomad does not.
  */
 export function resolveKnifeFinishes(
-  knife: Pick<CatalogKnife, "finishSet">,
+  knife: Pick<CatalogKnife, "finishSet" | "displayName">,
   catalog: {
     finishes: Record<string, KnifeFinish>;
     finishSets: Record<string, string[]>;
@@ -113,7 +113,16 @@ export function resolveKnifeFinishes(
     ids.push(id);
   }
 
+  const official = knife.displayName
+    ? officialKnifeFinishNames(knife.displayName)
+    : new Set<string>();
+
   return ids
     .map((id) => catalog.finishes[id])
-    .filter((f): f is KnifeFinish => Boolean(f));
+    .filter((f): f is KnifeFinish => Boolean(f))
+    .filter((f) => {
+      if (!official.size) return preferred.includes(f.id);
+      if (f.id === "vanilla" || f.skipWear) return true;
+      return official.has(f.displayName);
+    });
 }

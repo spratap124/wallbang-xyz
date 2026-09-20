@@ -65,14 +65,25 @@ describe("resolveKnifeFinishes", () => {
     assert.deepEqual(result, []);
   });
 
-  it("includes Gamma Doppler for chroma knives like Flip Knife", () => {
+  it("keeps Gamma Doppler and Lore for Flip Knife", () => {
     const result = resolveKnifeFinishes(
-      { finishSet: "chroma" },
+      { finishSet: "chroma", displayName: "Flip Knife" },
       { finishes, finishSets },
     );
     assert.deepEqual(
       result.map((f) => f.id),
       ["vanilla", "doppler", "gamma_doppler", "lore"],
+    );
+  });
+
+  it("does not put Flip-only finishes on Nomad Knife", () => {
+    const result = resolveKnifeFinishes(
+      { finishSet: "chroma", displayName: "Nomad Knife" },
+      { finishes, finishSets },
+    );
+    assert.deepEqual(
+      result.map((f) => f.id),
+      ["vanilla", "doppler"],
     );
   });
 });

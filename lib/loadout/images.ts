@@ -5,8 +5,6 @@
  * - `"defIndex:paintKit"` — preferred (paint kits are shared across weapons)
  * - `"weaponId:paintKit"` — catalog id fallback (e.g. `glock:3`)
  * - `"Weapon|Skin"` — display-name fallback
- * Knife finishes also fall back to another knife's image for the same paint
- * kit or finish name (Gamma Doppler / Lore are not in the economy on every model).
  */
 
 import skinImages from "@/lib/loadout/skin-images.json";
@@ -32,38 +30,7 @@ type AnyImageIndex = {
   byDisplayName: Record<string, string>;
 };
 
-type KnifeFallbackIndex = {
-  byPaintKit: Record<string, string>;
-  byFinishName: Record<string, string>;
-};
-
-const KNIFE_CATALOG_IDS = new Set([
-  "bayonet",
-  "bowie",
-  "butterfly",
-  "classic",
-  "falchion",
-  "flip",
-  "gut",
-  "huntsman",
-  "karambit",
-  "kukri",
-  "m9",
-  "navaja",
-  "nomad",
-  "paracord",
-  "shadow",
-  "skeleton",
-  "stiletto",
-  "survival",
-  "talon",
-  "ursus",
-]);
-
-const KNIFE_NAME_RE =
-  /knife|karambit|bayonet|kukri|daggers|shadow daggers/i;
-
-let knifeFallbackIndex: KnifeFallbackIndex | null = null;
+let officialFinishesByKnife: Map<string, Set<string>> | null = null;
 
 let anyImageIndex: AnyImageIndex | null = null;
 
@@ -99,48 +66,26 @@ function getAnyImageIndex(): AnyImageIndex {
   return anyImageIndex;
 }
 
-function isKnifeDefIndex(defIndex: number): boolean {
-  return defIndex >= 500 && defIndex <= 599;
-}
-
-function isKnifeWeaponRef(weaponRef: WeaponImageRef): boolean {
-  if (weaponRef.defIndex != null && isKnifeDefIndex(weaponRef.defIndex)) {
-    return true;
-  }
-  if (weaponRef.id && KNIFE_CATALOG_IDS.has(weaponRef.id.toLowerCase())) {
-    return true;
-  }
-  return Boolean(weaponRef.name && KNIFE_NAME_RE.test(weaponRef.name));
-}
-
-function getKnifeFallbackIndex(): KnifeFallbackIndex {
-  if (knifeFallbackIndex) return knifeFallbackIndex;
-
-  const byPaintKit: Record<string, string> = {};
-  const byFinishName: Record<string, string> = {};
-
-  for (const [key, url] of Object.entries(data.images ?? {})) {
-    if (!url) continue;
-    const pipe = key.indexOf("|");
-    if (pipe !== -1) {
+/** Steam-economy finish names for one knife (`"Nomad Knife"` → Doppler, Fade, …). */
+export function officialKnifeFinishNames(knifeDisplayName: string): Set<string> {
+  if (!knifeDisplayName) return new Set();
+  if (!officialFinishesByKnife) {
+    officialFinishesByKnife = new Map();
+    for (const key of Object.keys(data.images ?? {})) {
+      const pipe = key.indexOf("|");
+      if (pipe === -1) continue;
       const weaponName = key.slice(0, pipe);
-      const finishName = key.slice(pipe + 1);
-      if (!finishName || !KNIFE_NAME_RE.test(weaponName)) continue;
-      if (!byFinishName[finishName]) byFinishName[finishName] = url;
-      continue;
-    }
-    const colon = key.indexOf(":");
-    if (colon === -1) continue;
-    const left = key.slice(0, colon);
-    const paint = key.slice(colon + 1);
-    if (!paint || paint === "0") continue;
-    if (/^\d+$/.test(left) && isKnifeDefIndex(Number(left)) && !byPaintKit[paint]) {
-      byPaintKit[paint] = url;
+      const finishName = key.slice(pipe + 1).trim();
+      if (!weaponName || !finishName) continue;
+      let names = officialFinishesByKnife.get(weaponName);
+      if (!names) {
+        names = new Set();
+        officialFinishesByKnife.set(weaponName, names);
+      }
+      names.add(finishName);
     }
   }
-
-  knifeFallbackIndex = { byPaintKit, byFinishName };
-  return knifeFallbackIndex;
+  return officialFinishesByKnife.get(knifeDisplayName) ?? new Set();
 }
 
 /** Name-based CDN lookup (`"AK-47|Asiimov"`). */
@@ -181,9 +126,8 @@ export function resolveSkinImage(
 
 /**
  * Preview URL for a weapon/knife/glove skin.
- * Exact `defIndex:paintKit` / `Weapon|Skin` first. Knife-only fallbacks then
- * reuse another knife's Steam image for the same paint kit or finish name —
- * Gamma Doppler / Lore / Autotronic are not in the economy for every model.
+ * Exact `defIndex:paintKit` first, then `"Weapon|Skin"`. Never reuse another
+ * item's photo — Nomad Lore would otherwise show a Karambit.
  */
 export function resolveSkinPreview(
   weaponRef: WeaponImageRef,
@@ -194,16 +138,9 @@ export function resolveSkinPreview(
   if (exact) return exact;
 
   if (weaponRef.name && skinName) {
-    const byName = resolveSkinImageByName(`${weaponRef.name}|${skinName}`);
-    if (byName) return byName;
+    return resolveSkinImageByName(`${weaponRef.name}|${skinName}`);
   }
 
-  if (paintKit <= 0 || !isKnifeWeaponRef(weaponRef)) return undefined;
-
-  const index = getKnifeFallbackIndex();
-  const byPaint = index.byPaintKit[String(paintKit)];
-  if (byPaint) return byPaint;
-  if (skinName) return index.byFinishName[skinName];
   return undefined;
 }
 
