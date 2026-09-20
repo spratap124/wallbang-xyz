@@ -10,6 +10,7 @@ import {
   cosmeticsWeaponsCollection,
   ensureCosmeticsIndexes,
 } from "@/lib/loadout/collections";
+import { resolveGloveSkins } from "@/lib/loadout/glove-skins";
 import { resolveKnifeFinishes } from "@/lib/loadout/knife-finishes";
 import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import type { CosmeticsCatalogIngestInput } from "@/lib/loadout/schema";
@@ -294,7 +295,10 @@ export async function getGlovesCatalog(): Promise<{
 
   return {
     wearPresets: meta.wearPresets.gloves,
-    gloves: doc.gloves,
+    gloves: doc.gloves.map((g) => ({
+      ...g,
+      skins: resolveGloveSkins(g),
+    })),
   };
 }
 

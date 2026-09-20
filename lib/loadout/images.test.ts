@@ -36,6 +36,27 @@ describe("resolveSkinPreview", () => {
     assert.ok(preview);
   });
 
+  it("resolves Sport Gloves Blaze from the official paint kit", () => {
+    const preview = resolveSkinPreview(
+      { id: "sport", defIndex: 5030, name: "Sport Gloves" },
+      1407,
+      "Blaze",
+    );
+    assert.ok(preview);
+    assert.match(preview, /^https:\/\/community\.akamai\.steamstatic\.com\//);
+  });
+
+  it("resolves Driver Gloves Black Tie with the Valve paint kit", () => {
+    const exact = resolveSkinImage({ id: "driver", defIndex: 5031 }, 10072);
+    const preview = resolveSkinPreview(
+      { id: "driver", defIndex: 5031, name: "Driver Gloves" },
+      10072,
+      "Black Tie",
+    );
+    assert.ok(exact);
+    assert.equal(preview, exact);
+  });
+
   it("does not borrow a knife image for a rifle skin", () => {
     const preview = resolveSkinPreview(
       { id: "ak47", defIndex: 7, name: "AK-47" },
