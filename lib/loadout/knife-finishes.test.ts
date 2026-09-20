@@ -59,7 +59,7 @@ describe("expandKnifeFinishRows", () => {
 describe("resolveKnifeFinishes", () => {
   it("returns no finishes for the default knife", () => {
     const result = resolveKnifeFinishes(
-      { finishSet: null },
+      { finishSet: null, displayName: "Default Knife" },
       { finishes, finishSets },
     );
     assert.deepEqual(result, []);
