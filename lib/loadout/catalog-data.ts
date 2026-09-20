@@ -21,7 +21,7 @@ import {
   toLoadoutSkins,
   toWeaponDefs,
 } from "@/lib/loadout/catalog";
-import { resolveSkinImage } from "@/lib/loadout/images";
+import { resolveSkinPreview } from "@/lib/loadout/images";
 import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import type { Skin, WeaponDef } from "@/types/loadout";
 
@@ -40,11 +40,17 @@ export async function fetchSkinsForWeapon(weaponId: string): Promise<Skin[]> {
     listWeapons(),
   ]);
   const weaponDef = weapons.find((w) => w.id === weaponId);
-  const weaponRef = { id: weaponId, defIndex: weaponDef?.defIndex };
+  const weaponRef = {
+    id: weaponId,
+    defIndex: weaponDef?.defIndex,
+    name: weaponDef?.displayName,
+  };
+  const byId = new Map(skins.map((s) => [s.id, s]));
   return toLoadoutSkins(
     weaponId,
     skins,
-    (paintKit) => resolveSkinImage(weaponRef, paintKit),
+    (paintKit, skinId) =>
+      resolveSkinPreview(weaponRef, paintKit, byId.get(skinId)?.name),
     { defIndex: weaponDef?.defIndex, name: weaponDef?.displayName },
   );
 }
@@ -99,7 +105,11 @@ export async function fetchSkinsForGlove(gloveId: string): Promise<Skin[]> {
       collection: meta?.collection ?? "",
       wearSupported: true,
       stattrakSupported: false,
-      image: resolveSkinImage(weaponRef, s.paintKit),
+      image: resolveSkinPreview(
+        { ...weaponRef, name: glove.displayName },
+        s.paintKit,
+        s.displayName,
+      ),
     };
   });
 }

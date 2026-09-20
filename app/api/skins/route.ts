@@ -10,10 +10,8 @@ import {
   toLoadoutSkins,
   toWeaponDefs,
 } from "@/lib/loadout/catalog";
-import {
-  resolveSkinImage,
-  resolveSkinImageByName,
-} from "@/lib/loadout/images";
+import { resolveSkinPreview } from "@/lib/loadout/images";
+import { resolveKnifeVariantPaintKit } from "@/lib/loadout/knife-finishes";
 import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk } from "@/lib/permissions/authz";
@@ -61,11 +59,10 @@ export async function GET(request: Request): Promise<Response> {
           skins,
           (paintKit, skinId) => {
             const skin = byId.get(skinId);
-            return (
-              resolveSkinImage(weaponRef, paintKit) ??
-              (skin
-                ? resolveSkinImageByName(`${displayName}|${skin.name}`)
-                : undefined)
+            return resolveSkinPreview(
+              { ...weaponRef, name: displayName },
+              paintKit,
+              skin?.name,
             );
           },
           { defIndex: weaponDef?.defIndex, name: displayName },
@@ -81,14 +78,24 @@ export async function GET(request: Request): Promise<Response> {
       };
       return jsonOk({
         ...detail,
-        finishes: detail.finishes.map((f) => ({
-          ...f,
-          image:
-            resolveSkinImage(weaponRef, f.paintKit) ??
-            resolveSkinImageByName(
-              `${detail.knife.displayName}|${f.displayName}`,
-            ),
-        })),
+        finishes: detail.finishes.map((f) => {
+          const knifeRef = {
+            ...weaponRef,
+            name: detail.knife.displayName,
+          };
+          return {
+            ...f,
+            image: resolveSkinPreview(knifeRef, f.paintKit, f.displayName),
+            variants: f.variants?.map((variant) => {
+              const paintKit = resolveKnifeVariantPaintKit(f, variant);
+              return {
+                ...variant,
+                paintKit,
+                image: resolveSkinPreview(knifeRef, paintKit, f.displayName),
+              };
+            }),
+          };
+        }),
       });
     }
 
@@ -118,11 +125,14 @@ export async function GET(request: Request): Promise<Response> {
             collection: meta?.collection ?? "",
             wearSupported: true,
             stattrakSupported: false,
-            image:
-              resolveSkinImage(weaponRef, s.paintKit) ??
-              resolveSkinImageByName(
-                `${detail.glove.displayName}|${s.displayName}`,
-              ),
+            image: resolveSkinPreview(
+              {
+                ...weaponRef,
+                name: detail.glove.displayName,
+              },
+              s.paintKit,
+              s.displayName,
+            ),
           };
         }),
       });

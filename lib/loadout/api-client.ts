@@ -12,6 +12,8 @@ import type {
   KnifeFinish,
 } from "@/types/catalog";
 import type { Skin, WeaponDef } from "@/types/loadout";
+import { resolveSkinPreview } from "@/lib/loadout/images";
+import { expandKnifeFinishRows } from "@/lib/loadout/knife-finishes";
 import { enrichSkinMeta, lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 
 type ApiOk<T> = { ok: true; data: T };
@@ -122,28 +124,46 @@ export function fetchGloveDetail(
 
 /** Map knife finishes → loadout Skin rows for the browser UI. */
 export function knifeFinishesToSkins(
-  knifeId: string,
+  knife: { id: string; defIndex?: number; displayName?: string } | string,
   finishes: KnifeFinish[],
 ): Skin[] {
-  return finishes.map((f) => {
-    const meta = lookupSkinMetadata({
-      weaponId: knifeId,
-      paintKit: f.paintKit,
-      skinName: f.displayName,
-    });
-    const base: Skin = {
-      id: `${knifeId}:${f.id}`,
-      weapon: knifeId,
-      paintKit: f.paintKit,
-      skinName: f.displayName,
-      rarity: meta?.rarity ?? "Covert",
-      collection: meta?.collection ?? "",
-      wearSupported: !f.skipWear,
-      stattrakSupported: true,
-      image: f.image,
-    };
-    return enrichSkinMeta(base, { id: knifeId });
-  });
+  const knifeId = typeof knife === "string" ? knife : knife.id;
+  const knifeRef =
+    typeof knife === "string"
+      ? { id: knifeId }
+      : {
+          id: knife.id,
+          defIndex: knife.defIndex,
+          name: knife.displayName,
+        };
+
+  return finishes.flatMap((f) =>
+    expandKnifeFinishRows(f).map((row) => {
+      const meta = lookupSkinMetadata({
+        weaponId: knifeId,
+        defIndex: typeof knife === "string" ? undefined : knife.defIndex,
+        paintKit: row.paintKit,
+        skinName: f.displayName,
+        weaponDisplayName:
+          typeof knife === "string" ? undefined : knife.displayName,
+      });
+      const base: Skin = {
+        id: `${knifeId}:${row.id}`,
+        weapon: knifeId,
+        paintKit: row.paintKit,
+        skinName: row.displayName,
+        rarity: meta?.rarity ?? "Covert",
+        collection: meta?.collection ?? "",
+        wearSupported: row.wearSupported,
+        stattrakSupported: true,
+        seed: row.seed,
+        image:
+          row.image ??
+          resolveSkinPreview(knifeRef, row.paintKit, f.displayName),
+      };
+      return enrichSkinMeta(base, { id: knifeId });
+    }),
+  );
 }
 
 export type LoadoutSkinCategory = "weapons" | "knives" | "gloves";
@@ -159,7 +179,7 @@ export async function loadSkinsForSlot(
 ): Promise<Skin[]> {
   if (category === "knives") {
     const detail = await fetchKnifeDetail(id, baseUrl);
-    return knifeFinishesToSkins(detail.knife.id, detail.finishes);
+    return knifeFinishesToSkins(detail.knife, detail.finishes);
   }
   if (category === "gloves") {
     const detail = await fetchGloveDetail(id, baseUrl);
