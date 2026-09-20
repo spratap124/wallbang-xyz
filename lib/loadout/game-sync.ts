@@ -10,8 +10,7 @@ import {
 import { wearNameFromFloat } from "@/lib/loadout/constants";
 import {
   resolveDefaultWeaponImage,
-  resolveSkinImage,
-  resolveSkinImageByName,
+  resolveSkinPreview,
 } from "@/lib/loadout/images";
 import { AGENTS } from "@/lib/loadout/mock-data";
 import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
@@ -62,11 +61,11 @@ export async function weaponPatchToEquipped(
     weaponDisplayName: weaponDef?.displayName,
   });
   const weaponRef = { id: patch.weaponId, defIndex: weaponDef?.defIndex };
-  const image =
-    resolveSkinImage(weaponRef, patch.paintKit) ??
-    (weaponDef
-      ? resolveSkinImageByName(`${weaponDef.displayName}|${skinName}`)
-      : undefined);
+  const image = resolveSkinPreview(
+    { ...weaponRef, name: weaponDef?.displayName },
+    patch.paintKit,
+    skinName,
+  );
 
   return {
     weapon: patch.weaponId,
@@ -116,8 +115,14 @@ export async function knifePatchToEquipped(
         defIndex: detail.knife.defIndex,
         name: detail.knife.displayName,
       })
-    : (resolveSkinImage(weaponRef, patch.paintKit) ??
-      resolveSkinImageByName(`${detail.knife.displayName}|${skinName}`));
+    : resolveSkinPreview(
+        {
+          ...weaponRef,
+          name: detail.knife.displayName,
+        },
+        patch.paintKit,
+        skinName,
+      );
 
   return {
     weapon: detail.knife.id,
@@ -157,9 +162,14 @@ export async function glovePatchToEquipped(
     id: detail.glove.id,
     defIndex: detail.glove.defIndex,
   };
-  const image =
-    resolveSkinImage(weaponRef, patch.paintKit) ??
-    resolveSkinImageByName(`${detail.glove.displayName}|${skinName}`);
+  const image = resolveSkinPreview(
+    {
+      ...weaponRef,
+      name: detail.glove.displayName,
+    },
+    patch.paintKit,
+    skinName,
+  );
 
   return {
     weapon: detail.glove.id,

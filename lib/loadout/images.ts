@@ -18,11 +18,19 @@ type SkinImageFile = {
 
 const data = skinImages as unknown as SkinImageFile;
 
+type WeaponImageRef = {
+  defIndex?: number | null;
+  id?: string | null;
+  name?: string | null;
+};
+
 type AnyImageIndex = {
   byDefIndex: Record<string, string>;
   byWeaponId: Record<string, string>;
   byDisplayName: Record<string, string>;
 };
+
+let officialFinishesByKnife: Map<string, Set<string>> | null = null;
 
 let anyImageIndex: AnyImageIndex | null = null;
 
@@ -58,6 +66,28 @@ function getAnyImageIndex(): AnyImageIndex {
   return anyImageIndex;
 }
 
+/** Steam-economy finish names for one knife (`"Nomad Knife"` → Doppler, Fade, …). */
+export function officialKnifeFinishNames(knifeDisplayName: string): Set<string> {
+  if (!knifeDisplayName) return new Set();
+  if (!officialFinishesByKnife) {
+    officialFinishesByKnife = new Map();
+    for (const key of Object.keys(data.images ?? {})) {
+      const pipe = key.indexOf("|");
+      if (pipe === -1) continue;
+      const weaponName = key.slice(0, pipe);
+      const finishName = key.slice(pipe + 1).trim();
+      if (!weaponName || !finishName) continue;
+      let names = officialFinishesByKnife.get(weaponName);
+      if (!names) {
+        names = new Set();
+        officialFinishesByKnife.set(weaponName, names);
+      }
+      names.add(finishName);
+    }
+  }
+  return officialFinishesByKnife.get(knifeDisplayName) ?? new Set();
+}
+
 /** Name-based CDN lookup (`"AK-47|Asiimov"`). */
 export function resolveSkinImageByName(name: string): string | undefined {
   if (!name) return undefined;
@@ -91,6 +121,26 @@ export function resolveSkinImage(
   if (weaponRef.id) {
     return images[`${weaponRef.id}:${paint}`];
   }
+  return undefined;
+}
+
+/**
+ * Preview URL for a weapon/knife/glove skin.
+ * Exact `defIndex:paintKit` first, then `"Weapon|Skin"`. Never reuse another
+ * item's photo — Nomad Lore would otherwise show a Karambit.
+ */
+export function resolveSkinPreview(
+  weaponRef: WeaponImageRef,
+  paintKit: number,
+  skinName?: string | null,
+): string | undefined {
+  const exact = resolveSkinImage(weaponRef, paintKit);
+  if (exact) return exact;
+
+  if (weaponRef.name && skinName) {
+    return resolveSkinImageByName(`${weaponRef.name}|${skinName}`);
+  }
+
   return undefined;
 }
 

@@ -33,6 +33,8 @@ export type KnifeFinishVariant = {
   displayName: string;
   paintKit?: number | null;
   seed?: number | null;
+  /** Optional Steam CDN preview when resolved by /api/skins. */
+  image?: string;
 };
 
 export type KnifeFinish = {

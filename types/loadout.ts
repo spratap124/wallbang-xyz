@@ -70,6 +70,8 @@ export type Skin = {
   wearRemapMax?: number;
   stattrakSupported: boolean;
   souvenirSupported?: boolean;
+  /** Pattern seed for knife finish variants; -1 means randomize on equip. */
+  seed?: number;
 };
 
 export type WeaponDef = {

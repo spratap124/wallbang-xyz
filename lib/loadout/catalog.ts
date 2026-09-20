@@ -10,6 +10,8 @@ import {
   cosmeticsWeaponsCollection,
   ensureCosmeticsIndexes,
 } from "@/lib/loadout/collections";
+import { resolveGloveSkins } from "@/lib/loadout/glove-skins";
+import { resolveKnifeFinishes } from "@/lib/loadout/knife-finishes";
 import { lookupSkinMetadata } from "@/lib/loadout/skin-metadata";
 import type { CosmeticsCatalogIngestInput } from "@/lib/loadout/schema";
 import type {
@@ -267,12 +269,7 @@ export async function getKnifeDetail(knifeId: string): Promise<{
     throw new CatalogNotFoundError(`Unknown knife '${knifeId}'.`);
   }
 
-  const setIds = knife.finishSet
-    ? (catalog.finishSets[knife.finishSet] ?? [])
-    : [];
-  const finishes = setIds
-    .map((id) => catalog.finishes[id])
-    .filter((f): f is KnifeFinish => Boolean(f));
+  const finishes = resolveKnifeFinishes(knife, catalog);
 
   return {
     knife,
@@ -298,7 +295,10 @@ export async function getGlovesCatalog(): Promise<{
 
   return {
     wearPresets: meta.wearPresets.gloves,
-    gloves: doc.gloves,
+    gloves: doc.gloves.map((g) => ({
+      ...g,
+      skins: resolveGloveSkins(g),
+    })),
   };
 }
 

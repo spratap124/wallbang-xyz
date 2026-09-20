@@ -9,8 +9,7 @@ import {
 } from "@/lib/loadout/constants";
 import {
   resolvePreviewImage,
-  resolveSkinImage,
-  resolveSkinImageByName,
+  resolveSkinPreview,
 } from "@/lib/loadout/images";
 import { cn } from "@/lib/utils";
 import type { EquippedItem } from "@/types/loadout";
@@ -42,8 +41,7 @@ export function WeaponCard({
   const image =
     equipped?.image ??
     (equipped
-      ? (resolveSkinImage(weaponRef, equipped.paintKit) ??
-        resolveSkinImageByName(`${name}|${equipped.skinName}`))
+      ? resolveSkinPreview(weaponRef, equipped.paintKit, equipped.skinName)
       : resolvePreviewImage(weaponRef));
 
   return (

@@ -12,10 +12,7 @@ import {
   type LoadoutSkinCategory,
 } from "@/lib/loadout/api-client";
 import { DEFAULT_SKIN_FILTERS } from "@/lib/loadout/constants";
-import {
-  resolveSkinImage,
-  resolveSkinImageByName,
-} from "@/lib/loadout/images";
+import { resolveSkinPreview } from "@/lib/loadout/images";
 import { enrichSkinMeta } from "@/lib/loadout/skin-metadata";
 import { cn } from "@/lib/utils";
 import type { EquippedItem, Skin, SkinFilters, SkinRarity } from "@/types/loadout";
@@ -57,9 +54,11 @@ function enrichSkins(
       name: displayName,
     });
     if (withMeta.image) return withMeta;
-    const image =
-      resolveSkinImage({ id: weaponId }, withMeta.paintKit) ??
-      resolveSkinImageByName(`${displayName}|${withMeta.skinName}`);
+    const image = resolveSkinPreview(
+      { id: weaponId, name: displayName },
+      withMeta.paintKit,
+      withMeta.skinName,
+    );
     return image ? { ...withMeta, image } : withMeta;
   });
 }
@@ -169,9 +168,10 @@ export function SkinBrowser({
               rarity={equipped.rarity}
               image={
                 equipped.image ??
-                resolveSkinImage({ id: weaponId }, equipped.paintKit) ??
-                resolveSkinImageByName(
-                  `${weaponDisplayName}|${equipped.skinName}`,
+                resolveSkinPreview(
+                  { id: weaponId, name: weaponDisplayName },
+                  equipped.paintKit,
+                  equipped.skinName,
                 )
               }
               size="sm"

@@ -87,7 +87,7 @@ export function PreviewPanel({
     return (
       <aside
         className={cn(
-          "hidden rounded-xl bg-card/60 p-6 ring-1 ring-foreground/10 xl:block",
+          "rounded-xl bg-card/60 p-6 ring-1 ring-foreground/10",
           className,
         )}
       >
@@ -101,11 +101,11 @@ export function PreviewPanel({
   return (
     <aside
       className={cn(
-        "flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10",
+        "flex min-h-0 flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10",
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex shrink-0 items-start justify-between gap-2">
         <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
           Preview
         </p>
@@ -124,88 +124,93 @@ export function PreviewPanel({
         </div>
       </div>
 
-      <div>
-        <h3 className="font-heading text-xl font-semibold tracking-tight">
-          {skinName ? `${weaponName} | ${skinName}` : weaponName}
-        </h3>
-        <p className="mt-1 text-sm" style={{ color: rarityColor }}>
-          {rarity}
-          {typeLabel ? ` ${typeLabel}` : ""}
-        </p>
-        <div
-          className="mt-2 h-0.5 w-16 rounded-full"
-          style={{ backgroundColor: rarityColor }}
-        />
-      </div>
-
-      <SkinImage
-        name={skinName ?? weaponName ?? "Default"}
-        rarity={rarity}
-        image={previewImage}
-        size="2xl"
-        alt={
-          skinName && weaponName
-            ? `${weaponName} | ${skinName}`
-            : (weaponName ?? "Skin preview")
-        }
-      />
-
-      <WearSlider
-        label="Exterior"
-        value={wear}
-        onChange={onWearChange}
-        disabled={!wearSupported}
-      />
-
-      <div className="flex items-center justify-between gap-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
         <div>
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Pattern seed
+          <h3 className="font-heading text-lg font-semibold tracking-tight sm:text-xl">
+            {skinName ? `${weaponName} | ${skinName}` : weaponName}
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: rarityColor }}>
+            {rarity}
+            {typeLabel ? ` ${typeLabel}` : ""}
           </p>
-          <p className="text-[11px] text-muted-foreground">0 – 999</p>
+          <div
+            className="mt-2 h-0.5 w-16 rounded-full"
+            style={{ backgroundColor: rarityColor }}
+          />
         </div>
-        <input
-          type="number"
-          min={0}
-          max={999}
-          value={seed}
-          onChange={(e) => {
-            const next = Number(e.target.value);
-            if (!Number.isFinite(next)) return;
-            onSeedChange(Math.max(0, Math.min(999, Math.floor(next))));
-          }}
-          className="h-8 w-20 rounded-lg border border-input bg-transparent px-2 text-right font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          aria-label="Pattern seed"
+
+        <SkinImage
+          name={skinName ?? weaponName ?? "Default"}
+          rarity={rarity}
+          image={previewImage}
+          size="xl"
+          className="h-40 w-full sm:h-48 lg:h-[min(16rem,28vh)]"
+          alt={
+            skinName && weaponName
+              ? `${weaponName} | ${skinName}`
+              : (weaponName ?? "Skin preview")
+          }
+        />
+
+        <WearSlider
+          label="Exterior"
+          value={wear}
+          onChange={onWearChange}
+          disabled={!wearSupported}
+        />
+
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Pattern seed
+            </p>
+            <p className="text-[11px] text-muted-foreground">0 – 999</p>
+          </div>
+          <input
+            type="number"
+            min={0}
+            max={999}
+            value={seed}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              if (!Number.isFinite(next)) return;
+              onSeedChange(Math.max(0, Math.min(999, Math.floor(next))));
+            }}
+            className="h-8 w-20 rounded-lg border border-input bg-transparent px-2 text-right font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            aria-label="Pattern seed"
+          />
+        </div>
+
+        <StatTrakToggle
+          enabled={stattrak}
+          supported={!!stSupported || !!draftSkin?.stattrakSupported}
+          onChange={onStatTrakChange}
         />
       </div>
 
-      <StatTrakToggle
-        enabled={stattrak}
-        supported={!!stSupported || !!draftSkin?.stattrakSupported}
-        onChange={onStatTrakChange}
-      />
+      <div className="flex shrink-0 flex-col gap-2 border-t border-border pt-3">
+        {onBrowseSkins ? (
+          <Button variant="outline" className="w-full" onClick={onBrowseSkins}>
+            Browse skins
+          </Button>
+        ) : null}
 
-      {onBrowseSkins ? (
-        <Button variant="outline" className="w-full" onClick={onBrowseSkins}>
-          Browse skins
+        <Button
+          className="w-full"
+          size="lg"
+          disabled={!canEquip || isEquipped}
+          onClick={onEquip}
+        >
+          {isEquipped ? (
+            <>
+              <Check data-icon="inline-start" />
+              Equipped
+            </>
+          ) : (
+            "Equip Skin"
+          )}
         </Button>
-      ) : null}
-
-      <Button
-        className="mt-auto w-full"
-        size="lg"
-        disabled={!canEquip || isEquipped}
-        onClick={onEquip}
-      >
-        {isEquipped ? (
-          <>
-            <Check data-icon="inline-start" />
-            Equipped
-          </>
-        ) : (
-          "Equip Skin"
-        )}
-      </Button>
+      </div>
     </aside>
   );
 }

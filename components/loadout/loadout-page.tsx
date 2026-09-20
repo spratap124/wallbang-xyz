@@ -28,10 +28,7 @@ import {
   WEAPON_GROUP_TAB,
   wearNameFromFloat,
 } from "@/lib/loadout/constants";
-import {
-  resolveSkinImage,
-  resolveSkinImageByName,
-} from "@/lib/loadout/images";
+import { resolveSkinPreview } from "@/lib/loadout/images";
 import { AGENTS } from "@/lib/loadout/mock-data";
 import { weaponsForSide, withCanonicalGroups } from "@/lib/loadout/weapon-sides";
 import {
@@ -40,7 +37,6 @@ import {
   sanitizeUserLoadout,
   updateSideLoadout,
 } from "@/types/player-loadout";
-import { cn } from "@/lib/utils";
 import type {
   AgentFaction,
   EquippedItem,
@@ -332,12 +328,11 @@ export function LoadoutPage() {
     if (draftSkin && activeWeaponId) {
       const image =
         draftSkin.image ??
-        resolveSkinImage({ id: activeWeaponId }, draftSkin.paintKit) ??
-        (activeDisplayName
-          ? resolveSkinImageByName(
-              `${activeDisplayName}|${draftSkin.skinName}`,
-            )
-          : undefined);
+        resolveSkinPreview(
+          { id: activeWeaponId, name: activeDisplayName },
+          draftSkin.paintKit,
+          draftSkin.skinName,
+        );
       return {
         weapon: activeWeaponId,
         paintKit: draftSkin.paintKit,
@@ -409,6 +404,11 @@ export function LoadoutPage() {
     setDraftSkin(skin);
     if (!skin.wearSupported) setWear(0);
     if (!skin.stattrakSupported) setStatTrak(false);
+    if (typeof skin.seed === "number") {
+      setSeed(
+        skin.seed < 0 ? Math.floor(Math.random() * 1000) : skin.seed,
+      );
+    }
     setMobilePreviewOpen(true);
   }
 
@@ -431,8 +431,11 @@ export function LoadoutPage() {
     const displayName = def?.name ?? weaponId;
     const image =
       skin.image ??
-      resolveSkinImage({ id: weaponId }, skin.paintKit) ??
-      resolveSkinImageByName(`${displayName}|${skin.skinName}`);
+      resolveSkinPreview(
+        { id: weaponId, defIndex: def?.defIndex, name: displayName },
+        skin.paintKit,
+        skin.skinName,
+      );
 
     const item: EquippedItem = {
       weapon: weaponId,
@@ -443,7 +446,12 @@ export function LoadoutPage() {
       wear: skin.wearSupported ? wear : 0,
       wearName: wearNameFromFloat(skin.wearSupported ? wear : 0),
       stattrak: skin.stattrakSupported ? stattrak : false,
-      seed,
+      seed:
+        typeof skin.seed === "number"
+          ? skin.seed < 0
+            ? Math.floor(Math.random() * 1000)
+            : skin.seed
+          : seed,
       image,
       updatedAt: new Date().toISOString(),
     };
@@ -627,8 +635,11 @@ export function LoadoutPage() {
           seed: Math.floor(Math.random() * 1000),
           image:
             skin.image ??
-            resolveSkinImage({ id: weaponId }, skin.paintKit) ??
-            resolveSkinImageByName(`${displayName}|${skin.skinName}`),
+            resolveSkinPreview(
+              { id: weaponId, name: displayName },
+              skin.paintKit,
+              skin.skinName,
+            ),
           updatedAt: new Date().toISOString(),
         };
       };
@@ -691,22 +702,22 @@ export function LoadoutPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[90rem] px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      <header className="mb-6">
-        <p className="mb-2 text-xs font-medium tracking-[0.2em] text-primary uppercase">
+    <div className="mx-auto w-full max-w-[90rem] px-4 py-6 sm:px-6 lg:px-8 lg:py-6">
+      <header className="mb-5">
+        <p className="mb-1 text-xs font-medium tracking-[0.2em] text-primary uppercase">
           Loadout
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Your Wallbang Inventory
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
           Equip a separate loadout for CT and T. Saved loadouts sync to WallBang
           servers when you join a match
           {saving ? " · Saving…" : syncError ? ` · ${syncError}` : ""}.
         </p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="min-w-0 space-y-5">
           <SideSwitcher side={side} onChange={changeSide} />
           <LoadoutTabs active={tab} onChange={changeTab} />
@@ -872,7 +883,7 @@ export function LoadoutPage() {
             }
             onEquip={handleEquipFromPreview}
             onToggleFavorite={() => toggleFavorite()}
-            className="hidden xl:sticky xl:top-20 xl:flex xl:self-start"
+            className="hidden lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-5.5rem)] lg:self-start lg:overflow-hidden"
           />
         ) : null}
       </div>
@@ -881,15 +892,15 @@ export function LoadoutPage() {
       tab !== "agents" &&
       mobilePreviewOpen &&
       activeDisplayName ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 xl:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
           <button
             type="button"
             className="absolute inset-0 -top-[100vh] bg-black/40"
             aria-label="Close preview"
             onClick={() => setMobilePreviewOpen(false)}
           />
-          <div className="relative max-h-[75vh] overflow-y-auto rounded-t-2xl border-t border-border bg-popover p-4 shadow-2xl">
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
+          <div className="relative flex max-h-[75vh] flex-col overflow-hidden rounded-t-2xl border-t border-border bg-popover p-4 shadow-2xl">
+            <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-border" />
             <PreviewPanel
               weaponName={activeDisplayName}
               weaponId={activeWeaponId}
@@ -911,7 +922,7 @@ export function LoadoutPage() {
                 setMobilePreviewOpen(false);
               }}
               onToggleFavorite={() => toggleFavorite()}
-              className={cn("ring-0")}
+              className="min-h-0 flex-1 overflow-hidden ring-0"
             />
           </div>
         </div>
