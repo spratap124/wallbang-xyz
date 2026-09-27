@@ -15,6 +15,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** Sole source of truth for Razorpay capture, failure, refund, and dispute. */
+
 type RazorpayEntity = {
   id?: string;
   order_id?: string;

@@ -99,6 +99,9 @@ export async function GET(request: Request): Promise<Response> {
     if (giveaway.status === "ineligible") {
       return NextResponse.redirect(discordOfferReturnUrl("ineligible"));
     }
+    if (giveaway.status === "revoked") {
+      return NextResponse.redirect(discordOfferReturnUrl("revoked"));
+    }
 
     const redirectUrl = new URL(state.returnTo, getSiteUrl());
     return NextResponse.redirect(redirectUrl);

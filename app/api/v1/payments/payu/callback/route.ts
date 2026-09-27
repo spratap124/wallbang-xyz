@@ -75,10 +75,6 @@ async function handleCallback(request: Request): Promise<Response> {
     return redirectToVip("invalid");
   }
 
-  if (params.status !== "success") {
-    return redirectToVip("failure");
-  }
-
   return redirectToVip("pending", params.txnid);
 }
 
