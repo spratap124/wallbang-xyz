@@ -551,6 +551,27 @@ export type PayuOrderStatusView = {
   invoiceNumber: string | null;
 };
 
+/** Read the payment row the webhook updates. Does not capture or fail the payment. */
+export async function getPaymentOrderStatusForUser(input: {
+  userId: string;
+  orderId: string;
+}): Promise<PayuOrderStatusView | null> {
+  await ready();
+  const payments = await paymentsCollection();
+  const payment = await payments.findOne({
+    razorpayOrderId: input.orderId,
+    userId: input.userId,
+  });
+  if (!payment) return null;
+
+  return {
+    status: payment.status,
+    paymentId: payment._id,
+    fulfilled: payment.fulfilledAt !== null,
+    invoiceNumber: payment.invoiceNumber ?? null,
+  };
+}
+
 export async function getPayuOrderStatusForUser(input: {
   userId: string;
   txnid: string;

@@ -12,7 +12,7 @@ import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buttonVariants } from "@/components/ui/button";
 import {
-  launchOfferIncludes,
+  launchOfferIncludesFor,
   launchOfferRewardBenefits,
   launchOfferSteamOnlyBlurb,
   launchOfferSteps,
@@ -22,6 +22,7 @@ import { getSession } from "@/lib/auth/session";
 import { isDiscordLinkConfigured } from "@/lib/discord/config";
 import { isMongoConfigured } from "@/lib/mongo";
 import {
+  getLaunchGiveawayMaxWinners,
   getLaunchGiveawayStatus,
   getUserPermissions,
   isLaunchGiveawayDiscordRequired,
@@ -39,7 +40,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Launch VIP",
   description:
-    "Become one of WallBang's first 100 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
+    "Become one of WallBang's first 50 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
   path: "/offers",
 });
 
@@ -62,7 +63,9 @@ type UserGiveawayState =
   | { kind: "slots_full" }
   | { kind: "needs_discord" }
   | { kind: "not_in_guild"; discordUsername: string | null }
-  | { kind: "ineligible" };
+  | { kind: "ineligible" }
+  | { kind: "revoked" }
+  | { kind: "not_first_login" };
 
 function discordFlashMessage(
   value: string | undefined,
@@ -98,6 +101,11 @@ function discordFlashMessage(
       return {
         tone: "error",
         text: "Could not link Discord. Try again in a moment.",
+      };
+    case "revoked":
+      return {
+        tone: "warn",
+        text: "Discord linked. Launch VIP stays removed for this account.",
       };
     default:
       return null;
@@ -224,11 +232,15 @@ export default async function LaunchOfferPage({
         };
       } else if (result.status === "ineligible") {
         userGiveaway = { kind: "ineligible" };
+      } else if (result.status === "revoked") {
+        userGiveaway = { kind: "revoked" };
+      } else if (result.status === "not_first_login") {
+        userGiveaway = { kind: "not_first_login" };
       }
     }
   }
 
-  const maxWinners = giveawayStatus?.maxWinners ?? 100;
+  const maxWinners = giveawayStatus?.maxWinners ?? getLaunchGiveawayMaxWinners();
   const vipMonths = giveawayStatus?.vipMonths ?? 3;
   const claimed = giveawayStatus?.claimed ?? null;
   const remaining = giveawayStatus?.remaining ?? null;
@@ -246,6 +258,8 @@ export default async function LaunchOfferPage({
   const showRewardSuccess = userGiveaway?.kind === "active";
   const isSlotsFull = userGiveaway?.kind === "slots_full";
   const isIneligible = userGiveaway?.kind === "ineligible";
+  const isRevoked = userGiveaway?.kind === "revoked";
+  const isNotFirstLogin = userGiveaway?.kind === "not_first_login";
 
   return (
     <div className="relative overflow-hidden py-16 sm:py-24">
@@ -280,7 +294,7 @@ export default async function LaunchOfferPage({
               </h2>
             </div>
             <ul className="space-y-3">
-              {launchOfferIncludes.map((item) => (
+              {launchOfferIncludesFor(maxWinners).map((item) => (
                 <li
                   key={item}
                   className="flex items-start gap-3 text-sm text-muted-foreground sm:text-[15px]"
@@ -322,6 +336,22 @@ export default async function LaunchOfferPage({
             <h2 className="text-xl font-semibold">Staff account</h2>
             <p className="mt-2 text-muted-foreground">
               Owner and staff accounts are not eligible for the launch VIP offer.
+            </p>
+          </div>
+        ) : isRevoked ? (
+          <div className="mx-auto mt-10 max-w-3xl rounded-2xl border border-border bg-card px-6 py-8 sm:px-8">
+            <h2 className="text-xl font-semibold">Launch VIP removed</h2>
+            <p className="mt-2 text-muted-foreground">
+              This account already received launch VIP. Signing in again will
+              not restore it after an admin revoke.
+            </p>
+          </div>
+        ) : isNotFirstLogin ? (
+          <div className="mx-auto mt-10 max-w-3xl rounded-2xl border border-border bg-card px-6 py-8 sm:px-8">
+            <h2 className="text-xl font-semibold">Launch VIP already passed</h2>
+            <p className="mt-2 text-muted-foreground">
+              Launch VIP is applied only on the first Steam sign-in. Later
+              sign-ins do not grant it again.
             </p>
           </div>
         ) : isSlotsFull || (!isOfferOpen && !showRewardSuccess) ? (

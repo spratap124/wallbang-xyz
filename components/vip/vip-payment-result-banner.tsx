@@ -104,7 +104,7 @@ export function VipPaymentResultBanner() {
 
     const poll = async (): Promise<boolean> => {
       const response = await fetch(
-        `/api/v1/payments/payu/order-status?txnid=${encodeURIComponent(txn)}`,
+        `/api/v1/payments/order-status?orderId=${encodeURIComponent(txn)}`,
       );
       if (!response.ok) return false;
 
@@ -182,9 +182,10 @@ export function VipPaymentResultBanner() {
           <div>
             <p className="font-semibold text-foreground">Still activating VIP</p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Your payment was accepted by PayU. VIP activation can take a little
-              longer — refresh this page in a moment. If access does not appear,
-              contact support with your transaction ID.
+              Your payment was submitted. VIP activation is confirmed by the
+              payment webhook and can take a little longer — refresh this page
+              in a moment. If access does not appear, contact support with
+              your payment reference.
             </p>
             {pendingTxnid ? (
               <p className="mt-2 font-mono text-xs text-muted-foreground">

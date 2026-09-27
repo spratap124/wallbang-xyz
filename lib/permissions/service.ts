@@ -1305,6 +1305,8 @@ export function refreshCache(steamId: string): void {
 export type LaunchGiveawayStatus =
   | "granted"
   | "already_granted"
+  | "revoked"
+  | "not_first_login"
   | "slots_full"
   | "ineligible"
   | "needs_discord"
@@ -1332,8 +1334,8 @@ export type GiveawayEntryResult = {
 };
 
 export function getLaunchGiveawayMaxWinners(): number {
-  const parsed = Number.parseInt(process.env.GIVEAWAY_MAX_WINNERS ?? "100", 10);
-  return Number.isFinite(parsed) ? parsed : 100;
+  const parsed = Number.parseInt(process.env.GIVEAWAY_MAX_WINNERS ?? "50", 10);
+  return Number.isFinite(parsed) ? parsed : 50;
 }
 
 export function getLaunchGiveawayVipMonths(): number {
@@ -1355,6 +1357,15 @@ function giveawayVipExpiresAt(from = new Date()): Date {
   const expiresAt = new Date(from);
   expiresAt.setMonth(expiresAt.getMonth() + getLaunchGiveawayVipMonths());
   return expiresAt;
+}
+
+/** True only for the Steam sign-in that created the account. Later logins bump lastLoginAt. */
+function isFirstSteamLogin(user: { createdAt: Date; lastLoginAt: Date }): boolean {
+  return (
+    user.createdAt instanceof Date &&
+    user.lastLoginAt instanceof Date &&
+    user.createdAt.getTime() === user.lastLoginAt.getTime()
+  );
 }
 
 /** Count unique users with an active launch VIP (duplicate rows for one user = 1 slot). */
@@ -1453,7 +1464,10 @@ function toLegacyGiveawayResult(result: LaunchGiveawayResult): GiveawayEntryResu
   };
 }
 
-/** Grant launch VIP after Steam login (and Discord when required). Idempotent. */
+/**
+ * Grant launch VIP once, on the Steam sign-in that creates the account.
+ * A later login does not issue it again, including after an admin revoke.
+ */
 export async function processLaunchGiveaway(input: {
   steamId: string;
   maxWinners?: number;
@@ -1541,6 +1555,39 @@ export async function processLaunchGiveaway(input: {
         (existingVip.source === "GIVEAWAY"
           ? giveawayVipExpiresAt(existingVip.grantedAt)
           : null),
+      discordUserId: user.discordUserId ?? null,
+      discordUsername: user.discordUsername ?? null,
+    };
+  }
+
+  // Revoke deactivates the row; it does not delete it. A later login must not
+  // insert a second GIVEAWAY assignment for the same account.
+  const priorGiveaway = await col.findOne({
+    userId: user._id,
+    roleCode: "VIP",
+    source: "GIVEAWAY",
+  });
+  if (priorGiveaway) {
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: 0,
+      maxWinners,
+      status: "revoked",
+      expiresAt: null,
+      discordUserId: user.discordUserId ?? null,
+      discordUsername: user.discordUsername ?? null,
+    };
+  }
+
+  if (!isFirstSteamLogin(user)) {
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: 0,
+      maxWinners,
+      status: "not_first_login",
+      expiresAt: null,
       discordUserId: user.discordUserId ?? null,
       discordUsername: user.discordUsername ?? null,
     };
@@ -1684,6 +1731,14 @@ export async function processGiveawayEntry(input: {
     throw new Error(
       "Owner and staff accounts are not eligible for the launch VIP offer.",
     );
+  }
+  if (result.status === "revoked") {
+    throw new Error(
+      "Launch VIP for this account was removed and will not be granted again.",
+    );
+  }
+  if (result.status === "not_first_login") {
+    throw new Error("Launch VIP is only granted on the first Steam login.");
   }
   if (result.status === "needs_discord") {
     throw new Error(

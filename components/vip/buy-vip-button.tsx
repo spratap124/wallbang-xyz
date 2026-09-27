@@ -10,14 +10,12 @@ import type { ApiResult } from "@/lib/api/waitlist";
 import type { PaymentProvider } from "@/types/payments";
 import type { VipAccessType } from "@/types/vip";
 
-type RazorpayCheckoutResponse = {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-};
-
 type RazorpayInstance = {
   open: () => void;
+  on: (
+    event: "payment.failed",
+    handler: () => void,
+  ) => void;
 };
 
 type RazorpayConstructor = new (options: Record<string, unknown>) => RazorpayInstance;
@@ -220,13 +218,14 @@ export function BuyVipButton({
       throw new Error(payload.error);
     }
 
+    const orderId = payload.data.orderId;
     const checkout = new Razorpay({
       key: payload.data.keyId,
       amount: payload.data.amount,
       currency: payload.data.currency,
       name: payload.data.name,
       description: payload.data.description,
-      order_id: payload.data.orderId,
+      order_id: orderId,
       prefill: payload.data.prefill,
       theme: { color: "#e8242a" },
       modal: {
@@ -234,31 +233,23 @@ export function BuyVipButton({
           setBusy(false);
         },
       },
-      handler: async (result: RazorpayCheckoutResponse) => {
-        try {
-          const verify = await fetch("/api/v1/payments/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(result),
-          });
-          const verified = (await verify.json()) as ApiResult<unknown>;
-          if (!verified.ok) {
-            throw new Error(verified.error);
-          }
-          setBusy(false);
-          setCollectingContact(false);
-          setError(null);
-          router.push("/vip?paid=1");
-          router.refresh();
-        } catch (err) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Payment succeeded but VIP is still confirming. Refresh in a moment.",
-          );
-          setBusy(false);
-        }
+      handler: () => {
+        // Checkout success is not fulfillment. The webhook grants VIP.
+        setBusy(false);
+        setCollectingContact(false);
+        setError(null);
+        router.push(`/vip?paid=pending&txnid=${encodeURIComponent(orderId)}`);
+        router.refresh();
       },
+    });
+
+    checkout.on("payment.failed", () => {
+      // Checkout failure is not the payment record. The webhook marks it failed.
+      setBusy(false);
+      setCollectingContact(false);
+      setError(null);
+      router.push(`/vip?paid=pending&txnid=${encodeURIComponent(orderId)}`);
+      router.refresh();
     });
 
     checkout.open();
