@@ -12,7 +12,7 @@ import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buttonVariants } from "@/components/ui/button";
 import {
-  launchOfferIncludes,
+  launchOfferIncludesFor,
   launchOfferRewardBenefits,
   launchOfferSteamOnlyBlurb,
   launchOfferSteps,
@@ -22,6 +22,7 @@ import { getSession } from "@/lib/auth/session";
 import { isDiscordLinkConfigured } from "@/lib/discord/config";
 import { isMongoConfigured } from "@/lib/mongo";
 import {
+  getLaunchGiveawayMaxWinners,
   getLaunchGiveawayStatus,
   getUserPermissions,
   isLaunchGiveawayDiscordRequired,
@@ -39,7 +40,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Launch VIP",
   description:
-    "Become one of WallBang's first 100 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
+    "Become one of WallBang's first 50 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
   path: "/offers",
 });
 
@@ -239,7 +240,7 @@ export default async function LaunchOfferPage({
     }
   }
 
-  const maxWinners = giveawayStatus?.maxWinners ?? 100;
+  const maxWinners = giveawayStatus?.maxWinners ?? getLaunchGiveawayMaxWinners();
   const vipMonths = giveawayStatus?.vipMonths ?? 3;
   const claimed = giveawayStatus?.claimed ?? null;
   const remaining = giveawayStatus?.remaining ?? null;
@@ -293,7 +294,7 @@ export default async function LaunchOfferPage({
               </h2>
             </div>
             <ul className="space-y-3">
-              {launchOfferIncludes.map((item) => (
+              {launchOfferIncludesFor(maxWinners).map((item) => (
                 <li
                   key={item}
                   className="flex items-start gap-3 text-sm text-muted-foreground sm:text-[15px]"

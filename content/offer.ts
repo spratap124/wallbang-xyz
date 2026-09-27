@@ -1,8 +1,10 @@
-export const launchOfferIncludes = [
-  "3 months of VIP",
-  "Priority access to all VIP server features",
-  "Reserved for the first 100 eligible players",
-] as const;
+export function launchOfferIncludesFor(maxWinners: number): readonly string[] {
+  return [
+    "3 months of VIP",
+    "Priority access to all VIP server features",
+    `Reserved for the first ${maxWinners} eligible players`,
+  ];
+}
 
 export const launchOfferRewardBenefits = [
   "VIP access for 3 months",

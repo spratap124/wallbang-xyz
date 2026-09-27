@@ -5,7 +5,10 @@ import {
   jsonOk,
   requirePluginApiKey,
 } from "@/lib/permissions/authz";
-import { processGiveawayEntry } from "@/lib/permissions/service";
+import {
+  getLaunchGiveawayMaxWinners,
+  processGiveawayEntry,
+} from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 
 const bodySchema = z.object({
@@ -35,17 +38,12 @@ export async function POST(request: Request): Promise<Response> {
       .fieldErrors as Record<string, string[]>);
   }
 
-  const maxWinners = Number.parseInt(
-    process.env.GIVEAWAY_MAX_WINNERS ?? "100",
-    10,
-  );
-
   try {
     const result = await processGiveawayEntry({
       steamId: parsed.data.steamId,
       discordUserId: parsed.data.discordUserId,
       discordUsername: parsed.data.discordUsername,
-      maxWinners: Number.isFinite(maxWinners) ? maxWinners : 100,
+      maxWinners: getLaunchGiveawayMaxWinners(),
     });
     return jsonOk(result);
   } catch (err) {
