@@ -3,9 +3,8 @@
 For questions about WallBang hosted Counter-Strike 2 community servers, Hosted Server Access, payments, refunds, cancellations, or technical issues, please contact us.
 
 - **Trade Name:** WallBang
-- **Operator:** Shivani
-- **Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
-- **Registered Address:** 109/364, Ram Krishna Nagar, R K Nagar, Kanpur Nagar, Uttar Pradesh, 208012, India
+- **Email:** [support@wallbang.xyz](mailto:support@wallbang.xyz)
+- **Registered Address:** Kanpur, Uttar Pradesh, India
 
 Related pages:
 

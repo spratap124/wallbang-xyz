@@ -59,9 +59,16 @@ export function buildPaymentInvoiceView(payment: PaymentDoc): PaymentInvoiceView
 export async function ensurePayuPaymentInvoice(
   paymentId: string,
 ): Promise<string | null> {
+  return ensurePaymentInvoice(paymentId);
+}
+
+/** Assigns a WallBang invoice number to a captured payment. PayU invoices are also synced to PayU. */
+export async function ensurePaymentInvoice(
+  paymentId: string,
+): Promise<string | null> {
   const payments = await paymentsCollection();
   const payment = await payments.findOne({ _id: paymentId });
-  if (!payment || payment.provider !== "payu" || payment.status !== "captured") {
+  if (!payment || payment.status !== "captured") {
     return null;
   }
 
@@ -92,7 +99,7 @@ export async function ensurePayuPaymentInvoice(
   const finalInvoiceNumber = saved?.invoiceNumber ?? invoiceNumber;
   if (!finalInvoiceNumber) return null;
 
-  if (!saved?.payuInvoiceSyncedAt) {
+  if (payment.provider === "payu" && !saved?.payuInvoiceSyncedAt) {
     const synced = await syncPayuInvoiceNumber({
       txnid: payment.razorpayOrderId,
       invoiceNumber: finalInvoiceNumber,

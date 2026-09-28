@@ -67,7 +67,7 @@ We retain information for as long as reasonably necessary to provide services, m
 
 If you have questions about personal information associated with your WallBang account or transactions, you may contact us.
 
-**Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+**Email:** [support@wallbang.xyz](mailto:support@wallbang.xyz)
 
 ## 10. Changes to This Policy
 
