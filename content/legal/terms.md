@@ -68,9 +68,9 @@ WallBang may restrict or suspend access where a user engages in cheating, exploi
 
 ## 8. Payments
 
-Payments are processed through the payment gateway displayed during checkout.
+Payment is securely handled by Razorpay. WallBang does not process card, UPI, or bank payments itself.
 
-WallBang does not store customers' complete card, UPI, or banking credentials.
+No payment information is saved on WallBang. Card details, UPI IDs, and banking details are not stored by WallBang.
 
 ## 9. Pricing
 

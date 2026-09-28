@@ -238,7 +238,7 @@ export function BuyVipButton({
         setBusy(false);
         setCollectingContact(false);
         setError(null);
-        router.push(`/vip?paid=pending&txnid=${encodeURIComponent(orderId)}`);
+        router.push(`/vip/payment?paid=pending&txnid=${encodeURIComponent(orderId)}`);
         router.refresh();
       },
     });
@@ -248,7 +248,7 @@ export function BuyVipButton({
       setBusy(false);
       setCollectingContact(false);
       setError(null);
-      router.push(`/vip?paid=pending&txnid=${encodeURIComponent(orderId)}`);
+      router.push(`/vip/payment?paid=pending&txnid=${encodeURIComponent(orderId)}`);
       router.refresh();
     });
 
