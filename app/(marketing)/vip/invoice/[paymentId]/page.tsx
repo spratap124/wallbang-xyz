@@ -83,7 +83,7 @@ export default async function VipInvoicePage({ params }: InvoicePageProps) {
                 {siteConfig.businessCategory}
               </p>
               <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">
-                wallbang.xyz · admin@wallbang.xyz
+                wallbang.xyz · {siteConfig.legal.email}
               </p>
             </div>
             <div className="text-sm">
@@ -173,8 +173,8 @@ export default async function VipInvoicePage({ params }: InvoicePageProps) {
           <p className="mt-6 text-xs leading-relaxed text-muted-foreground print:text-gray-600">
             This is a computer-generated invoice for prepaid hosted server
             access on WallBang. For billing support, contact{" "}
-            <a href="mailto:admin@wallbang.xyz" className="text-primary">
-              admin@wallbang.xyz
+            <a href={`mailto:${siteConfig.legal.email}`} className="text-primary">
+              {siteConfig.legal.email}
             </a>
             .
           </p>

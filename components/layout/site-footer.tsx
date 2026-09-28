@@ -73,11 +73,8 @@ export function SiteFooter({
 
       <div className="border-t border-border">
         <div className="container-wb grid gap-8 py-8 sm:grid-cols-2 lg:grid-cols-4">
-          <FooterField label="Legal name">
-            <p>{siteConfig.legal.legalName}</p>
-            <p className="mt-1 text-muted-foreground">
-              Trade name {siteConfig.legal.tradeName}
-            </p>
+          <FooterField label="Trade name">
+            <p>{siteConfig.legal.tradeName}</p>
           </FooterField>
           <FooterField label="Registered address">
             <p className="max-w-xs">{siteConfig.legal.address}</p>

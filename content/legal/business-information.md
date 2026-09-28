@@ -4,15 +4,11 @@
 
 This page provides publicly available business details for WallBang (wallbang.xyz).
 
-This website is operated by Shivani under the trade name WallBang.
+This website is operated under the trade name WallBang.
 
 ## Brand Name / Trade Name
 
 WallBang
-
-## Legal Name
-
-Shivani
 
 ## GST
 
@@ -77,7 +73,7 @@ wallbang.xyz
 
 ## Support Email
 
-[admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+[support@wallbang.xyz](mailto:support@wallbang.xyz)
 
 ## Support Channel
 
@@ -85,4 +81,4 @@ Discord — [https://discord.gg/KY2dRw8Yh4](https://discord.gg/KY2dRw8Yh4)
 
 ## Business Address
 
-109/364, Ram Krishna Nagar, R K Nagar, Kanpur Nagar, Uttar Pradesh, 208012, India
+Kanpur, Uttar Pradesh, India

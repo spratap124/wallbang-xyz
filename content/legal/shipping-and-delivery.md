@@ -14,7 +14,7 @@ After successful payment confirmation, the purchased hosted server access is act
 
 ## Activation issues
 
-If hosted server access does not activate after a successful payment, contact us at [admin@wallbang.xyz](mailto:admin@wallbang.xyz) with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
+If hosted server access does not activate after a successful payment, contact us at [support@wallbang.xyz](mailto:support@wallbang.xyz) with your Steam account details and payment reference. We will investigate and resolve activation issues as quickly as possible.
 
 ## Related policies
 

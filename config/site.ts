@@ -12,11 +12,10 @@ export const siteConfig = {
   businessCategory: "Game-server hosting / community server access",
   legal: {
     tradeName: "WallBang",
-    legalName: "Shivani",
     gst: "GST not applicable",
-    email: "admin@wallbang.xyz",
+    email: "support@wallbang.xyz",
     address:
-      "109/364, Ram Krishna Nagar, R K Nagar, Kanpur Nagar, Uttar Pradesh, 208012, India",
+      "Kanpur, Uttar Pradesh, India",
   },
   keywords: [
     "WallBang",

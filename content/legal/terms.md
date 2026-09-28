@@ -8,11 +8,11 @@ By accessing or using [wallbang.xyz](https://wallbang.xyz) or purchasing any ser
 
 ## 1. Operator
 
-This website is operated by Shivani under the trade name WallBang.
+This website is operated under the trade name WallBang.
 
-**Registered Address:** 109/364, Ram Krishna Nagar, R K Nagar, Kanpur Nagar, Uttar Pradesh, 208012, India
+**Registered Address:** Kanpur, Uttar Pradesh, India
 
-**Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+**Email:** [support@wallbang.xyz](mailto:support@wallbang.xyz)
 
 ## 2. Services
 
@@ -106,4 +106,4 @@ These Terms & Conditions may be updated from time to time. The latest version wi
 
 For questions or support, contact:
 
-**Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+**Email:** [support@wallbang.xyz](mailto:support@wallbang.xyz)
