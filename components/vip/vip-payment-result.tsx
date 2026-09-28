@@ -46,7 +46,7 @@ const OUTCOME_COPY: Record<
   },
   failure: {
     title: "Payment not completed",
-    body: "Your payment was cancelled or did not go through. No hosted server access was activated.",
+    body: "Your payment was cancelled or did not go through. No VIP access was activated.",
     icon: XCircle,
     tone: "border-destructive/30 bg-destructive/10 text-destructive",
   },

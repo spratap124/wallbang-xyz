@@ -219,6 +219,7 @@ export function BuyVipButton({
     }
 
     const orderId = payload.data.orderId;
+    let checkoutSettled = false;
     const checkout = new Razorpay({
       key: payload.data.keyId,
       amount: payload.data.amount,
@@ -230,11 +231,18 @@ export function BuyVipButton({
       theme: { color: "#e8242a" },
       modal: {
         ondismiss: () => {
+          if (checkoutSettled) return;
+          checkoutSettled = true;
           setBusy(false);
+          setCollectingContact(false);
+          setError(null);
+          router.push("/vip/payment?paid=0");
+          router.refresh();
         },
       },
       handler: () => {
         // Checkout success is not fulfillment. The webhook grants VIP.
+        checkoutSettled = true;
         setBusy(false);
         setCollectingContact(false);
         setError(null);
@@ -245,6 +253,7 @@ export function BuyVipButton({
 
     checkout.on("payment.failed", () => {
       // Checkout failure is not the payment record. The webhook marks it failed.
+      checkoutSettled = true;
       setBusy(false);
       setCollectingContact(false);
       setError(null);

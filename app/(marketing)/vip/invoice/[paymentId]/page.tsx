@@ -10,7 +10,7 @@ import { isMongoConfigured } from "@/lib/mongo";
 import { paymentsCollection } from "@/lib/payments/collections";
 import {
   buildPaymentInvoiceView,
-  ensurePayuPaymentInvoice,
+  ensurePaymentInvoice,
 } from "@/lib/payments/payu-invoice";
 import { IST_TIME_ZONE } from "@/lib/time/ist";
 import { cn } from "@/lib/utils";
@@ -53,8 +53,8 @@ export default async function VipInvoicePage({ params }: InvoicePageProps) {
 
   if (!payment) notFound();
 
-  if (payment.provider === "payu" && !payment.invoiceNumber) {
-    await ensurePayuPaymentInvoice(payment._id);
+  if (!payment.invoiceNumber) {
+    await ensurePaymentInvoice(payment._id);
     payment = await payments.findOne({ _id: paymentId, userId: session.id });
     if (!payment) notFound();
   }
@@ -124,11 +124,12 @@ export default async function VipInvoicePage({ params }: InvoicePageProps) {
                 Payment reference
               </p>
               <p className="mt-2 text-sm">
-                PayU Txn: <span className="font-mono">{invoice.payuTxnId}</span>
+                {payment.provider === "payu" ? "PayU Txn" : "Razorpay order"}:{" "}
+                <span className="font-mono">{invoice.payuTxnId}</span>
               </p>
               {invoice.payuPaymentId ? (
                 <p className="mt-1 text-sm">
-                  PayU Payment ID:{" "}
+                  {payment.provider === "payu" ? "PayU Payment ID" : "Razorpay payment ID"}:{" "}
                   <span className="font-mono">{invoice.payuPaymentId}</span>
                 </p>
               ) : null}
