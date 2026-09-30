@@ -84,8 +84,6 @@ export function hostedAccessPlanBlurb(durationDays: number): string {
   return `Access to the selected WallBang community server for ${durationDays} days, including the server features and privileges described below.`;
 }
 
-export const checkoutProductName = "WallBang Hosted Server Access";
-
 export function checkoutProductDescription(input: {
   durationDays: number;
   accessType: "ALL_RETAKES" | "INDIVIDUAL_SERVER";
