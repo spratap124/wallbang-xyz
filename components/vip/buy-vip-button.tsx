@@ -32,7 +32,6 @@ type CreateRazorpayOrderData = {
   currency: "INR";
   plan: string;
   keyId: string;
-  name: string;
   description: string;
   prefill: { name: string; email: string; contact: string };
 };
@@ -223,7 +222,6 @@ export function BuyVipButton({
       key: payload.data.keyId,
       amount: payload.data.amount,
       currency: payload.data.currency,
-      name: payload.data.name,
       description: payload.data.description,
       order_id: orderId,
       prefill: payload.data.prefill,

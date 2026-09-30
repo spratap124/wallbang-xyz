@@ -28,10 +28,7 @@ import {
 } from "@/lib/permissions/service";
 import { rateLimit } from "@/lib/rate-limit";
 import { getGameServers } from "@/lib/servers/registry";
-import {
-  checkoutProductDescription,
-  checkoutProductName,
-} from "@/content/business";
+import { checkoutProductDescription } from "@/content/business";
 import type {
   PaymentDoc,
   PaymentStatus,
@@ -90,7 +87,6 @@ export type CreateVipOrderResult = {
   bundleId: string;
   serverId: string | null;
   keyId: string;
-  name: string;
   description: string;
   reused: boolean;
 };
@@ -148,7 +144,6 @@ export async function createVipOrder(input: {
   const serverId = quote.serverId;
   const serverIds =
     quote.accessType === "INDIVIDUAL_SERVER" && serverId ? [serverId] : [];
-  const checkoutName = checkoutProductName;
   const checkoutDescription = checkoutProductDescription({
     durationDays: quote.durationDays,
     accessType: quote.accessType,
@@ -186,7 +181,6 @@ export async function createVipOrder(input: {
       bundleId,
       serverId: existing.serverId,
       keyId,
-      name: checkoutName,
       description: checkoutDescription,
       reused: true,
     };
@@ -250,7 +244,6 @@ export async function createVipOrder(input: {
       bundleId,
       serverId: raced.serverId,
       keyId,
-      name: checkoutName,
       description: checkoutDescription,
       reused: true,
     };
@@ -265,7 +258,6 @@ export async function createVipOrder(input: {
     bundleId,
     serverId,
     keyId,
-    name: checkoutName,
     description: checkoutDescription,
     reused: false,
   };
