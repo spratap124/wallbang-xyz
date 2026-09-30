@@ -441,15 +441,11 @@ export async function fulfillCapturedPayment(input: {
     lifetime: vipRole.lifetime,
   });
 
-  if (claimed.provider === "payu") {
-    try {
-      const { ensurePayuPaymentInvoice } = await import(
-        "@/lib/payments/payu-invoice"
-      );
-      await ensurePayuPaymentInvoice(claimed._id);
-    } catch (err) {
-      console.error("[payments] PayU invoice generation failed", claimed._id, err);
-    }
+  try {
+    const { ensurePaymentInvoice } = await import("@/lib/payments/payu-invoice");
+    await ensurePaymentInvoice(claimed._id);
+  } catch (err) {
+    console.error("[payments] invoice generation failed", claimed._id, err);
   }
 
   return {

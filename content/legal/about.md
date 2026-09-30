@@ -15,9 +15,8 @@ Counter-Strike 2 is a trademark of Valve Corporation. WallBang is an independent
 ## Operator Details
 
 - **Trade Name:** WallBang
-- **Legal Name:** Shivani
-- **Registered Address:** 109/364, Ram Krishna Nagar, R K Nagar, Kanpur Nagar, Uttar Pradesh, 208012, India
+- **Registered Address:** Kanpur, Uttar Pradesh, India
 - **Website:** [wallbang.xyz](https://wallbang.xyz)
-- **Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+- **Email:** [support@wallbang.xyz](mailto:support@wallbang.xyz)
 
-This website is operated by Shivani under the trade name WallBang.
+This website is operated under the trade name WallBang.

@@ -23,7 +23,7 @@ function redirectToVip(
     params.set("paid", "0");
     params.set("error", "invalid");
   }
-  return NextResponse.redirect(`${base}/vip?${params.toString()}`, {
+  return NextResponse.redirect(`${base}/vip/payment?${params.toString()}`, {
     status: 303,
   });
 }

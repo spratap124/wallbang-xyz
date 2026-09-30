@@ -12,9 +12,7 @@ WallBang does not sell Counter-Strike 2, game licenses, or in-game items.
 
 ## 2. Refund Eligibility
 
-Customers may request a refund within 7 days of the original purchase if the purchased hosted server access has not been used or activated.
-
-For access that has already been activated or used, refunds may be considered only where the service could not reasonably be provided due to a technical issue attributable to WallBang.
+A refund will be given if the purchased Hosted Server Access (VIP) has not been activated.
 
 ## 3. Refund Request Duration
 
@@ -40,7 +38,7 @@ However, if a significant technical issue prevents a customer from receiving the
 
 To request a refund, contact:
 
-**Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+**Email:** [support@wallbang.xyz](mailto:support@wallbang.xyz)
 
 Please include:
 

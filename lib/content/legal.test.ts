@@ -7,13 +7,13 @@ describe("renderSimpleMarkdown", () => {
   it("renders headings, paragraphs, and mailto links", () => {
     const html = renderSimpleMarkdown(`# Title
 
-Hello [admin@wallbang.xyz](mailto:admin@wallbang.xyz).
+Hello [support@wallbang.xyz](mailto:support@wallbang.xyz).
 `);
 
     assert.match(html, /<h1>Title<\/h1>/);
     assert.match(
       html,
-      /<a href="mailto:admin@wallbang.xyz" rel="noopener noreferrer">admin@wallbang.xyz<\/a>/,
+      /<a href="mailto:support@wallbang.xyz" rel="noopener noreferrer">support@wallbang.xyz<\/a>/,
     );
   });
 
@@ -21,13 +21,13 @@ Hello [admin@wallbang.xyz](mailto:admin@wallbang.xyz).
     const html = renderSimpleMarkdown(`## Details
 
 - **Trade Name:** WallBang
-- **Legal Name:** Shivani
+- **Registered Address:** Kanpur, Uttar Pradesh, India
 `);
 
     assert.match(html, /<h2>Details<\/h2>/);
     assert.match(html, /<ul>/);
     assert.match(html, /<li><strong>Trade Name:<\/strong> WallBang<\/li>/);
-    assert.match(html, /<li><strong>Legal Name:<\/strong> Shivani<\/li>/);
+    assert.match(html, /<li><strong>Registered Address:<\/strong> Kanpur, Uttar Pradesh, India<\/li>/);
   });
 
   it("renders ordered lists separately from headings", () => {

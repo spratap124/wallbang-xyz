@@ -6,10 +6,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 
 import { VipPageBody } from "@/components/vip/vip-page-body";
-import { VipPaymentResultBanner } from "@/components/vip/vip-payment-result-banner";
 import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buttonVariants } from "@/components/ui/button";
@@ -38,7 +36,24 @@ function SteamMark({ className }: { className?: string }) {
   );
 }
 
-export default async function VipPage() {
+type VipPageProps = {
+  searchParams: Promise<{
+    paid?: string;
+    error?: string;
+    txnid?: string;
+  }>;
+};
+
+export default async function VipPage({ searchParams }: VipPageProps) {
+  const params = await searchParams;
+  if (params.paid) {
+    const qs = new URLSearchParams();
+    qs.set("paid", params.paid);
+    if (params.error) qs.set("error", params.error);
+    if (params.txnid) qs.set("txnid", params.txnid);
+    redirect(`/vip/payment?${qs.toString()}`);
+  }
+
   if (!(await isVipPageEnabled())) {
     redirect("/");
   }
@@ -74,10 +89,6 @@ export default async function VipPage() {
         <h1 className="mb-8 text-3xl font-semibold tracking-tight sm:text-4xl">
           Your VIP
         </h1>
-
-        <Suspense fallback={null}>
-          <VipPaymentResultBanner />
-        </Suspense>
 
         {session ? (
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/70 px-5 py-4">

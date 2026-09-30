@@ -32,4 +32,4 @@ After expiry, reserved access and related privileges are removed from the custom
 
 Cancellation requests can be submitted to:
 
-**Email:** [admin@wallbang.xyz](mailto:admin@wallbang.xyz)
+**Email:** [support@wallbang.xyz](mailto:support@wallbang.xyz)
