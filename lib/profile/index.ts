@@ -1,3 +1,4 @@
+export { getProfileDashboard } from "@/lib/profile/dashboard";
 export {
   ensurePlayerDomain,
   getMyProfile,
@@ -44,7 +45,4 @@ export {
   resolveCurrentServer,
   getPlayerPresence,
 } from "@/lib/profile/presence";
-export {
-  recordPlayerActivity,
-  syncBadgeFromRole,
-} from "@/lib/profile/activity";
+export { recordPlayerActivity, syncBadgeFromRole } from "@/lib/profile/activity";

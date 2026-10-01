@@ -5,6 +5,7 @@ import {
   buildAllRetakesDurationOptions,
   buildServerDurationOptions,
   buildVipShopQuote,
+  getVipShopCatalog,
   quoteVipOrder,
   readPricingEnv,
   resolveVipEntitledServerIds,
@@ -139,6 +140,41 @@ describe("individual server pricing", () => {
     });
     assert.equal(quote.serverId, serverA.id);
     assert.equal(quote.bundleKind, "server");
+  });
+
+  it("uses admin server prices instead of env defaults", () => {
+    const catalog = getVipShopCatalog(
+      [
+        {
+          id: serverA.id,
+          name: serverA.name,
+          shortName: serverA.shortName,
+          mode: serverA.mode,
+          city: serverA.city,
+          region: serverA.region,
+          map: serverA.map,
+          maxPlayers: serverA.maxPlayers,
+          pingMs: serverA.pingMs,
+          status: serverA.status,
+          vipPricingByPlan: {
+            "1_month": 12_000,
+            "3_months": 33_900,
+            "6_months": 64_900,
+            "1_year": 119_900,
+          },
+        },
+      ],
+      testEnv,
+    );
+    const plans = catalog.servers[0]?.durationOptions ?? [];
+    assert.deepEqual(
+      plans.map((plan) => plan.amountPaise),
+      [12_000, 33_900, 64_900, 119_900],
+    );
+    assert.notEqual(
+      plans[0]?.amountPaise,
+      testEnv.individualDefaultPaise["1_month"],
+    );
   });
 });
 

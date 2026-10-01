@@ -40,7 +40,7 @@ Hosted Server Access lasts for the duration selected and paid for at checkout:
 - 6 Months — Hosted Server Access
 - 1 Year — Hosted Server Access
 
-The available plans, durations, privileges, and prices are shown on the [Pricing](https://wallbang.xyz/pricing) page and in the price list at the bottom of this page.
+The available plans, durations, privileges, and prices are shown on the [Pricing](https://wallbang.xyz/pricing) page.
 
 ## Expiry and renewal
 

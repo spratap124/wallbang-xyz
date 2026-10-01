@@ -3,13 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { ProfilePageView } from "@/components/profile/profile-page-view";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
-import { isProfilePageEnabled, isSettingsPageEnabled } from "@/lib/platform/feature-flags";
-import {
-  getPlayerActivity,
-  getPlayerProfile,
-  isValidSteamId64,
-} from "@/lib/profile";
-import { canViewerAccess } from "@/lib/profile/privacy";
+import { isProfilePageEnabled } from "@/lib/platform/feature-flags";
+import { getProfileDashboard } from "@/lib/profile/dashboard";
+import { getPlayerProfile, isValidSteamId64 } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
 
 type PageProps = {
@@ -62,29 +58,12 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const canSeeActivity = canViewerAccess(
-    profile.privacy.activity,
-    profile.isOwner,
-  );
-  const activityDocs = canSeeActivity
-    ? await getPlayerActivity(steamId, 40)
-    : [];
-  const activity = activityDocs.map((item) => ({
-    id: item._id,
-    type: item.type,
-    title: item.title,
-    description: item.description,
-    createdAt: item.createdAt.toISOString(),
-  }));
+  const dashboard = await getProfileDashboard({
+    userId: profile.userId,
+    steamId: profile.steamId,
+    fallbackVip: profile.isVip,
+    joinedAt: profile.joinedAt,
+  });
 
-  const showSettings = await isSettingsPageEnabled();
-
-  return (
-    <ProfilePageView
-      profile={profile}
-      activity={activity}
-      activityPrivate={!canSeeActivity}
-      showSettings={showSettings}
-    />
-  );
+  return <ProfilePageView profile={profile} dashboard={dashboard} />;
 }

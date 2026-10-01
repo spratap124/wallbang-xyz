@@ -5,7 +5,7 @@ import { formatInrFromPaise } from "@/lib/payments/format";
 import { generateInvoiceNumber } from "@/lib/payments/invoice-number";
 import { syncPayuInvoiceNumber } from "@/lib/payments/payu-postservice";
 import { getVipDurationMeta } from "@/lib/payments/vip-pricing";
-import { hostedAccessDaysLabel, hostedAccessPlanLabel } from "@/content/business";
+import { hostedAccessPlanLabel, hostedAccessProduct } from "@/content/business";
 import type { PaymentDoc } from "@/types/payments";
 
 export type PaymentInvoiceView = {
@@ -35,9 +35,10 @@ export function buildPaymentInvoiceView(payment: PaymentDoc): PaymentInvoiceView
     payment.accessType === "ALL_RETAKES"
       ? "All Retake Servers"
       : payment.serverId ?? payment.bundleId;
+  const productLabel = `${hostedAccessProduct} (VIP)`;
   const daysLabel = planMeta
-    ? hostedAccessDaysLabel(planMeta.durationDays)
-    : "Hosted Server Access";
+    ? `${productLabel} — ${planMeta.durationDays} Days`
+    : productLabel;
 
   return {
     invoiceNumber: payment.invoiceNumber,
