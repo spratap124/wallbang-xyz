@@ -59,7 +59,7 @@ export function VipHero() {
           <div className="absolute inset-0 flex items-center">
             <Container>
               <h1 className="max-w-lg text-4xl font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Hosted Server Access
+                Hosted server access (VIP)
               </h1>
               <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
                 Prepaid access to WallBang&apos;s independently operated
