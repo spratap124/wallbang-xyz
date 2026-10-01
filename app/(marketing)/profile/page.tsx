@@ -3,17 +3,14 @@ import { redirect } from "next/navigation";
 import { ProfilePageView } from "@/components/profile/profile-page-view";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
-import { isProfilePageEnabled, isSettingsPageEnabled } from "@/lib/platform/feature-flags";
-import {
-  ensurePlayerDomain,
-  getMyProfile,
-  getPlayerActivity,
-} from "@/lib/profile";
+import { isProfilePageEnabled } from "@/lib/platform/feature-flags";
+import { getProfileDashboard } from "@/lib/profile/dashboard";
+import { ensurePlayerDomain, getMyProfile } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
   title: "My Profile",
-  description: "Your WallBang player profile — identity, stats, and badges.",
+  description: "Your WallBang account — VIP membership, retake servers, and loadout.",
   path: "/profile",
   noIndex: true,
 });
@@ -38,23 +35,12 @@ export default async function MyProfilePage() {
     redirect("/");
   }
 
-  const activityDocs = await getPlayerActivity(user.steamId, 40);
-  const activity = activityDocs.map((item) => ({
-    id: item._id,
-    type: item.type,
-    title: item.title,
-    description: item.description,
-    createdAt: item.createdAt.toISOString(),
-  }));
+  const dashboard = await getProfileDashboard({
+    userId: profile.userId,
+    steamId: profile.steamId,
+    fallbackVip: profile.isVip,
+    joinedAt: profile.joinedAt,
+  });
 
-  const showSettings = await isSettingsPageEnabled();
-
-  return (
-    <ProfilePageView
-      profile={profile}
-      activity={activity}
-      activityPrivate={false}
-      showSettings={showSettings}
-    />
-  );
+  return <ProfilePageView profile={profile} dashboard={dashboard} />;
 }
