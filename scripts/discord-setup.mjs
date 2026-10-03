@@ -44,7 +44,7 @@ async function api(path, options = {}) {
 
 function rulesMessage(siteUrl) {
   return [
-    "**Launch VIP Offer — first 100 players**",
+    "**Launch VIP Offer — first 30 players**",
     "",
     "1. Sign in with Steam at **" + siteUrl + "/offers** — VIP is granted automatically",
     "2. Join the WallBang Discord server",
@@ -82,7 +82,7 @@ async function main() {
         name: CHANNEL_NAME,
         type: 0,
         topic:
-          "Launch VIP announcements — sign in at wallbang.xyz/offers to claim (first 100 get 3 months free).",
+          "Launch VIP announcements — sign in at wallbang.xyz/offers to claim (first 30 get 3 months free).",
       }),
     });
     console.log(`Created #${CHANNEL_NAME} (${giveaway.id})`);
@@ -120,7 +120,7 @@ async function main() {
   console.log(
     "DISCORD_GIVEAWAY_WEBHOOK_URL=...  # create in #launch-giveaway → Integrations → Webhooks",
   );
-  console.log("GIVEAWAY_MAX_WINNERS=100");
+  console.log("GIVEAWAY_MAX_WINNERS=30");
   console.log("GIVEAWAY_VIP_MONTHS=3");
 }
 

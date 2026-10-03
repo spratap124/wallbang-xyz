@@ -40,7 +40,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Launch VIP",
   description:
-    "Become one of WallBang's first 50 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
+    "Become one of WallBang's first 30 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
   path: "/offers",
 });
 
