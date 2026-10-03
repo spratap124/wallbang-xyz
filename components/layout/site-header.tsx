@@ -28,6 +28,7 @@ type SiteHeaderProps = {
   showVip?: boolean;
   showLoadout?: boolean;
   showFeatures?: boolean;
+  showPricing?: boolean;
   showProfile?: boolean;
   showSettings?: boolean;
 };
@@ -39,6 +40,7 @@ export function SiteHeader({
   showVip = false,
   showLoadout = false,
   showFeatures = false,
+  showPricing = true,
   showProfile = false,
   showSettings = false,
 }: SiteHeaderProps) {
@@ -47,6 +49,7 @@ export function SiteHeader({
     vipPage: showVip,
     loadoutPage: showLoadout,
     featuresPage: showFeatures,
+    pricingPage: showPricing,
   });
 
   return (

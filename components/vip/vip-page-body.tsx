@@ -9,12 +9,14 @@ import type { VipMembershipView } from "@/types/vip";
 type VipPageBodyProps = {
   loggedIn: boolean;
   hideBuy?: boolean;
+  showPricing?: boolean;
   membership: VipMembershipView | null;
 };
 
 export function VipPageBody({
   loggedIn,
   hideBuy = false,
+  showPricing = true,
   membership,
 }: VipPageBodyProps) {
   const buyHref = pricingCheckoutHref();
@@ -26,10 +28,13 @@ export function VipPageBody({
   return (
     <>
       {loggedIn ? (
-        <VipMembershipDashboard membership={membership} />
+        <VipMembershipDashboard
+          membership={membership}
+          showPricing={showPricing}
+        />
       ) : null}
 
-      {hideBuy ? null : (
+      {hideBuy || !showPricing ? null : (
         <section className="mt-2 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-card/60 px-6 py-6 sm:flex-row sm:items-center">
           <div>
             <p className="font-semibold">

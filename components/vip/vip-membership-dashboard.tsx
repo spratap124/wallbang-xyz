@@ -22,6 +22,7 @@ export type VipRenewTarget = {
 
 type VipMembershipDashboardProps = {
   membership: VipMembershipView | null;
+  showPricing?: boolean;
 };
 
 function StatusDot({ active }: { active: boolean }) {
@@ -38,8 +39,10 @@ function StatusDot({ active }: { active: boolean }) {
 
 function EntitlementCard({
   entitlement,
+  showPricing,
 }: {
   entitlement: VipEntitlement;
+  showPricing: boolean;
 }) {
   const active = entitlement.status === "active";
   const daysRemaining =
@@ -117,7 +120,7 @@ function EntitlementCard({
         </p>
       ) : null}
 
-      {active && entitlement.kind !== "lifetime" ? (
+      {showPricing && active && entitlement.kind !== "lifetime" ? (
         <Link
           href={pricingCheckoutHref(renewTarget)}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4")}
@@ -131,6 +134,7 @@ function EntitlementCard({
 
 export function VipMembershipDashboard({
   membership,
+  showPricing = true,
 }: VipMembershipDashboardProps) {
   if (!membership) {
     return (
@@ -167,6 +171,7 @@ export function VipMembershipDashboard({
                         : "general"
                 }
                 entitlement={entitlement}
+                showPricing={showPricing}
               />
             ))}
           </div>
@@ -208,8 +213,9 @@ export function VipMembershipDashboard({
           No active VIP access
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          You don&apos;t currently have VIP access. Open Pricing to pick a
-          server and duration.
+          {showPricing
+            ? "You don't currently have VIP access. Open Pricing to pick a server and duration."
+            : "You don't currently have VIP access."}
         </p>
       </div>
     </section>

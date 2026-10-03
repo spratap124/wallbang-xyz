@@ -10,6 +10,7 @@ type SiteFooterProps = {
   showVip?: boolean;
   showLoadout?: boolean;
   showFeatures?: boolean;
+  showPricing?: boolean;
 };
 
 function FooterField({
@@ -35,11 +36,13 @@ export function SiteFooter({
   showVip = false,
   showLoadout = false,
   showFeatures = false,
+  showPricing = true,
 }: SiteFooterProps) {
   const nav = filterFooterNav(footerNav, {
     vipPage: showVip,
     loadoutPage: showLoadout,
     featuresPage: showFeatures,
+    pricingPage: showPricing,
   });
 
   return (

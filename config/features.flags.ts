@@ -43,6 +43,12 @@ export const featureFlags = {
    * Runtime-overridable via admin Settings / FEATURE_FEATURES_PAGE.
    */
   featuresPage: false,
+  /**
+   * Public pricing page (`/pricing`) and nav entry.
+   * Runtime-overridable via admin Settings / FEATURE_PRICING_PAGE.
+   * Default on so the live page stays visible until an admin hides it.
+   */
+  pricingPage: true,
   inventory: false,
   statistics: false,
   adminPanel: true,
@@ -61,6 +67,7 @@ export type WritableFeatureFlag =
   | "vipCheckout"
   | "loadoutPage"
   | "featuresPage"
+  | "pricingPage"
   | "profilePage"
   | "settingsPage";
 
@@ -70,6 +77,7 @@ export const writableFeatureFlags: readonly WritableFeatureFlag[] = [
   "vipCheckout",
   "loadoutPage",
   "featuresPage",
+  "pricingPage",
   "profilePage",
   "settingsPage",
 ] as const;

@@ -19,6 +19,7 @@ const ENV_NAMES: Record<WritableFeatureFlag, string> = {
   vipCheckout: "FEATURE_VIP_CHECKOUT",
   loadoutPage: "FEATURE_LOADOUT_PAGE",
   featuresPage: "FEATURE_FEATURES_PAGE",
+  pricingPage: "FEATURE_PRICING_PAGE",
   profilePage: "FEATURE_PROFILE_PAGE",
   settingsPage: "FEATURE_SETTINGS_PAGE",
 };
@@ -30,6 +31,7 @@ type FeatureFlagDoc = {
   vipCheckout?: boolean;
   loadoutPage?: boolean;
   featuresPage?: boolean;
+  pricingPage?: boolean;
   profilePage?: boolean;
   settingsPage?: boolean;
   updatedAt?: Date;
@@ -118,6 +120,11 @@ export async function isLoadoutPageEnabled(): Promise<boolean> {
 export async function isFeaturesPageEnabled(): Promise<boolean> {
   const flags = await getRuntimeFeatureFlags();
   return flags.featuresPage;
+}
+
+export async function isPricingPageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.pricingPage;
 }
 
 export async function isProfilePageEnabled(): Promise<boolean> {

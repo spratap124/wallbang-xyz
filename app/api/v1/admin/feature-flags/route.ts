@@ -15,6 +15,7 @@ const patchSchema = z
     vipCheckout: z.boolean().optional(),
     loadoutPage: z.boolean().optional(),
     featuresPage: z.boolean().optional(),
+    pricingPage: z.boolean().optional(),
     profilePage: z.boolean().optional(),
     settingsPage: z.boolean().optional(),
   })

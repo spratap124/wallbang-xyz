@@ -29,12 +29,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     vipPage: false,
     loadoutPage: false,
     featuresPage: false,
+    pricingPage: false,
   }));
 
   const pages = staticRoutes
     .filter((path) => {
       if (path === "/vip") return flags.vipPage;
       if (path === "/features") return flags.featuresPage;
+      if (path === "/pricing") return flags.pricingPage;
       return true;
     })
     .map((path) => ({

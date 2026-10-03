@@ -122,6 +122,7 @@ type AdminShellProps = {
   showVip?: boolean;
   showLoadout?: boolean;
   showFeatures?: boolean;
+  showPricing?: boolean;
   showProfile?: boolean;
   showSettings?: boolean;
 };
@@ -137,6 +138,7 @@ export function AdminShell({
   showVip = false,
   showLoadout = false,
   showFeatures = false,
+  showPricing = true,
   showProfile = false,
   showSettings = false,
 }: AdminShellProps) {
@@ -148,6 +150,7 @@ export function AdminShell({
     vipPage: showVip,
     loadoutPage: showLoadout,
     featuresPage: showFeatures,
+    pricingPage: showPricing,
   });
 
   const visibleNav = NAV.filter(

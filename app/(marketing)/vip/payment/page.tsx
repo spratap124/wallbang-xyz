@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Container } from "@/components/shared/primitives";
 import { VipPaymentResult } from "@/components/vip/vip-payment-result";
 import { getSession } from "@/lib/auth/session";
+import { isPricingPageEnabled } from "@/lib/platform/feature-flags";
 import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
@@ -39,7 +40,10 @@ function paymentQuery(params: {
 
 export default async function VipPaymentPage({ searchParams }: PaymentPageProps) {
   const params = await searchParams;
-  const session = await getSession();
+  const [session, showPricing] = await Promise.all([
+    getSession(),
+    isPricingPageEnabled(),
+  ]);
 
   if (!session && params.paid === "pending" && params.txnid) {
     const returnTo = `/vip/payment${paymentQuery(params)}`;
@@ -49,7 +53,7 @@ export default async function VipPaymentPage({ searchParams }: PaymentPageProps)
   return (
     <Container className="py-10 sm:py-16">
       <Suspense fallback={null}>
-        <VipPaymentResult />
+        <VipPaymentResult showPricing={showPricing} />
       </Suspense>
     </Container>
   );
