@@ -1334,8 +1334,8 @@ export type GiveawayEntryResult = {
 };
 
 export function getLaunchGiveawayMaxWinners(): number {
-  const parsed = Number.parseInt(process.env.GIVEAWAY_MAX_WINNERS ?? "50", 10);
-  return Number.isFinite(parsed) ? parsed : 50;
+  const parsed = Number.parseInt(process.env.GIVEAWAY_MAX_WINNERS ?? "30", 10);
+  return Number.isFinite(parsed) ? parsed : 30;
 }
 
 export function getLaunchGiveawayVipMonths(): number {
