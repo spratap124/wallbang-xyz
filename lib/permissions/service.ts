@@ -1333,19 +1333,9 @@ export type GiveawayEntryResult = {
   expiresAt: Date;
 };
 
-/** Hard ceiling for the launch VIP offer. Env may only lower this. */
-export const LAUNCH_GIVEAWAY_MAX_WINNERS_CAP = 30;
-
 export function getLaunchGiveawayMaxWinners(): number {
-  const parsed = Number.parseInt(
-    process.env.GIVEAWAY_MAX_WINNERS ?? String(LAUNCH_GIVEAWAY_MAX_WINNERS_CAP),
-    10,
-  );
-  const value =
-    Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : LAUNCH_GIVEAWAY_MAX_WINNERS_CAP;
-  return Math.min(value, LAUNCH_GIVEAWAY_MAX_WINNERS_CAP);
+  const parsed = Number.parseInt(process.env.GIVEAWAY_MAX_WINNERS ?? "30", 10);
+  return Number.isFinite(parsed) ? parsed : 30;
 }
 
 export function getLaunchGiveawayVipMonths(): number {

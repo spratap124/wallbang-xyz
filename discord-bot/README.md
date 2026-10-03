@@ -38,7 +38,7 @@ DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
 DISCORD_GIVEAWAY_WEBHOOK_URL=...   # in root .env — posts to #launch-giveaway when VIP is claimed
 PLUGIN_API_KEY=...                 # bot uses this to call /api/v1/discord/member-joined
-GIVEAWAY_MAX_WINNERS=30
+GIVEAWAY_MAX_WINNERS=50
 GIVEAWAY_VIP_MONTHS=3
 ```
 
@@ -74,10 +74,10 @@ The bot needs **Manage Messages** in `#launch-giveaway` to pin rules. If pin fai
 **Steam-only (default):**
 
 1. Visit [wallbang.xyz/offers](https://wallbang.xyz/offers) and **sign in with Steam**.
-2. VIP is granted automatically (first 30 players, 3 months). A message may be posted in `#launch-giveaway`.
+2. VIP is granted automatically (first 50 players, 3 months). A message may be posted in `#launch-giveaway`.
 
 **With Discord required** (`GIVEAWAY_REQUIRE_DISCORD=true`):
 
 1. Visit [wallbang.xyz/offers](https://wallbang.xyz/offers) and **sign in with Steam**.
 2. **Join the Discord server**, then **Link Discord & claim VIP** on the site.
-3. VIP is granted only after both steps (first 30 players, 3 months). A message is posted in `#launch-giveaway`.
+3. VIP is granted only after both steps (first 50 players, 3 months). A message is posted in `#launch-giveaway`.

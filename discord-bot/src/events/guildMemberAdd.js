@@ -2,7 +2,7 @@ function buildWelcomeMessage(siteUrl, offerUrl) {
   return [
     "**Welcome to WallBang!**",
     "",
-    "We're giving **3 months of VIP** to the first **30 players**.",
+    "We're giving **3 months of VIP** to the first **50 players**.",
     "",
     "**How to claim:**",
     "1. Sign in with Steam at the offer page",
