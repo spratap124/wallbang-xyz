@@ -243,7 +243,7 @@ export function VipShop({
   if (catalog.servers.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No hosted-access servers are listed yet.
+        No VIP servers are listed yet.
       </p>
     );
   }
