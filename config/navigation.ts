@@ -49,12 +49,14 @@ export type NavVisibility = {
   vipPage?: boolean;
   loadoutPage?: boolean;
   featuresPage?: boolean;
+  pricingPage?: boolean;
 };
 
 const gatedHrefs: Record<string, keyof NavVisibility> = {
   "/vip": "vipPage",
   "/loadout": "loadoutPage",
   "/features": "featuresPage",
+  "/pricing": "pricingPage",
 };
 
 /** Drop gated nav entries when their public page flag is off. */

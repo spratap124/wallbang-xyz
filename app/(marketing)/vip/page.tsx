@@ -15,7 +15,10 @@ import { siteConfig } from "@/config/site";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
-import { isVipPageEnabled } from "@/lib/platform/feature-flags";
+import {
+  isPricingPageEnabled,
+  isVipPageEnabled,
+} from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import { cn } from "@/lib/utils";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
@@ -54,7 +57,11 @@ export default async function VipPage({ searchParams }: VipPageProps) {
     redirect(`/vip/payment?${qs.toString()}`);
   }
 
-  if (!(await isVipPageEnabled())) {
+  const [vipEnabled, pricingEnabled] = await Promise.all([
+    isVipPageEnabled(),
+    isPricingPageEnabled(),
+  ]);
+  if (!vipEnabled) {
     redirect("/");
   }
 
@@ -139,6 +146,7 @@ export default async function VipPage({ searchParams }: VipPageProps) {
         <VipPageBody
           loggedIn={Boolean(session)}
           hideBuy={lifetime}
+          showPricing={pricingEnabled}
           membership={membership}
         />
 

@@ -61,7 +61,11 @@ const OUTCOME_COPY: Record<
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 90_000;
 
-export function VipPaymentResult() {
+export function VipPaymentResult({
+  showPricing = true,
+}: {
+  showPricing?: boolean;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const paid = searchParams.get("paid");
@@ -152,13 +156,23 @@ export function VipPaymentResult() {
     return (
       <ResultShell
         title="No payment to confirm"
-        body="Start checkout from Pricing. This page shows whether a payment succeeded or failed."
+        body={
+          showPricing
+            ? "Start checkout from Pricing. This page shows whether a payment succeeded or failed."
+            : "This page shows whether a payment succeeded or failed."
+        }
         tone="border-border bg-card/70 text-foreground"
         icon={AlertTriangle}
       >
-        <Link href="/pricing" className={cn(buttonVariants({ size: "lg" }), "h-11")}>
-          Go to Pricing
-        </Link>
+        {showPricing ? (
+          <Link href="/pricing" className={cn(buttonVariants({ size: "lg" }), "h-11")}>
+            Go to Pricing
+          </Link>
+        ) : (
+          <Link href="/" className={cn(buttonVariants({ size: "lg" }), "h-11")}>
+            Back to home
+          </Link>
+        )}
       </ResultShell>
     );
   }
@@ -229,7 +243,7 @@ export function VipPaymentResult() {
           </Link>
         </>
       ) : null}
-      {outcome === "failure" ? (
+      {outcome === "failure" && showPricing ? (
         <Link href="/pricing" className={cn(buttonVariants({ size: "lg" }), "h-11")}>
           Try again
         </Link>

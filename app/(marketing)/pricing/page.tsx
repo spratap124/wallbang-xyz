@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { FaqSection } from "@/components/home/faq-section";
 import { LiveServersProvider } from "@/components/servers/live-servers-provider";
@@ -31,6 +32,7 @@ import { getUserVipMembership } from "@/lib/payments/entitlements";
 import { isVipAccessType } from "@/lib/payments/quote";
 import { isPaymentConfigured, isPayuActive } from "@/lib/payments/provider";
 import {
+  isPricingPageEnabled,
   isVipAllRetakesEnabled,
   isVipCheckoutEnabled,
 } from "@/lib/platform/feature-flags";
@@ -82,6 +84,10 @@ function SteamMark({ className }: { className?: string }) {
 }
 
 export default async function PricingPage({ searchParams }: PricingPageProps) {
+  if (!(await isPricingPageEnabled())) {
+    redirect("/");
+  }
+
   const params = await searchParams;
   const servers = await getGameServers();
   const catalog = getVipShopCatalog(servers);

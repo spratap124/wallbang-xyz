@@ -55,6 +55,7 @@ export default async function MarketingLayout({
         showVip={flags.vipPage}
         showLoadout={flags.loadoutPage}
         showFeatures={flags.featuresPage}
+        showPricing={flags.pricingPage}
         showProfile={flags.profilePage}
         showSettings={flags.settingsPage}
       />
@@ -66,6 +67,7 @@ export default async function MarketingLayout({
         showVip={flags.vipPage}
         showLoadout={flags.loadoutPage}
         showFeatures={flags.featuresPage}
+        showPricing={flags.pricingPage}
       />
     </>
   );

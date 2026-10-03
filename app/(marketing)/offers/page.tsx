@@ -30,6 +30,7 @@ import {
 } from "@/lib/permissions/service";
 import { announceLaunchGiveawayGrant } from "@/lib/discord/giveaway-announce";
 import {
+  isPricingPageEnabled,
   isProfilePageEnabled,
   isVipPageEnabled,
 } from "@/lib/platform/feature-flags";
@@ -178,10 +179,12 @@ export default async function LaunchOfferPage({
   const discordReady = isDiscordLinkConfigured();
   const requireDiscord = isLaunchGiveawayDiscordRequired();
   const totalSteps = requireDiscord ? 2 : 1;
-  const [showVip, showProfile] = await Promise.all([
+  const [showVip, showProfile, showPricing] = await Promise.all([
     isVipPageEnabled(),
     isProfilePageEnabled(),
+    isPricingPageEnabled(),
   ]);
+  const showPricingCta = showVip && showPricing;
 
   let giveawayStatus: {
     maxWinners: number;
@@ -365,12 +368,12 @@ export default async function LaunchOfferPage({
                   <strong>{session.personaName}</strong>
                 </>
               ) : null}
-              .{showVip
+              .{showPricingCta
                 ? " You can get prepaid hosted server access anytime, or join Discord for community updates."
                 : " Join Discord for community updates."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              {showVip ? (
+              {showPricingCta ? (
                 <a
                   href="/pricing"
                   className={cn(buttonVariants())}
@@ -382,7 +385,7 @@ export default async function LaunchOfferPage({
                 href={siteConfig.discordUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: showVip ? "outline" : "default" }))}
+                className={cn(buttonVariants({ variant: showPricingCta ? "outline" : "default" }))}
               >
                 <MessageCircle />
                 Join Discord

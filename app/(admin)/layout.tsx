@@ -65,6 +65,7 @@ export default async function AdminLayout({
       showVip={flags.vipPage}
       showLoadout={flags.loadoutPage}
       showFeatures={flags.featuresPage}
+      showPricing={flags.pricingPage}
       showProfile={flags.profilePage}
       showSettings={flags.settingsPage}
     >
