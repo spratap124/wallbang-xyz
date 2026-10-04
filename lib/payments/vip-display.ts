@@ -1,12 +1,30 @@
 import { IST_LOCALE, IST_TIME_ZONE } from "@/lib/time/ist";
 
-export function formatVipExpiryDate(value: string | Date | null | undefined): string {
-  if (!value) return "—";
+function expiryDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatVipExpiryDate(value: string | Date | null | undefined): string {
+  const date = expiryDate(value);
+  if (!date) return "—";
   return date.toLocaleDateString(IST_LOCALE, {
     day: "numeric",
     month: "long",
+    year: "numeric",
+    timeZone: IST_TIME_ZONE,
+  });
+}
+
+export function formatVipExpiryDateCompact(
+  value: string | Date | null | undefined,
+): string {
+  const date = expiryDate(value);
+  if (!date) return "—";
+  return date.toLocaleDateString(IST_LOCALE, {
+    day: "numeric",
+    month: "short",
     year: "numeric",
     timeZone: IST_TIME_ZONE,
   });
