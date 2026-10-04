@@ -8,7 +8,7 @@ import type {
 import { computeVipExtension, durationDaysToMs } from "@/lib/payments/expiry";
 
 /** Complimentary VIP (giveaway / admin grant) — same server as the global-VIP backfill. */
-export const COMPLIMENTARY_VIP_SERVER_ID = "retake-1-mumbai";
+export const COMPLIMENTARY_VIP_SERVER_ID = "retake-3-mumbai";
 
 /** Entitlement key covering every retake server. */
 export const ALL_RETAKES_ENTITLEMENT_KEY = "all_retakes";
