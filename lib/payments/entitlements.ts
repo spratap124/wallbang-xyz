@@ -32,7 +32,7 @@ function isDuplicateKeyError(err: unknown): boolean {
 
 /**
  * Ensure giveaway / admin VIP has a `vip_history` row for the complimentary
- * server (default `retake-1-mumbai`). Game-server `?serverId=` scoping reads
+ * server (default `retake-3-mumbai`). Game-server `?serverId=` scoping reads
  * this collection — the global VIP role alone is not enough.
  *
  * Does not stack on top of an already-covering individual entitlement.
