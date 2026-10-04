@@ -35,6 +35,84 @@ type VipEntitlementAdminRow = {
   expiresAt: string | null;
 };
 
+type VipServerOption = {
+  id: string;
+  label: string;
+  hasAccess: boolean;
+};
+
+const ALL_RETAKES_KEY = "all_retakes";
+
+function nextEntitlementKeys(keys: string[], key: string): string[] {
+  if (key === ALL_RETAKES_KEY) {
+    return keys.includes(ALL_RETAKES_KEY) ? [] : [ALL_RETAKES_KEY];
+  }
+  const withoutBundle = keys.filter((item) => item !== ALL_RETAKES_KEY);
+  return withoutBundle.includes(key)
+    ? withoutBundle.filter((item) => item !== key)
+    : [...withoutBundle, key];
+}
+
+function VipServerPicker({
+  servers,
+  selectedKeys,
+  onToggle,
+}: {
+  servers: VipServerOption[];
+  selectedKeys: string[];
+  onToggle: (key: string) => void;
+}) {
+  const allServersSelected = selectedKeys.includes(ALL_RETAKES_KEY);
+
+  if (servers.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        No servers in the fleet registry.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-3.5 accent-foreground"
+          checked={allServersSelected}
+          onChange={() => onToggle(ALL_RETAKES_KEY)}
+        />
+        <span className="font-medium">All servers</span>
+        <span className="text-xs text-muted-foreground">
+          All Retakes Bundle · {servers.length} server
+          {servers.length === 1 ? "" : "s"}
+        </span>
+      </label>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {servers.map((server) => (
+          <label
+            key={server.id}
+            className={`flex items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-sm ${
+              allServersSelected ? "opacity-50" : ""
+            }`}
+          >
+            <input
+              type="checkbox"
+              className="size-3.5 accent-foreground"
+              disabled={allServersSelected}
+              checked={allServersSelected || selectedKeys.includes(server.id)}
+              onChange={() => onToggle(server.id)}
+            />
+            <span className="min-w-0 flex-1 truncate">{server.label}</span>
+            {server.hasAccess ? (
+              <span className="text-xs text-muted-foreground">active</span>
+            ) : null}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const GRANTABLE_ROLES: RoleCode[] = [
   "VIP",
   "FOUNDING_MEMBER",
@@ -53,7 +131,16 @@ const SOURCES: RoleSource[] = [
   "SYSTEM",
 ];
 
-type ExpiryPreset = "never" | "30" | "90" | "custom";
+const EXPIRY_PRESETS = [
+  { value: "30", label: "30 days", days: 30 },
+  { value: "60", label: "60 days", days: 60 },
+  { value: "90", label: "90 days", days: 90 },
+  { value: "180", label: "6 months", days: 180 },
+  { value: "365", label: "1 year", days: 365 },
+  { value: "lifetime", label: "Lifetime", days: null },
+] as const;
+
+type ExpiryPreset = (typeof EXPIRY_PRESETS)[number]["value"];
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
@@ -72,12 +159,13 @@ export function AdminDashboard() {
 
   const [roleCode, setRoleCode] = useState<RoleCode>("VIP");
   const [source, setSource] = useState<RoleSource>("MANUAL");
-  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("never");
-  const [customExpiry, setCustomExpiry] = useState("");
+  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("30");
   const [badgeType, setBadgeType] = useState<BadgeType>("VIP");
   const [vipEntitlements, setVipEntitlements] = useState<
     VipEntitlementAdminRow[]
   >([]);
+  const [vipServers, setVipServers] = useState<VipServerOption[]>([]);
+  const [roleGrantKeys, setRoleGrantKeys] = useState<string[]>([]);
 
   const loadVipEntitlements = useCallback((userId: string) => {
     startTransition(async () => {
@@ -86,12 +174,15 @@ export function AdminDashboard() {
       );
       const payload = await readJson<{
         entitlements: VipEntitlementAdminRow[];
+        servers: VipServerOption[];
       }>(res);
       if (!payload.ok) {
         setVipEntitlements([]);
+        setVipServers([]);
         return;
       }
       setVipEntitlements(payload.data.entitlements);
+      setVipServers(payload.data.servers);
     });
   }, []);
 
@@ -100,6 +191,8 @@ export function AdminDashboard() {
       setError(null);
       setMessage(null);
       setVipEntitlements([]);
+      setVipServers([]);
+      setRoleGrantKeys([]);
       startTransition(async () => {
         const res = await fetch(
           `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
@@ -138,19 +231,14 @@ export function AdminDashboard() {
   }
 
   function resolveExpiresAt(): string | null {
-    if (expiryPreset === "never") return null;
-    if (expiryPreset === "30") {
-      return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    }
-    if (expiryPreset === "90") {
-      return new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-    }
-    if (!customExpiry) return null;
-    return new Date(`${customExpiry}T23:59:59.000Z`).toISOString();
+    const days = EXPIRY_PRESETS.find((p) => p.value === expiryPreset)?.days;
+    if (!days) return null;
+    return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
   }
 
   function grant() {
     if (!selected) return;
+    if (roleCode === "VIP" && roleGrantKeys.length === 0) return;
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -162,6 +250,7 @@ export function AdminDashboard() {
           roleCode,
           source,
           expiresAt: resolveExpiresAt(),
+          ...(roleCode === "VIP" ? { entitlementKeys: roleGrantKeys } : {}),
         }),
       });
       const payload = await readJson<ResolvedPermissions>(res);
@@ -170,6 +259,10 @@ export function AdminDashboard() {
         return;
       }
       setSelected(payload.data);
+      if (roleCode === "VIP") {
+        setRoleGrantKeys([]);
+        loadVipEntitlements(selected.userId);
+      }
       setMessage(`Granted ${roleCode}.`);
     });
   }
@@ -194,6 +287,9 @@ export function AdminDashboard() {
         return;
       }
       setSelected(payload.data);
+      if (code === "VIP") {
+        loadVipEntitlements(selected.userId);
+      }
       setMessage(`Revoked ${code}.`);
     });
   }
@@ -226,10 +322,17 @@ export function AdminDashboard() {
       }
       setSelected(payload.data.permissions);
       setVipEntitlements([]);
+      setVipServers((servers) =>
+        servers.map((server) => ({ ...server, hasAccess: false })),
+      );
       setMessage(
         `Revoked all VIP · ${payload.data.deactivatedVipRoles} role(s), ${payload.data.deletedHistoryRows} history row(s) cleared.`,
       );
     });
+  }
+
+  function toggleRoleGrantKey(key: string) {
+    setRoleGrantKeys((keys) => nextEntitlementKeys(keys, key));
   }
 
   function revokeVipEntitlement(row: VipEntitlementAdminRow) {
@@ -466,13 +569,13 @@ export function AdminDashboard() {
                   <div>
                     <h4 className="text-sm font-medium">VIP entitlements</h4>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Revoke one server/bundle or clear everything. Does not
-                      refund payments.
+                      Servers this player can use right now. Grant access from
+                      Grant role below.
                     </p>
                   </div>
                   {vipEntitlements.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      No purchase history entitlements.
+                      No active VIP entitlements.
                     </p>
                   ) : (
                     <ul className="space-y-2">
@@ -484,11 +587,9 @@ export function AdminDashboard() {
                           <div className="min-w-0">
                             <p className="truncate font-medium">{row.label}</p>
                             <p className="text-xs text-muted-foreground">
-                              {row.purchaseCount} purchase
-                              {row.purchaseCount === 1 ? "" : "s"}
                               {row.expiresAt
-                                ? ` · expires ${formatDate(row.expiresAt)}`
-                                : ""}
+                                ? `Expires ${formatDate(row.expiresAt)}`
+                                : "Never expires"}
                             </p>
                           </div>
                           <Button
@@ -504,15 +605,20 @@ export function AdminDashboard() {
                       ))}
                     </ul>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={pending}
-                    onClick={revokeAllVip}
-                  >
-                    Revoke all VIP access
-                  </Button>
+                  {vipEntitlements.length > 0 ||
+                  selected.activeAssignments.some(
+                    (assignment) => assignment.roleCode === "VIP",
+                  ) ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={pending}
+                      onClick={revokeAllVip}
+                    >
+                      Revoke all VIP access
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 
@@ -579,25 +685,38 @@ export function AdminDashboard() {
                       }
                       className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
-                      <option value="never">Never</option>
-                      <option value="30">30 days</option>
-                      <option value="90">90 days</option>
-                      <option value="custom">Custom date</option>
+                      {EXPIRY_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
-                  {expiryPreset === "custom" ? (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="customExpiry">Custom date</Label>
-                      <Input
-                        id="customExpiry"
-                        type="date"
-                        value={customExpiry}
-                        onChange={(e) => setCustomExpiry(e.target.value)}
-                      />
-                    </div>
-                  ) : null}
                 </div>
-                <Button type="button" onClick={grant} disabled={pending}>
+                {roleCode === "VIP" ? (
+                  <div className="space-y-2">
+                    <div>
+                      <Label>Servers</Label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        VIP is scoped per server. Pick one or more, or All
+                        servers for the bundle.
+                      </p>
+                    </div>
+                    <VipServerPicker
+                      servers={vipServers}
+                      selectedKeys={roleGrantKeys}
+                      onToggle={toggleRoleGrantKey}
+                    />
+                  </div>
+                ) : null}
+                <Button
+                  type="button"
+                  onClick={grant}
+                  disabled={
+                    pending ||
+                    (roleCode === "VIP" && roleGrantKeys.length === 0)
+                  }
+                >
                   Grant
                 </Button>
               </div>

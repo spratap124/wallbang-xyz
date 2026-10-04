@@ -285,6 +285,8 @@ export type GrantRoleInput = {
   source: RoleSource;
   grantedBy: { id: string; steamId: string } | null;
   expiresAt?: Date | null;
+  /** VIP only: server ids or `all_retakes`. Defaults to complimentary Mumbai. */
+  entitlementKeys?: string[];
 };
 
 async function resolveGrantTarget(
@@ -349,13 +351,24 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   await col.insertOne(assignment);
   invalidatePermissionCache(user.steamId);
 
+  const vipEntitlementKeys =
+    input.roleCode === "VIP" && input.source !== "PURCHASE"
+      ? input.entitlementKeys && input.entitlementKeys.length > 0
+        ? input.entitlementKeys
+        : undefined
+      : undefined;
+
   if (input.roleCode === "VIP" && input.source !== "PURCHASE") {
-    await syncComplimentaryVipEntitlement({
-      userId: user._id,
-      steamId: user.steamId,
-      expiresAt,
-      assignmentId: assignment._id,
-    });
+    const keys = vipEntitlementKeys ?? [undefined];
+    for (const key of keys) {
+      await syncComplimentaryVipEntitlement({
+        userId: user._id,
+        steamId: user.steamId,
+        expiresAt,
+        assignmentId: key ? `${assignment._id}:${key}` : assignment._id,
+        entitlementKey: key,
+      });
+    }
   }
 
   await writeAudit({
@@ -371,6 +384,7 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
       source: input.source,
       expiresAt,
       assignmentId: assignment._id,
+      ...(vipEntitlementKeys ? { entitlementKeys: vipEntitlementKeys } : {}),
     },
     timestamp: new Date(),
   });
@@ -1437,6 +1451,7 @@ async function syncComplimentaryVipEntitlement(input: {
   steamId: string;
   expiresAt: Date | null;
   assignmentId: string;
+  entitlementKey?: string;
 }): Promise<void> {
   try {
     const { ensureComplimentaryVipEntitlement } = await import(
@@ -1447,6 +1462,7 @@ async function syncComplimentaryVipEntitlement(input: {
       steamId: input.steamId,
       expiresAt: input.expiresAt,
       paymentId: `complimentary:${input.assignmentId}`,
+      entitlementKey: input.entitlementKey,
     });
   } catch (err) {
     console.error("[vip] complimentary vip_history sync failed", err);

@@ -5,10 +5,33 @@ import type {
   VipPlanId,
   VipServerRef,
 } from "@/types/vip";
-import { durationDaysToMs } from "@/lib/payments/expiry";
+import { computeVipExtension, durationDaysToMs } from "@/lib/payments/expiry";
 
 /** Complimentary VIP (giveaway / admin grant) — same server as the global-VIP backfill. */
 export const COMPLIMENTARY_VIP_SERVER_ID = "retake-1-mumbai";
+
+/** Entitlement key covering every retake server. */
+export const ALL_RETAKES_ENTITLEMENT_KEY = "all_retakes";
+
+/** Dedup admin keys and collapse All Retakes so it is never stacked with servers. */
+export function normalizeAdminEntitlementKeys(
+  keys: string[],
+  validServerIds: Iterable<string>,
+): { keys: string[]; unknown: string[] } {
+  const valid = new Set(validServerIds);
+  const unique = [
+    ...new Set(keys.map((key) => key.trim()).filter(Boolean)),
+  ];
+  const unknown = unique.filter(
+    (key) => key !== ALL_RETAKES_ENTITLEMENT_KEY && !valid.has(key),
+  );
+  return {
+    keys: unique.includes(ALL_RETAKES_ENTITLEMENT_KEY)
+      ? [ALL_RETAKES_ENTITLEMENT_KEY]
+      : unique,
+    unknown,
+  };
+}
 
 /** Approximate lifetime when a VIP role has no expiry (`expiresAt: null`). */
 export const COMPLIMENTARY_LIFETIME_DURATION_DAYS = 365 * 100;
@@ -203,6 +226,48 @@ export function durationDaysToCoverUntil(input: {
     1,
     Math.ceil((target.getTime() - base.getTime()) / durationDaysToMs(1)),
   );
+}
+
+/**
+ * Build a `vip_history` row for an admin-issued entitlement — one server, or
+ * `all_retakes` for every server. Stacks onto `currentExpiry` when that
+ * entitlement is still active so granted days are never swallowed.
+ */
+export function buildGrantedEntitlementRecord(input: {
+  id: string;
+  userId: string;
+  steamId: string;
+  entitlementKey: string;
+  durationDays: number;
+  paymentId: string;
+  currentExpiry: Date | null;
+  now: Date;
+}): VipHistoryDoc {
+  const key = input.entitlementKey.trim();
+  const allRetakes = key === ALL_RETAKES_ENTITLEMENT_KEY;
+  const { startDate, endDate } = computeVipExtension({
+    currentExpiresAt: input.currentExpiry,
+    now: input.now,
+    durationDays: input.durationDays,
+  });
+
+  return {
+    _id: input.id,
+    userId: input.userId,
+    steamId: input.steamId,
+    bundleId: allRetakes ? ALL_RETAKES_ENTITLEMENT_KEY : key,
+    bundleKind: allRetakes ? "all" : "server",
+    accessType: allRetakes ? "ALL_RETAKES" : "INDIVIDUAL_SERVER",
+    serverId: allRetakes ? null : key,
+    serverIds: allRetakes ? [] : [key],
+    plan: pickComplimentaryVipPlan(input.durationDays),
+    amount: 0,
+    durationDays: input.durationDays,
+    startDate,
+    endDate,
+    paymentId: input.paymentId,
+    createdAt: input.now,
+  };
 }
 
 function serverName(

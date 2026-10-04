@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  ALL_RETAKES_ENTITLEMENT_KEY,
   buildEntitlementsFromHistory,
+  buildGrantedEntitlementRecord,
   computeEntitlementExpiry,
   durationDaysToCoverUntil,
+  entitlementKeyFromRecord,
   furthestEntitlementExpiry,
   hasActiveVipEntitlementForServer,
+  normalizeAdminEntitlementKeys,
   pickComplimentaryVipPlan,
 } from "@/lib/payments/entitlements-logic";
 import { computeVipExtension } from "@/lib/payments/expiry";
@@ -263,5 +267,138 @@ describe("complimentary VIP coverage days", () => {
       durationDaysToCoverUntil({ currentExpiry, coversUntil, now }),
       60,
     );
+  });
+});
+
+describe("admin-granted entitlements", () => {
+  const base = {
+    id: "row",
+    userId: "user",
+    steamId: "steam",
+    paymentId: "admin-grant:1",
+    now: new Date("2026-08-20T10:00:00.000Z"),
+  };
+
+  it("grants a single server and keys to that server id", () => {
+    const record = buildGrantedEntitlementRecord({
+      ...base,
+      entitlementKey: "retake-2-mumbai",
+      durationDays: 30,
+      currentExpiry: null,
+    });
+
+    assert.equal(record.accessType, "INDIVIDUAL_SERVER");
+    assert.equal(record.serverId, "retake-2-mumbai");
+    assert.deepEqual(record.serverIds, ["retake-2-mumbai"]);
+    assert.equal(entitlementKeyFromRecord(record), "retake-2-mumbai");
+    assert.equal(record.endDate.toISOString(), "2026-09-19T10:00:00.000Z");
+    assert.equal(
+      hasActiveVipEntitlementForServer({
+        history: [record],
+        serverId: "retake-2-mumbai",
+        now: base.now,
+      }),
+      true,
+    );
+  });
+
+  it("grants all servers as the All Retakes bundle", () => {
+    const record = buildGrantedEntitlementRecord({
+      ...base,
+      entitlementKey: ALL_RETAKES_ENTITLEMENT_KEY,
+      durationDays: 365,
+      currentExpiry: null,
+    });
+
+    assert.equal(record.accessType, "ALL_RETAKES");
+    assert.equal(record.serverId, null);
+    assert.deepEqual(record.serverIds, []);
+    assert.equal(entitlementKeyFromRecord(record), ALL_RETAKES_ENTITLEMENT_KEY);
+    assert.equal(record.plan, "1_year");
+    assert.equal(
+      hasActiveVipEntitlementForServer({
+        history: [record],
+        serverId: "any-server",
+        now: base.now,
+      }),
+      true,
+    );
+  });
+
+  it("stacks onto remaining time on the same server", () => {
+    const record = buildGrantedEntitlementRecord({
+      ...base,
+      entitlementKey: "retake-1-mumbai",
+      durationDays: 30,
+      currentExpiry: new Date("2026-09-19T10:00:00.000Z"),
+    });
+
+    assert.equal(record.startDate.toISOString(), "2026-09-19T10:00:00.000Z");
+    assert.equal(record.endDate.toISOString(), "2026-10-19T10:00:00.000Z");
+  });
+
+  it("starts from now when the previous term already lapsed", () => {
+    const record = buildGrantedEntitlementRecord({
+      ...base,
+      entitlementKey: "retake-1-mumbai",
+      durationDays: 30,
+      currentExpiry: new Date("2026-07-01T10:00:00.000Z"),
+    });
+
+    assert.equal(record.startDate.toISOString(), base.now.toISOString());
+    assert.equal(record.endDate.toISOString(), "2026-09-19T10:00:00.000Z");
+  });
+
+  it("keeps per-server grants independent of each other", () => {
+    const first = buildGrantedEntitlementRecord({
+      ...base,
+      id: "a",
+      entitlementKey: "retake-1-mumbai",
+      durationDays: 30,
+      currentExpiry: null,
+    });
+    const second = buildGrantedEntitlementRecord({
+      ...base,
+      id: "b",
+      entitlementKey: "retake-2-mumbai",
+      durationDays: 90,
+      currentExpiry: null,
+    });
+
+    const firstExpiry = computeEntitlementExpiry([first]);
+    const secondExpiry = computeEntitlementExpiry([second]);
+    assert.ok(firstExpiry);
+    assert.ok(secondExpiry);
+    assert.equal(firstExpiry.toISOString(), "2026-09-19T10:00:00.000Z");
+    assert.equal(secondExpiry.toISOString(), "2026-11-18T10:00:00.000Z");
+    assert.equal(
+      furthestEntitlementExpiry([first, second])?.toISOString(),
+      "2026-11-18T10:00:00.000Z",
+    );
+    assert.equal(
+      hasActiveVipEntitlementForServer({
+        history: [first, second],
+        serverId: "retake-3-mumbai",
+        now: base.now,
+      }),
+      false,
+    );
+  });
+
+  it("collapses All servers so it is never stacked with individual ids", () => {
+    const normalized = normalizeAdminEntitlementKeys(
+      ["retake-1-mumbai", ALL_RETAKES_ENTITLEMENT_KEY, "retake-1-mumbai"],
+      ["retake-1-mumbai", "retake-2-mumbai"],
+    );
+    assert.deepEqual(normalized.keys, [ALL_RETAKES_ENTITLEMENT_KEY]);
+    assert.deepEqual(normalized.unknown, []);
+  });
+
+  it("rejects unknown server ids", () => {
+    const normalized = normalizeAdminEntitlementKeys(
+      ["retake-9-nowhere"],
+      ["retake-1-mumbai"],
+    );
+    assert.deepEqual(normalized.unknown, ["retake-9-nowhere"]);
   });
 });

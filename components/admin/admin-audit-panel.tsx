@@ -28,7 +28,12 @@ function auditDetailLabel(entry: AuditLogDoc): string {
       const code =
         stringField(entry.newValue, "roleCode") ??
         stringField(entry.oldValue, "roleCode");
-      return code ?? "—";
+      if (!code) return "—";
+      const keys = entry.newValue?.entitlementKeys;
+      if (Array.isArray(keys) && keys.length > 0) {
+        return `${code} · ${keys.join(", ")}`;
+      }
+      return code;
     }
     case "REVOKE_VIP_ACCESS": {
       const scope = stringField(entry.oldValue, "scope");
