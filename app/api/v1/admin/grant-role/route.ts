@@ -3,7 +3,9 @@ import { z } from "zod";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 import { isRoleCode, isRoleSource } from "@/lib/permissions/constants";
 import { grantRole } from "@/lib/permissions/service";
+import { normalizeAdminEntitlementKeys } from "@/lib/payments/entitlements-logic";
 import { isMongoConfigured } from "@/lib/mongo";
+import { getGameServers } from "@/lib/servers/registry";
 import { ROLE_CODES, ROLE_SOURCES } from "@/types/permissions";
 
 const bodySchema = z.object({
@@ -12,6 +14,7 @@ const bodySchema = z.object({
   roleCode: z.string(),
   source: z.string().default("MANUAL"),
   expiresAt: z.union([z.string().datetime(), z.null()]).optional(),
+  entitlementKeys: z.array(z.string().min(1)).max(50).optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -35,8 +38,14 @@ export async function POST(request: Request): Promise<Response> {
       .fieldErrors as Record<string, string[]>);
   }
 
-  const { targetUserId, targetSteamId, roleCode, source, expiresAt } =
-    parsed.data;
+  const {
+    targetUserId,
+    targetSteamId,
+    roleCode,
+    source,
+    expiresAt,
+    entitlementKeys,
+  } = parsed.data;
 
   if (!targetUserId && !targetSteamId) {
     return jsonError("targetUserId or targetSteamId is required.", 400);
@@ -48,6 +57,28 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!isRoleSource(source) || !(ROLE_SOURCES as readonly string[]).includes(source)) {
     return jsonError("Invalid source.", 400);
+  }
+
+  let vipEntitlementKeys: string[] | undefined;
+  if (roleCode === "VIP") {
+    if (!entitlementKeys || entitlementKeys.length === 0) {
+      return jsonError(
+        "Select at least one server, or All servers.",
+        400,
+      );
+    }
+    const servers = await getGameServers({ includeDisabled: true });
+    const normalized = normalizeAdminEntitlementKeys(
+      entitlementKeys,
+      servers.map((server) => server.id),
+    );
+    if (normalized.unknown.length > 0) {
+      return jsonError(
+        `Unknown server id(s): ${normalized.unknown.join(", ")}.`,
+        400,
+      );
+    }
+    vipEntitlementKeys = normalized.keys;
   }
 
   try {
@@ -63,6 +94,7 @@ export async function POST(request: Request): Promise<Response> {
           : expiresAt === null
             ? null
             : new Date(expiresAt),
+      entitlementKeys: vipEntitlementKeys,
     });
     return jsonOk(resolved);
   } catch (err) {

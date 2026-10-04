@@ -2,13 +2,14 @@ import "server-only";
 
 import {
   buildEntitlementsFromHistory,
+  buildGrantedEntitlementRecord,
   buildSummary,
   COMPLIMENTARY_LIFETIME_DURATION_DAYS,
   COMPLIMENTARY_VIP_SERVER_ID,
   computeEntitlementExpiry,
   durationDaysToCoverUntil,
+  entitlementKeyFromRecord,
   isAllRetakesRecord,
-  pickComplimentaryVipPlan,
   serverIdsFromRecord,
   type VipMembershipServer,
 } from "@/lib/payments/entitlements-logic";
@@ -18,7 +19,6 @@ import {
 } from "@/lib/payments/collections";
 import { durationDaysToMs } from "@/lib/payments/expiry";
 import { getVipAccessStatus } from "@/lib/payments/service";
-import type { VipHistoryDoc } from "@/types/payments";
 import type { VipMembershipView } from "@/types/vip";
 
 function isDuplicateKeyError(err: unknown): boolean {
@@ -43,14 +43,21 @@ export async function ensureComplimentaryVipEntitlement(input: {
   steamId: string;
   expiresAt: Date | null;
   paymentId: string;
+  /** Individual server id. Prefer `entitlementKey` when granting All Retakes. */
   serverId?: string;
+  /** Server id or `all_retakes`. Defaults to the complimentary Mumbai server. */
+  entitlementKey?: string;
   now?: Date;
 }): Promise<"inserted" | "skipped"> {
   await ensurePaymentIndexes();
 
   const now = input.now ?? new Date();
-  const serverId = (input.serverId ?? COMPLIMENTARY_VIP_SERVER_ID).trim();
-  if (!serverId || !input.paymentId.trim()) return "skipped";
+  const key = (
+    input.entitlementKey ??
+    input.serverId ??
+    COMPLIMENTARY_VIP_SERVER_ID
+  ).trim();
+  if (!key || !input.paymentId.trim()) return "skipped";
 
   let coversUntil: Date;
   if (!input.expiresAt) {
@@ -66,7 +73,7 @@ export async function ensureComplimentaryVipEntitlement(input: {
   const col = await vipHistoryCollection();
   const history = await col.find({ userId: input.userId }).toArray();
   const currentExpiry = computeEntitlementExpiry(
-    history.filter((record) => serverIdsFromRecord(record).includes(serverId)),
+    history.filter((record) => entitlementKeyFromRecord(record) === key),
   );
   const durationDays = durationDaysToCoverUntil({
     currentExpiry,
@@ -75,23 +82,16 @@ export async function ensureComplimentaryVipEntitlement(input: {
   });
   if (!durationDays) return "skipped";
 
-  const doc: VipHistoryDoc = {
-    _id: crypto.randomUUID(),
+  const doc = buildGrantedEntitlementRecord({
+    id: crypto.randomUUID(),
     userId: input.userId,
     steamId: input.steamId,
-    bundleId: serverId,
-    bundleKind: "server",
-    accessType: "INDIVIDUAL_SERVER",
-    serverId,
-    serverIds: [serverId],
-    plan: pickComplimentaryVipPlan(durationDays),
-    amount: 0,
+    entitlementKey: key,
     durationDays,
-    startDate: now,
-    endDate: coversUntil,
     paymentId: input.paymentId,
-    createdAt: now,
-  };
+    currentExpiry,
+    now,
+  });
 
   try {
     await col.insertOne(doc);
@@ -104,8 +104,10 @@ export async function ensureComplimentaryVipEntitlement(input: {
 
 export type { VipMembershipServer };
 export {
+  ALL_RETAKES_ENTITLEMENT_KEY,
   buildEntitlementsFromHistory,
   COMPLIMENTARY_VIP_SERVER_ID,
+  normalizeAdminEntitlementKeys,
   computeEntitlementExpiry,
   entitlementKeyFromPurchase,
   entitlementKeyFromRecord,

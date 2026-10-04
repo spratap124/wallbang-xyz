@@ -3,6 +3,7 @@ import { getUserVipMembership } from "@/lib/payments/entitlements";
 import {
   entitlementKeyFromRecord,
   computeEntitlementExpiry,
+  hasActiveVipEntitlementForServer,
   isAllRetakesRecord,
   serverIdsFromRecord,
 } from "@/lib/payments/entitlements-logic";
@@ -84,6 +85,7 @@ export async function GET(request: Request): Promise<Response> {
     entry.expiresAt = expiry?.toISOString() ?? null;
   }
 
+  const now = new Date();
   const entitlements = [...byKey.entries()]
     .map(([key, entry]) => ({
       key,
@@ -91,7 +93,20 @@ export async function GET(request: Request): Promise<Response> {
       purchaseCount: entry.purchaseCount,
       expiresAt: entry.expiresAt,
     }))
+    .filter((row) => {
+      if (!row.expiresAt) return true;
+      return new Date(row.expiresAt).getTime() > now.getTime();
+    })
     .sort((a, b) => a.label.localeCompare(b.label));
+  const serverOptions = eligibleServers.map((server) => ({
+    id: server.id,
+    label: server.shortName || server.name,
+    hasAccess: hasActiveVipEntitlementForServer({
+      history,
+      serverId: server.id,
+      now,
+    }),
+  }));
 
   return jsonOk({
     userId: user._id,
@@ -99,5 +114,6 @@ export async function GET(request: Request): Promise<Response> {
     personaName: user.personaName,
     membership,
     entitlements,
+    servers: serverOptions,
   });
 }
