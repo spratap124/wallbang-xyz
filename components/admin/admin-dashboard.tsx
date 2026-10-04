@@ -138,7 +138,25 @@ const EXPIRY_PRESETS = [
   { value: "180", label: "6 months", days: 180 },
   { value: "365", label: "1 year", days: 365 },
   { value: "lifetime", label: "Lifetime", days: null },
+  { value: "custom", label: "Custom date", days: null },
 ] as const;
+
+function todayInputValue(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/** End of the chosen local day, or null when empty / not in the future. */
+function customExpiryDate(value: string): Date | null {
+  if (!value) return null;
+  const date = new Date(`${value}T23:59:59`);
+  if (Number.isNaN(date.getTime()) || date.getTime() <= Date.now()) {
+    return null;
+  }
+  return date;
+}
 
 type ExpiryPreset = (typeof EXPIRY_PRESETS)[number]["value"];
 
@@ -160,6 +178,9 @@ export function AdminDashboard() {
   const [roleCode, setRoleCode] = useState<RoleCode>("VIP");
   const [source, setSource] = useState<RoleSource>("MANUAL");
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("30");
+  const [customExpiry, setCustomExpiry] = useState("");
+  const customExpiryInvalid =
+    expiryPreset === "custom" && !customExpiryDate(customExpiry);
   const [badgeType, setBadgeType] = useState<BadgeType>("VIP");
   const [vipEntitlements, setVipEntitlements] = useState<
     VipEntitlementAdminRow[]
@@ -231,6 +252,9 @@ export function AdminDashboard() {
   }
 
   function resolveExpiresAt(): string | null {
+    if (expiryPreset === "custom") {
+      return customExpiryDate(customExpiry)?.toISOString() ?? null;
+    }
     const days = EXPIRY_PRESETS.find((p) => p.value === expiryPreset)?.days;
     if (!days) return null;
     return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
@@ -239,6 +263,7 @@ export function AdminDashboard() {
   function grant() {
     if (!selected) return;
     if (roleCode === "VIP" && roleGrantKeys.length === 0) return;
+    if (customExpiryInvalid) return;
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -692,6 +717,23 @@ export function AdminDashboard() {
                       ))}
                     </select>
                   </div>
+                  {expiryPreset === "custom" ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="customExpiry">Expires on</Label>
+                      <Input
+                        id="customExpiry"
+                        type="date"
+                        min={todayInputValue()}
+                        value={customExpiry}
+                        onChange={(e) => setCustomExpiry(e.target.value)}
+                      />
+                      {customExpiry && customExpiryInvalid ? (
+                        <p className="text-xs text-destructive">
+                          Pick today or a future date.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
                 {roleCode === "VIP" ? (
                   <div className="space-y-2">
@@ -714,6 +756,7 @@ export function AdminDashboard() {
                   onClick={grant}
                   disabled={
                     pending ||
+                    customExpiryInvalid ||
                     (roleCode === "VIP" && roleGrantKeys.length === 0)
                   }
                 >
