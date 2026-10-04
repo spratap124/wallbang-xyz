@@ -48,9 +48,9 @@ export function LiveServers({
           </div>
         )}
 
-        <ul className="grid max-w-full gap-4 overflow-x-hidden">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {servers.map((server) => (
-            <ServerRow key={server.id} server={server} />
+            <ServerCard key={server.id} server={server} />
           ))}
         </ul>
       </Container>
@@ -76,82 +76,74 @@ function LiveIndicator({
   );
 }
 
-function ServerRow({ server }: { server: ServerSummary }) {
+function ServerCard({ server }: { server: ServerSummary }) {
   const steamConnect = `steam://connect/${server.ip}`;
   const mapName = server.map ?? "";
   const players = server.players ?? 0;
   const maxPlayers = server.maxPlayers;
+  const mapLabel = prettyMapName(mapName);
 
   return (
-    <li className="flex w-full max-w-full flex-col gap-5 overflow-hidden rounded-xl border border-border bg-card/50 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex min-w-0 flex-1 items-start gap-4">
-        <div className="relative hidden aspect-video w-28 shrink-0 overflow-hidden rounded-lg border border-border sm:block">
-          <Image
-            src={getMapImage(mapName)}
-            alt={prettyMapName(mapName)}
-            fill
-            sizes="112px"
-            className="object-cover"
-          />
-          <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1 text-[0.7rem] font-medium text-white">
-            {prettyMapName(mapName)}
-          </span>
+    <li className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card/50">
+      <div className="relative aspect-video overflow-hidden border-b border-border">
+        <Image
+          src={getMapImage(mapName)}
+          alt={mapLabel}
+          fill
+          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/20" />
+        <div className="absolute top-2 right-2">
+          <StatusBadge online={server.online} />
         </div>
-
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
-            <h3 className="min-w-0 flex-1 overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap sm:text-lg">
-              {server.name}
-            </h3>
-            <StatusBadge online={server.online} />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {server.mode} · {server.region}
-          </p>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-            <span className="inline-flex items-center gap-2">
-              <span className="font-medium">Map</span>
-              <span className="text-muted-foreground sm:hidden">
-                {prettyMapName(mapName)}
-              </span>
-            </span>
-
-            <span className="inline-flex items-center gap-2">
-              <span className="font-medium tabular-nums">
-                {players}
-                <span className="text-muted-foreground">
-                  {" "}
-                  / {maxPlayers ?? "—"}
-                </span>
-              </span>
-            </span>
-
-            {/* Ping column — renders only once a client-side probe URL exists. */}
-            {server.pingUrl ? <PingCell url={server.pingUrl} /> : null}
-          </div>
-
-          <div className="mt-3 flex min-w-0 items-center gap-1.5">
-            <a
-              href={steamConnect}
-              className="min-w-0 flex-1 overflow-hidden font-mono text-sm text-ellipsis whitespace-nowrap text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              connect {server.ip}
-            </a>
-            <CopyIpButton address={server.ip} className="shrink-0" />
-          </div>
-        </div>
+        <p className="absolute bottom-2 left-3 text-sm font-medium text-white">
+          {mapLabel}
+        </p>
       </div>
 
-      <a
-        href={steamConnect}
-        className={cn(
-          buttonVariants({ size: "lg" }),
-          "w-full shrink-0 justify-center sm:w-auto",
-        )}
-      >
-        Connect in CS2
-      </a>
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="line-clamp-2 text-sm font-semibold">
+          {server.name}
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {server.mode} · {server.region}
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+          <span className="inline-flex items-center gap-2">
+            <span className="font-medium">Players</span>
+            <span className="tabular-nums">
+              {players}
+              <span className="text-muted-foreground">
+                {" "}
+                / {maxPlayers ?? "—"}
+              </span>
+            </span>
+          </span>
+          {server.pingUrl ? <PingCell url={server.pingUrl} /> : null}
+        </div>
+
+        <div className="mt-3 flex min-w-0 items-center gap-1.5">
+          <a
+            href={steamConnect}
+            className="min-w-0 flex-1 overflow-hidden font-mono text-xs text-ellipsis whitespace-nowrap text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            connect {server.ip}
+          </a>
+          <CopyIpButton address={server.ip} className="shrink-0" />
+        </div>
+
+        <a
+          href={steamConnect}
+          className={cn(
+            buttonVariants({ size: "sm" }),
+            "mt-3 w-full justify-center",
+          )}
+        >
+          Connect in CS2
+        </a>
+      </div>
     </li>
   );
 }
