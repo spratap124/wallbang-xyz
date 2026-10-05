@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 
+import {
+  nextEntitlementKeys,
+  VipServerPicker,
+  type VipServerOption,
+} from "@/components/admin/vip-server-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,8 +94,20 @@ export function SessionRoleSheet({
   const [source, setSource] = useState<RoleSource>("MANUAL");
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("never");
   const [customExpiry, setCustomExpiry] = useState("");
+  const [vipServers, setVipServers] = useState<VipServerOption[]>([]);
+  const [grantKeys, setGrantKeys] = useState<string[]>([]);
 
   const steamId = target?.steamId ?? null;
+
+  function loadVipServers(id: string) {
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/v1/admin/vip-membership?steamId=${encodeURIComponent(id)}`,
+      );
+      const payload = await readJson<{ servers: VipServerOption[] }>(res);
+      setVipServers(payload.ok ? payload.data.servers : []);
+    });
+  }
 
   useEffect(() => {
     if (!steamId) {
@@ -102,6 +119,8 @@ export function SessionRoleSheet({
       setSource("MANUAL");
       setExpiryPreset("never");
       setCustomExpiry("");
+      setVipServers([]);
+      setGrantKeys([]);
       return;
     }
 
@@ -109,6 +128,9 @@ export function SessionRoleSheet({
     setMessage(null);
     setResolved(null);
     setLoaded(false);
+    setVipServers([]);
+    setGrantKeys([]);
+    loadVipServers(steamId);
 
     let cancelled = false;
     startTransition(async () => {
@@ -156,6 +178,7 @@ export function SessionRoleSheet({
 
   function grant() {
     if (!target) return;
+    if (roleCode === "VIP" && grantKeys.length === 0) return;
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -167,6 +190,7 @@ export function SessionRoleSheet({
           roleCode,
           source,
           expiresAt: resolveExpiresAt(),
+          ...(roleCode === "VIP" ? { entitlementKeys: grantKeys } : {}),
         }),
       });
       const payload = await readJson<ResolvedPermissions>(res);
@@ -175,6 +199,10 @@ export function SessionRoleSheet({
         return;
       }
       applyResolved(payload.data, `Granted ${ROLE_LABELS[roleCode]}.`);
+      if (roleCode === "VIP") {
+        setGrantKeys([]);
+        loadVipServers(target.steamId);
+      }
     });
   }
 
@@ -369,10 +397,32 @@ export function SessionRoleSheet({
                   </div>
                 ) : null}
               </div>
+              {roleCode === "VIP" ? (
+                <div className="space-y-2">
+                  <div>
+                    <Label>Servers</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      VIP is scoped per server. Pick one or more, or All
+                      servers for the bundle.
+                    </p>
+                  </div>
+                  <VipServerPicker
+                    servers={vipServers}
+                    selectedKeys={grantKeys}
+                    onToggle={(key) =>
+                      setGrantKeys((keys) => nextEntitlementKeys(keys, key))
+                    }
+                  />
+                </div>
+              ) : null}
               <Button
                 type="button"
                 onClick={grant}
-                disabled={pending || (expiryPreset === "custom" && !customExpiry)}
+                disabled={
+                  pending ||
+                  (expiryPreset === "custom" && !customExpiry) ||
+                  (roleCode === "VIP" && grantKeys.length === 0)
+                }
               >
                 {unregistered ? "Create account and grant" : "Grant"}
               </Button>
