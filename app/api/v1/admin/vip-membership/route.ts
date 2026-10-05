@@ -34,7 +34,7 @@ export async function GET(request: Request): Promise<Response> {
       ? await findUserBySteamId(targetSteamId)
       : null;
 
-  if (!user) {
+  if (!user && !targetSteamId) {
     return jsonError("User not found.", 404);
   }
 
@@ -44,6 +44,23 @@ export async function GET(request: Request): Promise<Response> {
     shortName: server.shortName || server.name,
     name: server.name,
   }));
+
+  // Unregistered Steam players still need the fleet list so a first VIP grant
+  // (which creates their account) can be scoped to servers.
+  if (!user) {
+    return jsonOk({
+      userId: null,
+      steamId: targetSteamId,
+      personaName: null,
+      membership: null,
+      entitlements: [],
+      servers: eligibleServers.map((server) => ({
+        id: server.id,
+        label: server.shortName || server.name,
+        hasAccess: false,
+      })),
+    });
+  }
 
   const membership = await getUserVipMembership({
     userId: user._id,
