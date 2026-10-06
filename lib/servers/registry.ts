@@ -9,6 +9,7 @@ import type {
   GameServerAdminView,
   GameServerDoc,
   RegisteredServer,
+  ServerPowerState,
   UpdateGameServerInput,
 } from "@/types/servers";
 
@@ -98,7 +99,17 @@ function docToRegistered(doc: GameServerDoc): RegisteredServer {
     status: doc.status,
     featured: doc.featured,
     enabled: doc.enabled,
+    powerState: doc.powerState ?? "running",
     vipPricingByPlan: doc.vipPricingByPlan ?? undefined,
+  };
+}
+
+function docToAdminView(doc: GameServerDoc): GameServerAdminView {
+  return {
+    ...doc,
+    powerState: doc.powerState ?? "running",
+    createdAt: doc.createdAt.toISOString(),
+    updatedAt: doc.updatedAt.toISOString(),
   };
 }
 
@@ -107,6 +118,7 @@ function seedAsRegistered(): RegisteredServer[] {
     ...s,
     featured: Boolean(s.featured),
     enabled: true,
+    powerState: "running",
   }));
 }
 
@@ -229,11 +241,7 @@ export async function listGameServersAdmin(): Promise<GameServerAdminView[]> {
   await ensureGameServersSeeded();
   const col = await collection();
   const docs = await col.find({}).sort({ featured: -1, id: 1 }).toArray();
-  return docs.map((d) => ({
-    ...d,
-    createdAt: d.createdAt.toISOString(),
-    updatedAt: d.updatedAt.toISOString(),
-  }));
+  return docs.map(docToAdminView);
 }
 
 const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -284,6 +292,7 @@ export async function createGameServer(
     status: input.status ?? "live",
     featured,
     enabled: input.enabled ?? true,
+    powerState: input.powerState ?? "running",
     vipPricingByPlan: input.vipPricingByPlan ?? null,
     createdAt: now,
     updatedAt: now,
@@ -291,11 +300,7 @@ export async function createGameServer(
 
   await col.insertOne(doc);
   invalidateGameServersCache();
-  return {
-    ...doc,
-    createdAt: doc.createdAt.toISOString(),
-    updatedAt: doc.updatedAt.toISOString(),
-  };
+  return docToAdminView(doc);
 }
 
 export async function updateGameServer(
@@ -332,6 +337,7 @@ export async function updateGameServer(
   if (input.status !== undefined) $set.status = input.status;
   if (input.featured !== undefined) $set.featured = input.featured;
   if (input.enabled !== undefined) $set.enabled = input.enabled;
+  if (input.powerState !== undefined) $set.powerState = input.powerState;
   if (input.vipPricingByPlan !== undefined) {
     $set.vipPricingByPlan = input.vipPricingByPlan;
   }
@@ -341,11 +347,7 @@ export async function updateGameServer(
 
   const updated = await col.findOne({ id });
   if (!updated) return null;
-  return {
-    ...updated,
-    createdAt: updated.createdAt.toISOString(),
-    updatedAt: updated.updatedAt.toISOString(),
-  };
+  return docToAdminView(updated);
 }
 
 /** Soft-disable: hide from public list, keep for stats/history. */
@@ -426,9 +428,31 @@ export async function renameGameServer(
 
   invalidateGameServersCache();
 
+  return docToAdminView(newDoc);
+}
+
+/**
+ * Power intent read by game hosts. Reads Mongo directly (not the 20s list
+ * cache) so a Stop click is honoured by the very next deploy or timer run.
+ */
+export async function getGameServerPowerState(
+  id: string,
+): Promise<{ id: string; powerState: ServerPowerState; updatedAt: string } | null> {
+  if (!isMongoConfigured()) {
+    const seed = seedServers.find((s) => s.id === id);
+    if (!seed || isProduction()) return null;
+    return { id, powerState: "running", updatedAt: new Date(0).toISOString() };
+  }
+  await ensureIndexes();
+  const col = await collection();
+  const doc = await col.findOne(
+    { id },
+    { projection: { id: 1, powerState: 1, updatedAt: 1 } },
+  );
+  if (!doc) return null;
   return {
-    ...newDoc,
-    createdAt: newDoc.createdAt.toISOString(),
-    updatedAt: newDoc.updatedAt.toISOString(),
+    id: doc.id,
+    powerState: doc.powerState ?? "running",
+    updatedAt: doc.updatedAt.toISOString(),
   };
 }

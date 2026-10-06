@@ -76,7 +76,9 @@ export type AuditAction =
   | "GRANT_BADGE"
   | "CREATE_SERVER"
   | "UPDATE_SERVER"
-  | "DISABLE_SERVER";
+  | "DISABLE_SERVER"
+  | "STOP_SERVER"
+  | "START_SERVER";
 
 export type AuditLogDoc = {
   _id: string;
