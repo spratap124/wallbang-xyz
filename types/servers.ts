@@ -1,6 +1,11 @@
 import type { GameServer } from "@/config/servers";
 
 export type GameServerStatus = GameServer["status"];
+/**
+ * Admin-controlled power intent. `stopped` blocks CI deploys, CS2
+ * auto-update, and scheduled/health restarts from starting the server.
+ */
+export type ServerPowerState = "running" | "stopped";
 export type VipPlanServerPricing = Partial<
   Record<"1_month" | "3_months" | "6_months" | "1_year", number>
 >;
@@ -24,6 +29,8 @@ export type GameServerDoc = {
   status: GameServerStatus;
   featured: boolean;
   enabled: boolean;
+  /** Missing on rows created before power control; treated as `running`. */
+  powerState?: ServerPowerState;
   vipPricingByPlan?: VipPlanServerPricing | null;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +40,7 @@ export type GameServerDoc = {
 export type RegisteredServer = GameServer & {
   enabled: boolean;
   featured: boolean;
+  powerState: ServerPowerState;
 };
 
 export type CreateGameServerInput = {
@@ -52,6 +60,7 @@ export type CreateGameServerInput = {
   status?: GameServerStatus;
   featured?: boolean;
   enabled?: boolean;
+  powerState?: ServerPowerState;
   vipPricingByPlan?: VipPlanServerPricing;
 };
 
@@ -62,8 +71,9 @@ export type UpdateGameServerInput = Partial<
 /** Admin API JSON shape (dates as ISO strings). */
 export type GameServerAdminView = Omit<
   GameServerDoc,
-  "createdAt" | "updatedAt"
+  "createdAt" | "updatedAt" | "powerState"
 > & {
+  powerState: ServerPowerState;
   createdAt: string;
   updatedAt: string;
 };

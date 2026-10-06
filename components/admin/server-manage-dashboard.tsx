@@ -345,6 +345,39 @@ export function ServerManageDashboard({
     });
   }
 
+  function togglePower(server: GameServerAdminView) {
+    const next = server.powerState === "stopped" ? "running" : "stopped";
+    const prompt =
+      next === "stopped"
+        ? `Mark ${server.id} as Stopped? CI deploys, CS2 auto-updates, and scheduled restarts will no longer start it. Stop the running process on the host separately.`
+        : `Mark ${server.id} as Running? The next CI deploy or restart timer will be allowed to start it again.`;
+    if (!window.confirm(prompt)) return;
+
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/v1/admin/servers/${encodeURIComponent(server.id)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ powerState: next }),
+        },
+      );
+      const payload = await readJson<GameServerAdminView>(res);
+      if (!payload.ok) {
+        setError(payload.error);
+        return;
+      }
+      setMessage(
+        next === "stopped"
+          ? `${server.id} marked Stopped.`
+          : `${server.id} marked Running.`,
+      );
+      load();
+    });
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -441,6 +474,16 @@ export function ServerManageDashboard({
                       >
                         {server.enabled ? "Enabled" : "Disabled"}
                       </span>
+                      <span
+                        className={cn(
+                          "rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+                          server.powerState === "stopped"
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-sky-500/20 text-sky-400",
+                        )}
+                      >
+                        {server.powerState === "stopped" ? "Stopped" : "Running"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -481,6 +524,19 @@ export function ServerManageDashboard({
                       onClick={() => toggleEnabled(server)}
                     >
                       {server.enabled ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        server.powerState === "stopped" ? "outline" : "ghost"
+                      }
+                      disabled={pending}
+                      onClick={() => togglePower(server)}
+                    >
+                      {server.powerState === "stopped"
+                        ? "Mark running"
+                        : "Mark stopped"}
                     </Button>
                   </div>
                 </div>

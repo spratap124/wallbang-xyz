@@ -28,6 +28,7 @@ const updateSchema = z.object({
   status: z.enum(["live", "offline", "maintenance"]).optional(),
   featured: z.boolean().optional(),
   enabled: z.boolean().optional(),
+  powerState: z.enum(["running", "stopped"]).optional(),
   vipPricingByPlanInr: z
     .object({
       "1_month": z.number().positive().optional(),
@@ -100,10 +101,15 @@ export async function PATCH(
   });
   if (!updated) return jsonError("Server not found.", 404);
 
+  const powerChanged = updated.powerState !== before.powerState;
   await recordAuditLog({
     adminId: auth.user.id,
     adminSteamId: auth.user.steamId,
-    action: "UPDATE_SERVER",
+    action: powerChanged
+      ? updated.powerState === "stopped"
+        ? "STOP_SERVER"
+        : "START_SERVER"
+      : "UPDATE_SERVER",
     targetUserId: null,
     targetSteamId: null,
     targetPersonaName: null,
