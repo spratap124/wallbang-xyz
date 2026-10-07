@@ -28,6 +28,7 @@ const createSchema = z.object({
   status: z.enum(["live", "offline", "maintenance"]).optional(),
   featured: z.boolean().optional(),
   enabled: z.boolean().optional(),
+  powerState: z.enum(["running", "stopped"]).optional(),
   vipPricingByPlanInr: z
     .object({
       "1_month": z.number().positive().optional(),

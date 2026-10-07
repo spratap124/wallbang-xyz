@@ -206,6 +206,7 @@ export function OverviewDashboard({
               <thead className="border-b border-border text-xs text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Player</th>
+                  <th className="px-4 py-2.5 font-medium">Server</th>
                   <th className="px-4 py-2.5 font-medium">Map</th>
                   <th className="px-4 py-2.5 font-medium">Joined</th>
                   <th className="hidden px-4 py-2.5 font-medium md:table-cell">
@@ -224,7 +225,7 @@ export function OverviewDashboard({
                 {!data || data.recent.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
                       {pending
@@ -274,6 +275,9 @@ export function OverviewDashboard({
                             </a>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {session.serverName || "—"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {session.map ?? "—"}

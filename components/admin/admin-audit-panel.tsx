@@ -59,7 +59,9 @@ function auditDetailLabel(entry: AuditLogDoc): string {
     }
     case "CREATE_SERVER":
     case "UPDATE_SERVER":
-    case "DISABLE_SERVER": {
+    case "DISABLE_SERVER":
+    case "STOP_SERVER":
+    case "START_SERVER": {
       const name =
         entry.targetServerName ??
         stringField(entry.newValue, "name") ??
@@ -76,12 +78,18 @@ function auditDetailLabel(entry: AuditLogDoc): string {
   }
 }
 
+function isServerAuditAction(action: AuditLogDoc["action"]): boolean {
+  return (
+    action === "CREATE_SERVER" ||
+    action === "UPDATE_SERVER" ||
+    action === "DISABLE_SERVER" ||
+    action === "STOP_SERVER" ||
+    action === "START_SERVER"
+  );
+}
+
 function auditTargetLabel(entry: AuditLogDoc): string {
-  if (
-    entry.action === "CREATE_SERVER" ||
-    entry.action === "UPDATE_SERVER" ||
-    entry.action === "DISABLE_SERVER"
-  ) {
+  if (isServerAuditAction(entry.action)) {
     return (
       entry.targetServerName ??
       stringField(entry.newValue, "shortName") ??
@@ -93,11 +101,7 @@ function auditTargetLabel(entry: AuditLogDoc): string {
 }
 
 function auditTargetId(entry: AuditLogDoc): string {
-  if (
-    entry.action === "CREATE_SERVER" ||
-    entry.action === "UPDATE_SERVER" ||
-    entry.action === "DISABLE_SERVER"
-  ) {
+  if (isServerAuditAction(entry.action)) {
     return entry.targetServerId ?? stringField(entry.newValue, "id") ?? "—";
   }
   return entry.targetSteamId ?? "—";

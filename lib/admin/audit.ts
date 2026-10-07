@@ -10,6 +10,7 @@ export function serverAuditSnapshot(
     | "host"
     | "port"
     | "enabled"
+    | "powerState"
     | "featured"
     | "map"
     | "mode"
@@ -22,6 +23,7 @@ export function serverAuditSnapshot(
     host: server.host,
     port: server.port,
     enabled: server.enabled,
+    powerState: server.powerState,
     featured: server.featured,
     map: server.map,
     mode: server.mode,
