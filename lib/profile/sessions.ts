@@ -519,6 +519,7 @@ export async function getFleetConnectionStats(input: {
     recentSessions.map((s) => s.steamId),
   );
   const userBySteam = new Map(users.map((u) => [u.steamId, u]));
+  const serverNameById = new Map(fleet.map((s) => [s.id, s.name]));
 
   const recent: FleetOverviewRecentSession[] = recentSessions.map((s) => {
     const user = userBySteam.get(s.steamId);
@@ -536,7 +537,8 @@ export async function getFleetConnectionStats(input: {
       active,
       concurrentAtJoin: concurrentAtJoin(s, allSessions),
       serverId: s.serverId,
-      serverName: s.serverName,
+      serverName:
+        s.serverName || serverNameById.get(s.serverId) || s.serverId,
       role: user?.role ?? null,
     };
   });
@@ -621,8 +623,12 @@ export async function listAdminSessions(input: {
     overlapPool = await col.find(overlapFilter).limit(2000).toArray();
   }
 
-  const users = await findUsersBySteamIds(sessions.map((s) => s.steamId));
+  const [users, fleet] = await Promise.all([
+    findUsersBySteamIds(sessions.map((s) => s.steamId)),
+    getGameServers({ includeDisabled: true }).catch(() => []),
+  ]);
   const userBySteam = new Map(users.map((u) => [u.steamId, u]));
+  const serverNameById = new Map(fleet.map((s) => [s.id, s.name]));
 
   return sessions.map((s) => {
     const user = userBySteam.get(s.steamId);
@@ -640,7 +646,8 @@ export async function listAdminSessions(input: {
       active,
       concurrentAtJoin: concurrentAtJoin(s, overlapPool),
       serverId: s.serverId,
-      serverName: s.serverName,
+      serverName:
+        s.serverName || serverNameById.get(s.serverId) || s.serverId,
       role: user?.role ?? null,
     };
   });

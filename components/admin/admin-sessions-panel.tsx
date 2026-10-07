@@ -36,7 +36,7 @@ const ROLE_LABELS: Record<RoleCode, string> = {
   OWNER: "Owner",
 };
 
-type ServerOption = { id: string; shortName: string };
+type ServerOption = { id: string; shortName: string; name: string };
 
 type AdminSessionsPanelProps = {
   canManageRoles?: boolean;
@@ -64,12 +64,14 @@ export function AdminSessionsPanel({
   useEffect(() => {
     startTransition(async () => {
       const res = await fetch("/api/v1/admin/servers");
-      const payload = await readJson<
-        Array<{ id: string; shortName: string }>
-      >(res);
+      const payload = await readJson<ServerOption[]>(res);
       if (payload.ok) {
         setServers(
-          payload.data.map((s) => ({ id: s.id, shortName: s.shortName })),
+          payload.data.map((s) => ({
+            id: s.id,
+            shortName: s.shortName,
+            name: s.name,
+          })),
         );
       }
     });
@@ -118,6 +120,9 @@ export function AdminSessionsPanel({
   }
 
   const columns = canManageRoles ? 9 : 8;
+  const serverNameById = new Map(
+    servers.map((s) => [s.id, s.name || s.shortName]),
+  );
 
   return (
     <div className="space-y-6">
@@ -252,8 +257,10 @@ export function AdminSessionsPanel({
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {session.serverName}
+                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                    {session.serverName ||
+                      serverNameById.get(session.serverId) ||
+                      "—"}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {session.map ?? "—"}
