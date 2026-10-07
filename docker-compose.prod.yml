@@ -25,6 +25,7 @@ services:
         NEXT_PUBLIC_DISCORD_URL: ${NEXT_PUBLIC_DISCORD_URL:-https://discord.gg/KY2dRw8Yh4}
         NEXT_PUBLIC_SERVER_HOST_RETAKE_1: ${NEXT_PUBLIC_SERVER_HOST_RETAKE_1:-}
         NEXT_PUBLIC_RETAKE_HOST: ${NEXT_PUBLIC_RETAKE_HOST:-}
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID:-}
     container_name: wallbang-next
     restart: always
     networks:
