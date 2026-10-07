@@ -66,6 +66,8 @@ export async function createPayuVipOrder(input: {
   serverId: string | null;
   email: string;
   phone: string;
+  /** Attribution context from the checkout page (GA4 client id). */
+  gaClientId?: string | null;
 }): Promise<CreatePayuVipOrderResult> {
   await ready();
 
@@ -131,6 +133,7 @@ export async function createPayuVipOrder(input: {
         $set: {
           email: input.email,
           phone: input.phone,
+          gaClientId: input.gaClientId ?? null,
           updatedAt: new Date(),
         },
       },
@@ -194,6 +197,7 @@ export async function createPayuVipOrder(input: {
     razorpayPaymentId: null,
     email: input.email,
     phone: input.phone,
+    gaClientId: input.gaClientId ?? null,
     bundleId,
     bundleKind,
     accessType: quote.accessType,
