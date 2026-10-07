@@ -22,6 +22,10 @@ import {
 } from "@/lib/payments/entitlements-logic";
 import { computeVipExtension } from "@/lib/payments/expiry";
 import {
+  trackPurchaseForPayment,
+  trackRefundForPayment,
+} from "@/lib/payments/analytics";
+import {
   ensureVipCoversUntil,
   getUserPermissions,
   subtractVipExpiry,
@@ -100,6 +104,8 @@ export async function createVipOrder(input: {
   serverId: string | null;
   email: string;
   phone: string;
+  /** Attribution context from the checkout page (GA4 client id). */
+  gaClientId?: string | null;
 }): Promise<CreateVipOrderResult> {
   await ready();
 
@@ -168,6 +174,7 @@ export async function createVipOrder(input: {
         $set: {
           email: input.email,
           phone: input.phone,
+          gaClientId: input.gaClientId ?? null,
           updatedAt: new Date(),
         },
       },
@@ -211,6 +218,7 @@ export async function createVipOrder(input: {
     razorpayPaymentId: null,
     email: input.email,
     phone: input.phone,
+    gaClientId: input.gaClientId ?? null,
     bundleId,
     bundleKind,
     accessType: quote.accessType,
@@ -310,6 +318,8 @@ export async function fulfillCapturedPayment(input: {
       return null;
     }
     const status = await getVipAccessStatus(existing.userId);
+    // Duplicate webhook re-delivery: retry a purchase event that failed to send.
+    await trackPurchaseForPayment(existing);
     return {
       alreadyFulfilled: true,
       paymentId: existing._id,
@@ -448,6 +458,8 @@ export async function fulfillCapturedPayment(input: {
     console.error("[payments] invoice generation failed", claimed._id, err);
   }
 
+  await trackPurchaseForPayment(claimed);
+
   return {
     alreadyFulfilled: false,
     paymentId: claimed._id,
@@ -514,6 +526,8 @@ export async function markPaymentRefunded(input: {
     razorpayPaymentId: payment.razorpayPaymentId,
     durationDays: payment.durationDays,
   });
+
+  await trackRefundForPayment(payment);
 }
 
 export async function markPaymentDisputed(input: {
