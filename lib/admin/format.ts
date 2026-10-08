@@ -53,9 +53,7 @@ export function formatDate(value: string | Date | null | undefined): string {
 export function formatDay(value: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return value;
-  const d = new Date(
-    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
-  );
+  const d = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString(IST_LOCALE, {
     month: "short",
@@ -66,8 +64,24 @@ export function formatDay(value: string): string {
 
 export function mapThumbPath(map: string | null | undefined): string | null {
   if (!map) return null;
-  const base = map.replace(/^workshop\//, "").split("/").pop() ?? map;
+  const base =
+    map
+      .replace(/^workshop\//, "")
+      .split("/")
+      .pop() ?? map;
   const slug = base.toLowerCase().replace(/[^a-z0-9_]/g, "");
   if (!slug.startsWith("de_")) return null;
   return `/maps/${slug}.png`;
+}
+
+/**
+ * CS2 presence heartbeats store the plugin's raw server name, e.g.
+ * "★ [WallBang] Retake #1 |Iskins !knife !gloves". Admin tables show only the
+ * display label (everything before the first "|"); the raw value stays in the
+ * title tooltip.
+ */
+export function shortServerLabel(raw?: string | null): string {
+  if (!raw) return "";
+  const head = raw.split("|")[0]?.trim() ?? "";
+  return head || raw.trim();
 }
