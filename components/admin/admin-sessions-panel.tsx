@@ -8,14 +8,11 @@ import {
   SessionRoleSheet,
   type SessionRoleTarget,
 } from "@/components/admin/session-role-sheet";
-import { formatDateTime, formatDuration } from "@/lib/admin/format";
+import { formatDateTime, formatDuration, shortServerLabel } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { cn } from "@/lib/utils";
 import type { RoleCode } from "@/types/permissions";
-import type {
-  FleetOverviewRecentSession,
-  ServerStatsRange,
-} from "@/types/profile";
+import type { FleetOverviewRecentSession, ServerStatsRange } from "@/types/profile";
 
 const RANGES: { value: ServerStatsRange; label: string }[] = [
   { value: "1d", label: "1D" },
@@ -42,9 +39,7 @@ type AdminSessionsPanelProps = {
   canManageRoles?: boolean;
 };
 
-export function AdminSessionsPanel({
-  canManageRoles = false,
-}: AdminSessionsPanelProps) {
+export function AdminSessionsPanel({ canManageRoles = false }: AdminSessionsPanelProps) {
   const searchParams = useSearchParams();
   const initialServerId = searchParams.get("serverId")?.trim() ?? "";
 
@@ -120,9 +115,7 @@ export function AdminSessionsPanel({
   }
 
   const columns = canManageRoles ? 9 : 8;
-  const serverNameById = new Map(
-    servers.map((s) => [s.id, s.name || s.shortName]),
-  );
+  const serverNameById = new Map(servers.map((s) => [s.id, s.name || s.shortName]));
 
   return (
     <div className="space-y-6">
@@ -131,7 +124,7 @@ export function AdminSessionsPanel({
           <select
             value={serverId}
             onChange={(e) => setServerId(e.target.value)}
-            className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="border-border bg-background focus-visible:ring-ring/50 h-8 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
           >
             <option value="">All servers</option>
             {servers.map((s) => (
@@ -140,7 +133,7 @@ export function AdminSessionsPanel({
               </option>
             ))}
           </select>
-          <label className="flex items-center gap-2 rounded-lg border border-border px-2.5 text-sm">
+          <label className="border-border flex items-center gap-2 rounded-lg border px-2.5 text-sm">
             <input
               type="checkbox"
               checked={activeOnly}
@@ -175,41 +168,41 @@ export function AdminSessionsPanel({
       </div>
 
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="border-border overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[56rem] text-left text-sm">
-          <thead className="border-b border-border bg-secondary/40 text-xs text-muted-foreground">
+          <thead className="border-border bg-secondary/40 text-muted-foreground border-b text-xs">
             <tr>
-              <th className="px-4 py-3 font-medium">Player</th>
-              <th className="px-4 py-3 font-medium">Server</th>
-              <th className="px-4 py-3 font-medium">Map</th>
-              <th className="px-4 py-3 font-medium">Joined</th>
-              <th className="px-4 py-3 font-medium">Left</th>
-              <th className="px-4 py-3 font-medium">Duration</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Player</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Server</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Map</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Joined</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Left</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Duration</th>
               <th
-                className="px-4 py-3 font-medium"
+                className="px-3 py-2.5 font-medium sm:px-4 sm:py-3"
                 title="How many players were online on this server when they joined"
               >
                 At join
               </th>
-              <th className="px-4 py-3 font-medium">Role</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Role</th>
               {canManageRoles ? (
-                <th className="px-4 py-3 font-medium">
+                <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">
                   <span className="sr-only">Actions</span>
                 </th>
               ) : null}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/60">
+          <tbody className="divide-border/60 divide-y">
             {sessions.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns}
-                  className="px-4 py-10 text-center text-muted-foreground"
+                  className="text-muted-foreground px-4 py-10 text-center"
                 >
                   {pending ? "Loading…" : "No sessions for this filter."}
                 </td>
@@ -217,7 +210,7 @@ export function AdminSessionsPanel({
             ) : (
               sessions.map((session) => (
                 <tr key={session.id} className="hover:bg-secondary/20">
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5 sm:px-4 sm:py-3">
                     <div className="flex items-center gap-3">
                       {session.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -229,10 +222,8 @@ export function AdminSessionsPanel({
                           className="size-7 rounded-full"
                         />
                       ) : (
-                        <span className="flex size-7 items-center justify-center rounded-full bg-secondary text-xs">
-                          {(session.personaName ?? "?")
-                            .slice(0, 1)
-                            .toUpperCase()}
+                        <span className="bg-secondary flex size-7 items-center justify-center rounded-full text-xs">
+                          {(session.personaName ?? "?").slice(0, 1).toUpperCase()}
                         </span>
                       )}
                       <div className="min-w-0">
@@ -250,25 +241,28 @@ export function AdminSessionsPanel({
                           href={`https://steamcommunity.com/profiles/${session.steamId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block truncate font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                          className="text-muted-foreground hover:text-foreground block truncate font-mono text-[11px] transition-colors hover:underline"
                         >
                           {session.steamId}
                         </a>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                    {session.serverName ||
-                      serverNameById.get(session.serverId) ||
-                      "—"}
+                  <td
+                    className="text-muted-foreground px-3 py-2.5 sm:px-4 sm:py-3"
+                    title={session.serverName ?? undefined}
+                  >
+                    {shortServerLabel(
+                      session.serverName || serverNameById.get(session.serverId),
+                    ) || "—"}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="text-muted-foreground px-3 py-2.5 sm:px-4 sm:py-3">
                     {session.map ?? "—"}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                  <td className="text-muted-foreground px-3 py-2.5 whitespace-nowrap sm:px-4 sm:py-3">
                     {formatDateTime(session.joinedAt)}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                  <td className="text-muted-foreground px-3 py-2.5 whitespace-nowrap sm:px-4 sm:py-3">
                     {session.active
                       ? "—"
                       : session.leftAt
@@ -284,14 +278,12 @@ export function AdminSessionsPanel({
                     {formatDuration(session.durationMs)}
                   </td>
                   <td
-                    className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground"
+                    className="text-muted-foreground px-3 py-2.5 whitespace-nowrap tabular-nums sm:px-4 sm:py-3"
                     title="How many players were online on this server when they joined"
                   >
-                    {session.concurrentAtJoin != null
-                      ? session.concurrentAtJoin
-                      : "—"}
+                    {session.concurrentAtJoin != null ? session.concurrentAtJoin : "—"}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-3 py-2.5 whitespace-nowrap sm:px-4 sm:py-3">
                     {session.role ? (
                       <span className="text-foreground">{ROLE_LABELS[session.role]}</span>
                     ) : (
@@ -299,7 +291,7 @@ export function AdminSessionsPanel({
                     )}
                   </td>
                   {canManageRoles ? (
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-2.5 text-right sm:px-4 sm:py-3">
                       <Button
                         type="button"
                         size="sm"
