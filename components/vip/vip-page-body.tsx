@@ -488,17 +488,22 @@ export function VipPageBody({
       {hideBuy || !showPricing ? null : (
         <section className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-semibold">Need to extend your access?</p>
+            <p className="font-semibold">
+              {membership?.hasActiveVip
+                ? "Need to extend your access?"
+                : "Ready to get VIP access?"}
+            </p>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-              Choose a server and duration on the Pricing page, then pay once
-              for that term. No auto-renewal.
+              {membership?.hasActiveVip
+                ? "Choose a server and duration on the Pricing page, then pay once for that term. No auto-renewal."
+                : "Choose a server and duration on the Pricing page, then pay once for your VIP access. No auto-renewal."}
             </p>
           </div>
           <Link
             href="/pricing"
             className={cn(buttonVariants(), "h-11 w-full px-5 sm:w-auto")}
           >
-            View Pricing
+            {membership?.hasActiveVip ? "Extend VIP" : "Get VIP"}
             <ArrowRight />
           </Link>
         </section>
