@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { trackGaEvent } from "@/lib/analytics/gtag";
+import { vipGaItem } from "@/lib/analytics/items";
 import { getMapImage } from "@/config/servers";
 import {
   hostedAccessDaysLabel,
@@ -49,6 +51,9 @@ function serverMonthlyHint(server: VipShopServer): string {
     ? ` — from ${formatInrFromPaise(oneMonth.amountPaise)}/mo`
     : "";
 }
+
+const ITEM_LIST_ID = "vip_shop";
+const ITEM_LIST_NAME = "VIP shop";
 
 type VipShopProps = {
   catalog: VipShopCatalog;
@@ -161,6 +166,72 @@ export function VipShop({
     }
   }, [accessType, allRetakesEnabled]);
 
+  // GA4 ecommerce: offer views + explicit selections (no PII in payloads).
+  const itemForPlan = (input: {
+    plan: VipPlanId;
+    amountPaise: number;
+    accessTypeOverride?: VipAccessType;
+  }) =>
+    vipGaItem({
+      accessType: input.accessTypeOverride ?? accessType,
+      bundleKind: accessType === "ALL_RETAKES" ? "all" : "server",
+      plan: input.plan,
+      amountPaise: input.amountPaise,
+      serverId: selectedServerId,
+      serverShortName: selectedServer?.shortName ?? null,
+    });
+
+  useEffect(() => {
+    if (shopQuote.durations.length === 0) return;
+    if (!(purchasesEnabled || checkoutEnabled)) return;
+    trackGaEvent("view_item_list", {
+      item_list_id: ITEM_LIST_ID,
+      item_list_name: ITEM_LIST_NAME,
+      currency: "INR",
+      items: shopQuote.durations.map((option) =>
+        itemForPlan({
+          plan: option.id as VipPlanId,
+          amountPaise: option.amountPaise,
+        }),
+      ),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- quote-dependent; fire when the visible list changes
+  }, [accessType, shopQuote.durations, purchasesEnabled, checkoutEnabled]);
+
+  function lookupPlanPrice(
+    options: Array<{ id: string; amountPaise: number }>,
+  ): number | null {
+    return (
+      options.find((option) => option.id === durationId)?.amountPaise ??
+      options[0]?.amountPaise ??
+      null
+    );
+  }
+
+  function trackSelectItem(input: {
+    plan: VipPlanId;
+    accessTypeOverride?: VipAccessType;
+    serverShortName?: string | null;
+    amountOverride?: number | null;
+  }): void {
+    if (!(purchasesEnabled || checkoutEnabled)) return;
+    trackGaEvent("select_item", {
+      item_list_id: ITEM_LIST_ID,
+      item_list_name: ITEM_LIST_NAME,
+      currency: "INR",
+      items: [
+        vipGaItem({
+          accessType: input.accessTypeOverride ?? accessType,
+          bundleKind: accessType === "ALL_RETAKES" ? "all" : "server",
+          plan: input.plan,
+          amountPaise: input.amountOverride ?? 0,
+          serverId: selectedServerId,
+          serverShortName: input.serverShortName ?? selectedServer?.shortName ?? null,
+        }),
+      ],
+    });
+  }
+
   useEffect(() => {
     if (!renewTarget) return;
     if (
@@ -262,7 +333,10 @@ export function VipShop({
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setAccessType("INDIVIDUAL_SERVER")}
+                onClick={() => {
+                  setAccessType("INDIVIDUAL_SERVER");
+                  trackSelectItem({ plan: durationId });
+                }}
                 className={cn(
                   "rounded-xl border p-4 text-left transition-colors",
                   accessType === "INDIVIDUAL_SERVER"
@@ -277,7 +351,14 @@ export function VipShop({
               </button>
               <button
                 type="button"
-                onClick={() => setAccessType("ALL_RETAKES")}
+                onClick={() => {
+                  setAccessType("ALL_RETAKES");
+                  trackSelectItem({
+                    plan: durationId,
+                    accessTypeOverride: "ALL_RETAKES",
+                    amountOverride: lookupPlanPrice(catalog.allRetakes.durations),
+                  });
+                }}
                 className={cn(
                   "relative rounded-xl border p-4 text-left transition-colors",
                   accessType === "ALL_RETAKES"
@@ -322,9 +403,22 @@ export function VipShop({
                   <DropdownMenuContent className="max-h-64">
                     <DropdownMenuRadioGroup
                       value={selectedServerId ?? ""}
-                      onValueChange={(value) =>
-                        setSelectedServerId(value || null)
-                      }
+                      onValueChange={(value) => {
+                        setSelectedServerId(value || null);
+                        trackSelectItem({
+                          plan: durationId,
+                          serverShortName: value
+                            ? (catalog.servers.find((s) => s.id === value)
+                                ?.shortName ?? null)
+                            : null,
+                          amountOverride: value
+                            ? lookupPlanPrice(
+                                catalog.servers.find((s) => s.id === value)
+                                  ?.durationOptions ?? [],
+                              )
+                            : null,
+                        });
+                      }}
                     >
                       {catalog.servers.map((server) => {
                         const oneMonth = server.durationOptions.find(
@@ -387,7 +481,10 @@ export function VipShop({
             <DurationCards
               durations={shopQuote.durations}
               durationId={durationId}
-              onSelect={setDurationId}
+              onSelect={(id) => {
+                setDurationId(id);
+                trackSelectItem({ plan: id });
+              }}
               disabled={!checkoutReady}
             />
           </div>
@@ -509,6 +606,8 @@ export function VipShop({
                   !purchasesEnabled
                 }
                 collectContact={checkoutEnabled}
+                amountPaise={duration?.amountPaise ?? null}
+                serverShortName={selectedServer?.shortName ?? null}
                 label={
                   checkoutEnabled
                     ? loggedIn

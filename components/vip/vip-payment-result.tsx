@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
+import { trackGaEvent } from "@/lib/analytics/gtag";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +81,12 @@ export function VipPaymentResult({
   );
   const [pendingTxnid, setPendingTxnid] = useState<string | null>(() => txnid);
   const pollStarted = useRef(false);
+
+  useEffect(() => {
+    if (outcome === "failure") {
+      trackGaEvent("vip_payment_failed");
+    }
+  }, [outcome]);
 
   useEffect(() => {
     const initial = parseOutcome(paid, error);

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
+import { GoogleAnalytics } from "@/components/shared/google-analytics";
+import { GoogleAnalyticsPageTracker } from "@/components/shared/google-analytics-page-tracker";
 import { JsonLd } from "@/components/shared/json-ld";
 import { siteConfig } from "@/config/site";
 import { fontMono, fontSans } from "@/lib/fonts";
@@ -61,6 +63,8 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        <GoogleAnalytics />
+        <GoogleAnalyticsPageTracker />
         <JsonLd id="ld-organization" data={organizationJsonLd()} />
         <JsonLd id="ld-website" data={websiteJsonLd()} />
         {children}
