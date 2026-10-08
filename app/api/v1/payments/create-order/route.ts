@@ -27,6 +27,12 @@ const bodySchema = z
       .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number."),
     amount: z.number().optional(),
     price: z.number().optional(),
+    /** GA4 client id from the browser (best-effort attribution, not PII). */
+    gaClientId: z
+      .string()
+      .trim()
+      .regex(/^[0-9a-z._-]{1,64}$/i, "Invalid analytics client id.")
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (value.serverIds && value.serverIds.length > 0) {
@@ -103,6 +109,7 @@ export async function POST(request: Request): Promise<Response> {
       serverId: parsed.data.serverId ?? null,
       email: parsed.data.email,
       phone: parsed.data.phone,
+      gaClientId: parsed.data.gaClientId ?? null,
     });
     return jsonOk({
       ...order,

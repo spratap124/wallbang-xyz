@@ -40,16 +40,12 @@ function auditDetailLabel(entry: AuditLogDoc): string {
       if (scope === "entitlement") {
         const key = stringField(entry.oldValue, "entitlementKey") ?? "entitlement";
         const history = entry.newValue?.deletedHistoryRows;
-        return typeof history === "number"
-          ? `${key} · ${history} history`
-          : key;
+        return typeof history === "number" ? `${key} · ${history} history` : key;
       }
       const roles = entry.newValue?.deactivatedVipRoles;
       const history = entry.newValue?.deletedHistoryRows;
-      const rolePart =
-        typeof roles === "number" ? `${roles} VIP role(s)` : "all VIP";
-      const historyPart =
-        typeof history === "number" ? `${history} history` : null;
+      const rolePart = typeof roles === "number" ? `${roles} VIP role(s)` : "all VIP";
+      const historyPart = typeof history === "number" ? `${history} history` : null;
       return historyPart ? `${rolePart} · ${historyPart}` : rolePart;
     }
     case "GRANT_BADGE": {
@@ -143,36 +139,33 @@ export function AdminAuditPanel() {
         </Button>
       </div>
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="border-border overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[40rem] text-left text-sm">
-          <thead className="border-b border-border bg-secondary/50 text-xs text-muted-foreground">
+          <thead className="border-border bg-secondary/50 text-muted-foreground border-b text-xs">
             <tr>
               <th className="px-3 py-2 font-medium">Time</th>
               <th className="px-3 py-2 font-medium">Action</th>
               <th className="px-3 py-2 font-medium">Detail</th>
-              <th className="px-3 py-2 font-medium">Admin</th>
+              <th className="hidden px-3 py-2 font-medium sm:table-cell">Admin</th>
               <th className="px-3 py-2 font-medium">Target</th>
-              <th className="px-3 py-2 font-medium">ID</th>
+              <th className="hidden px-3 py-2 font-medium lg:table-cell">ID</th>
             </tr>
           </thead>
           <tbody>
             {audit.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-muted-foreground">
+                <td colSpan={6} className="text-muted-foreground px-3 py-6">
                   {pending ? "Loading…" : "No audit entries yet."}
                 </td>
               </tr>
             ) : (
               audit.map((entry) => (
-                <tr
-                  key={entry._id}
-                  className="border-b border-border/60 last:border-0"
-                >
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
+                <tr key={entry._id} className="border-border/60 border-b last:border-0">
+                  <td className="text-muted-foreground px-3 py-2 text-xs whitespace-nowrap">
                     {formatDate(entry.timestamp)}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">{entry.action}</td>
@@ -182,10 +175,8 @@ export function AdminAuditPanel() {
                   <td className="px-3 py-2 font-mono text-xs">
                     {entry.adminSteamId ?? "SYSTEM"}
                   </td>
-                  <td className="px-3 py-2 text-sm">
-                    {auditTargetLabel(entry)}
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                  <td className="px-3 py-2 text-sm">{auditTargetLabel(entry)}</td>
+                  <td className="text-muted-foreground hidden px-3 py-2 font-mono text-xs lg:table-cell">
                     {auditTargetId(entry)}
                   </td>
                 </tr>

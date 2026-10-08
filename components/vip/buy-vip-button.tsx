@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApiResult } from "@/lib/api/waitlist";
+import { readGaClientId, trackGaEvent, vipEcommerceParams } from "@/lib/analytics/gtag";
+import { isVipPlanId } from "@/lib/payments/quote";
+import { vipGaItem } from "@/lib/analytics/items";
 import type { PaymentProvider } from "@/types/payments";
 import type { VipAccessType } from "@/types/vip";
 
@@ -111,6 +114,9 @@ type BuyVipButtonProps = {
   paymentProvider: PaymentProvider;
   disabled?: boolean;
   collectContact?: boolean;
+  /** Selected price (paise) for ecommerce events; omit when unknown. */
+  amountPaise?: number | null;
+  serverShortName?: string | null;
 };
 
 export function BuyVipButton({
@@ -122,6 +128,8 @@ export function BuyVipButton({
   paymentProvider,
   disabled = false,
   collectContact = true,
+  amountPaise = null,
+  serverShortName = null,
 }: BuyVipButtonProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -162,6 +170,7 @@ export function BuyVipButton({
 
     setBusy(true);
     try {
+      trackBeginCheckout();
       if (paymentProvider === "payu") {
         await openPayuCheckout(trimmedEmail, trimmedPhone);
         return;
@@ -171,6 +180,28 @@ export function BuyVipButton({
       setError(err instanceof Error ? err.message : "Unable to start checkout.");
       setBusy(false);
     }
+  }
+
+  /** Consent-free ecommerce start; purchase itself is confirmed server-side. */
+  function trackBeginCheckout(): void {
+    if (!amountPaise || amountPaise <= 0) return;
+    if (!isVipPlanId(planId)) return;
+    trackGaEvent(
+      "begin_checkout",
+      vipEcommerceParams({
+        value: amountPaise / 100,
+        items: [
+          vipGaItem({
+            accessType,
+            bundleKind: accessType === "ALL_RETAKES" ? "all" : "server",
+            plan: planId,
+            amountPaise,
+            serverId,
+            serverShortName,
+          }),
+        ],
+      }),
+    );
   }
 
   async function openPayuCheckout(
@@ -186,6 +217,7 @@ export function BuyVipButton({
         ...(serverId ? { serverId } : {}),
         email: trimmedEmail,
         phone: trimmedPhone,
+        gaClientId: readGaClientId() ?? undefined,
       }),
     });
     const payload = (await response.json()) as ApiResult<CreatePayuOrderData>;
@@ -210,6 +242,7 @@ export function BuyVipButton({
         ...(serverId ? { serverId } : {}),
         email: trimmedEmail,
         phone: trimmedPhone,
+        gaClientId: readGaClientId() ?? undefined,
       }),
     });
     const payload = (await response.json()) as ApiResult<CreateRazorpayOrderData>;
