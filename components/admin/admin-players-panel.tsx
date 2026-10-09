@@ -93,34 +93,31 @@ export function AdminPlayersPanel() {
       </div>
 
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         {pending && !loaded
           ? "Loading players…"
           : `${results.length} player${results.length === 1 ? "" : "s"}`}
       </p>
 
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="border-border overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[36rem] text-left text-sm">
-          <thead className="border-b border-border bg-secondary/40 text-xs text-muted-foreground">
+          <thead className="border-border bg-secondary/40 text-muted-foreground border-b text-xs">
             <tr>
-              <th className="px-4 py-3 font-medium">Player</th>
-              <th className="px-4 py-3 font-medium">Role</th>
-              <th className="px-4 py-3 font-medium">Last login</th>
-              <th className="px-4 py-3 font-medium" />
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Player</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Role</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Last login</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/60">
+          <tbody className="divide-border/60 divide-y">
             {results.length === 0 ? (
               <tr>
-                <td
-                  colSpan={4}
-                  className="px-4 py-10 text-center text-muted-foreground"
-                >
+                <td colSpan={4} className="text-muted-foreground px-4 py-10 text-center">
                   {pending
                     ? "Loading…"
                     : query.trim()
@@ -131,7 +128,7 @@ export function AdminPlayersPanel() {
             ) : (
               results.map((user) => (
                 <tr key={user.id} className="hover:bg-secondary/20">
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5 sm:px-4 sm:py-3">
                     <div className="flex items-center gap-3">
                       {user.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -143,14 +140,12 @@ export function AdminPlayersPanel() {
                           className="size-8 rounded-full"
                         />
                       ) : (
-                        <span className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs">
+                        <span className="bg-secondary flex size-8 items-center justify-center rounded-full text-xs">
                           {user.personaName.slice(0, 1).toUpperCase()}
                         </span>
                       )}
                       <div className="min-w-0">
-                        <p className="truncate font-medium">
-                          {user.personaName}
-                        </p>
+                        <p className="truncate font-medium">{user.personaName}</p>
                         <a
                           href={
                             user.profileUrl ||
@@ -158,20 +153,20 @@ export function AdminPlayersPanel() {
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block truncate font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                          className="text-muted-foreground hover:text-foreground block truncate font-mono text-xs transition-colors hover:underline"
                         >
                           {user.steamId}
                         </a>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{user.role}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {user.lastLoginAt
-                      ? formatDateTime(user.lastLoginAt)
-                      : "—"}
+                  <td className="text-muted-foreground px-3 py-2.5 sm:px-4 sm:py-3">
+                    {user.role}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="text-muted-foreground px-3 py-2.5 text-xs sm:px-4 sm:py-3">
+                    {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right sm:px-4 sm:py-3">
                     <Button
                       size="sm"
                       variant="outline"

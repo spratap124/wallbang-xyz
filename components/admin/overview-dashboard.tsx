@@ -10,6 +10,7 @@ import {
   formatDay,
   formatDuration,
   mapThumbPath,
+  shortServerLabel,
 } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { cn } from "@/lib/utils";
@@ -55,8 +56,7 @@ export function OverviewDashboard({
         fetch(`/api/v1/admin/overview?range=${nextRange}`),
         fetch("/api/v1/admin/health"),
       ]);
-      const overviewPayload =
-        await readJson<FleetOverviewResponse>(overviewRes);
+      const overviewPayload = await readJson<FleetOverviewResponse>(overviewRes);
       const healthPayload = await readJson<AdminHealthResponse>(healthRes);
 
       if (!overviewPayload.ok) {
@@ -89,15 +89,14 @@ export function OverviewDashboard({
   const rangeAvg =
     daysWithAvg.length > 0
       ? Math.round(
-          (daysWithAvg.reduce((sum, n) => sum + n, 0) / daysWithAvg.length) *
-            10,
+          (daysWithAvg.reduce((sum, n) => sum + n, 0) / daysWithAvg.length) * 10,
         ) / 10
       : 0;
   const maxDaily = Math.max(1, peakAcrossDays, ...dailyAvgs);
   const liveDenom =
     summary && summary.liveMaxPlayers > 0
       ? summary.liveMaxPlayers
-      : summary?.currentlyOnline ?? 0;
+      : (summary?.currentlyOnline ?? 0);
   const liveNum =
     summary && summary.livePlayers > 0
       ? summary.livePlayers
@@ -109,11 +108,11 @@ export function OverviewDashboard({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Welcome back, {user.personaName}
-            <span className="ml-2 align-middle text-xs font-semibold tracking-wide text-primary uppercase">
+            <span className="text-primary ml-2 align-middle text-xs font-semibold tracking-wide uppercase">
               {displayRole}
             </span>
           </h1>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-1 max-w-xl text-sm">
             Here&apos;s what&apos;s happening with your CS2 retake servers.
           </p>
         </div>
@@ -134,7 +133,7 @@ export function OverviewDashboard({
       </div>
 
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
@@ -189,54 +188,50 @@ export function OverviewDashboard({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
-        <section className="rounded-xl border border-border bg-card/40">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border flex items-center justify-between border-b px-4 py-3">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
               Recent connections
             </h2>
             <Link
               href="/admin/sessions"
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground text-xs transition-colors"
             >
               View all
             </Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-left text-sm">
-              <thead className="border-b border-border text-xs text-muted-foreground">
+            <table className="w-full min-w-[30rem] text-left text-sm">
+              <thead className="border-border text-muted-foreground border-b text-xs">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">Player</th>
-                  <th className="px-4 py-2.5 font-medium">Server</th>
-                  <th className="px-4 py-2.5 font-medium">Map</th>
-                  <th className="px-4 py-2.5 font-medium">Joined</th>
-                  <th className="hidden px-4 py-2.5 font-medium md:table-cell">
-                    Left
-                  </th>
-                  <th className="px-4 py-2.5 font-medium">Duration</th>
+                  <th className="px-3 py-2.5 font-medium sm:px-4">Player</th>
+                  <th className="hidden px-4 py-2.5 font-medium sm:table-cell">Server</th>
+                  <th className="px-3 py-2.5 font-medium sm:px-4">Map</th>
+                  <th className="px-3 py-2.5 font-medium sm:px-4">Joined</th>
+                  <th className="hidden px-4 py-2.5 font-medium md:table-cell">Left</th>
+                  <th className="px-3 py-2.5 font-medium sm:px-4">Duration</th>
                   <th
-                    className="px-4 py-2.5 font-medium"
+                    className="px-3 py-2.5 font-medium sm:px-4"
                     title="How many players were online on this server when they joined"
                   >
                     At join
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/60">
+              <tbody className="divide-border/60 divide-y">
                 {!data || data.recent.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-4 py-10 text-center text-muted-foreground"
+                      className="text-muted-foreground px-3 py-10 text-center sm:px-4"
                     >
-                      {pending
-                        ? "Loading…"
-                        : "No connections yet for this range."}
+                      {pending ? "Loading…" : "No connections yet for this range."}
                     </td>
                   </tr>
                 ) : (
                   data.recent.map((session) => (
                     <tr key={session.id} className="hover:bg-secondary/20">
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 sm:px-4">
                         <div className="flex items-center gap-3">
                           {session.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -248,10 +243,8 @@ export function OverviewDashboard({
                               className="size-7 rounded-full"
                             />
                           ) : (
-                            <span className="flex size-7 items-center justify-center rounded-full bg-secondary text-xs">
-                              {(session.personaName ?? "?")
-                                .slice(0, 1)
-                                .toUpperCase()}
+                            <span className="bg-secondary flex size-7 items-center justify-center rounded-full text-xs">
+                              {(session.personaName ?? "?").slice(0, 1).toUpperCase()}
                             </span>
                           )}
                           <div className="min-w-0">
@@ -269,34 +262,39 @@ export function OverviewDashboard({
                               href={`https://steamcommunity.com/profiles/${session.steamId}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="block truncate font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                              className="text-muted-foreground hover:text-foreground block truncate font-mono text-[11px] transition-colors hover:underline"
                             >
                               {session.steamId}
                             </a>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                        {session.serverName || "—"}
+                      <td
+                        className="hidden max-w-[16rem] px-3 py-3 sm:table-cell sm:px-4"
+                        title={session.serverName ?? undefined}
+                      >
+                        <span className="text-muted-foreground block truncate">
+                          {shortServerLabel(session.serverName) || "—"}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="text-muted-foreground px-3 py-3 sm:px-4">
                         {session.map ?? "—"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                      <td className="text-muted-foreground px-3 py-3 whitespace-nowrap sm:px-4">
                         {formatDateTime(session.joinedAt)}
                       </td>
-                      <td className="hidden px-4 py-3 whitespace-nowrap text-muted-foreground md:table-cell">
+                      <td className="text-muted-foreground hidden px-4 py-3 whitespace-nowrap md:table-cell">
                         {session.active
                           ? "—"
                           : session.leftAt
                             ? formatDateTime(session.leftAt)
                             : formatDateTime(session.lastSeenAt)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-emerald-400">
+                      <td className="px-3 py-3 whitespace-nowrap text-emerald-400 sm:px-4">
                         {formatDuration(session.durationMs)}
                       </td>
                       <td
-                        className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground"
+                        className="text-muted-foreground px-3 py-3 whitespace-nowrap tabular-nums sm:px-4"
                         title="How many players were online on this server when they joined"
                       >
                         {session.concurrentAtJoin != null
@@ -311,20 +309,19 @@ export function OverviewDashboard({
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card/40">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border flex items-center justify-between border-b px-4 py-3">
             <div>
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                 Peak &amp; avg players by day
               </h2>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Max and average concurrent at join per IST day — matches Sessions
-                At join
+              <p className="text-muted-foreground mt-0.5 text-[10px]">
+                Max and average concurrent at join per IST day — matches Sessions At join
               </p>
             </div>
             <Link
               href="/admin/sessions"
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground text-xs transition-colors"
             >
               View all sessions
             </Link>
@@ -332,10 +329,10 @@ export function OverviewDashboard({
           <div className="p-4">
             {data && data.daily.length > 0 ? (
               <div className="space-y-3 pt-2">
-                <div className="flex items-end justify-between gap-2 text-[10px] text-muted-foreground">
+                <div className="text-muted-foreground flex items-end justify-between gap-2 text-[10px]">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex items-center gap-1.5">
-                      <span className="size-2 rounded-[2px] bg-primary/85" />
+                      <span className="bg-primary/85 size-2 rounded-[2px]" />
                       Peak
                     </span>
                     <span className="inline-flex items-center gap-1.5">
@@ -375,14 +372,14 @@ export function OverviewDashboard({
                         className="group relative flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
                       >
                         <span
-                          className="pointer-events-none absolute -top-1 z-10 -translate-y-full rounded-md border border-border bg-popover px-2 py-1 text-[10px] font-medium whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+                          className="border-border bg-popover text-popover-foreground pointer-events-none absolute -top-1 z-10 -translate-y-full rounded-md border px-2 py-1 text-[10px] font-medium whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100"
                           role="tooltip"
                         >
                           {dayLabel}
                           {peakSafe > 0 ? ` · peak ${peakSafe}` : ""}
                           {avgSafe > 0 ? ` · avg ${avgSafe}` : ""}
                         </span>
-                        <span className="h-3 text-[10px] font-medium tabular-nums text-foreground/80">
+                        <span className="text-foreground/80 h-3 text-[10px] font-medium tabular-nums">
                           {hasActivity
                             ? avgSafe > 0 && avgSafe !== peakSafe
                               ? `${peakSafe}/${avgSafe}`
@@ -420,9 +417,9 @@ export function OverviewDashboard({
                         </div>
                         <span
                           className={cn(
-                            "h-3 w-full truncate text-center text-[9px] text-muted-foreground sm:text-[10px]",
+                            "text-muted-foreground h-3 w-full truncate text-center text-[9px] sm:text-[10px]",
                             !showLabel &&
-                              "invisible group-hover:visible group-hover:text-foreground",
+                              "group-hover:text-foreground invisible group-hover:visible",
                           )}
                         >
                           {dayLabel}
@@ -433,7 +430,7 @@ export function OverviewDashboard({
                 </div>
               </div>
             ) : (
-              <p className="py-16 text-center text-sm text-muted-foreground">
+              <p className="text-muted-foreground py-16 text-center text-sm">
                 {pending ? "Loading…" : "No daily data yet."}
               </p>
             )}
@@ -442,14 +439,14 @@ export function OverviewDashboard({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
-        <section className="rounded-xl border border-border bg-card/40">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border flex items-center justify-between border-b px-4 py-3">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
               Your servers
             </h2>
             <Link
               href="/admin/servers"
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground text-xs transition-colors"
             >
               View all servers
             </Link>
@@ -460,9 +457,9 @@ export function OverviewDashboard({
               return (
                 <div
                   key={server.id}
-                  className="overflow-hidden rounded-lg border border-border bg-background/40"
+                  className="border-border bg-background/40 overflow-hidden rounded-lg border"
                 >
-                  <div className="relative h-24 bg-secondary">
+                  <div className="bg-secondary relative h-24">
                     {thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -471,12 +468,10 @@ export function OverviewDashboard({
                         className="size-full object-cover opacity-80"
                       />
                     ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
+                    <div className="from-background/90 absolute inset-0 bg-gradient-to-t to-transparent" />
                     <div className="absolute right-2 bottom-2 left-2 flex items-end justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">
-                          {server.name}
-                        </p>
+                        <p className="truncate text-sm font-semibold">{server.name}</p>
                       </div>
                       <span
                         className={cn(
@@ -490,21 +485,19 @@ export function OverviewDashboard({
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-1.5 p-3 text-xs text-muted-foreground">
+                  <div className="text-muted-foreground space-y-1.5 p-3 text-xs">
                     <p className="font-mono">
                       {server.host}:{server.port}
                     </p>
                     <p>
-                      {server.players ?? 0}/{server.maxPlayers ?? "—"} players
-                      · {server.map} · {server.mode}
+                      {server.players ?? 0}/{server.maxPlayers ?? "—"} players ·{" "}
+                      {server.map} · {server.mode}
                     </p>
                     <div className="pt-1">
                       <Button
                         size="sm"
                         variant="outline"
-                        render={
-                          <Link href={`/admin/servers?edit=${server.id}`} />
-                        }
+                        render={<Link href={`/admin/servers?edit=${server.id}`} />}
                       >
                         Edit
                       </Button>
@@ -516,9 +509,9 @@ export function OverviewDashboard({
             {canManageServers ? (
               <Link
                 href="/admin/servers?new=1"
-                className="flex min-h-[10rem] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-background/20 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                className="border-border bg-background/20 text-muted-foreground hover:border-primary/50 hover:text-foreground flex min-h-[10rem] flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-sm transition-colors"
               >
-                <span className="flex size-10 items-center justify-center rounded-full border border-border">
+                <span className="border-border flex size-10 items-center justify-center rounded-full border">
                   <Plus className="size-4" />
                 </span>
                 Add Server
@@ -527,18 +520,15 @@ export function OverviewDashboard({
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card/40">
-          <div className="border-b border-border px-4 py-3">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border border-b px-4 py-3">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
               Server status
             </h2>
           </div>
-          <ul className="divide-y divide-border/60">
+          <ul className="divide-border/60 divide-y">
             {(health?.checks ?? []).map((check) => (
-              <li
-                key={check.id}
-                className="flex items-start gap-3 px-4 py-3.5"
-              >
+              <li key={check.id} className="flex items-start gap-3 px-4 py-3.5">
                 <span
                   className={cn(
                     "mt-1.5 size-2 shrink-0 rounded-full",
@@ -550,16 +540,14 @@ export function OverviewDashboard({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium">{check.label}</p>
-                    <span className="text-xs text-muted-foreground">
-                      {check.value}
-                    </span>
+                    <span className="text-muted-foreground text-xs">{check.value}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">{check.detail}</p>
+                  <p className="text-muted-foreground text-xs">{check.detail}</p>
                 </div>
               </li>
             ))}
             {!health ? (
-              <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+              <li className="text-muted-foreground px-3 py-8 text-center text-sm sm:px-4">
                 {pending ? "Checking…" : "Health unavailable"}
               </li>
             ) : null}
@@ -593,29 +581,26 @@ function KpiCard({
   }[tone];
 
   return (
-    <div className="rounded-xl border border-border bg-card/40 p-4">
+    <div className="border-border bg-card/40 rounded-xl border p-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
           {label}
         </p>
         <span
-          className={cn(
-            "flex size-8 items-center justify-center rounded-lg",
-            toneClass,
-          )}
+          className={cn("flex size-8 items-center justify-center rounded-lg", toneClass)}
         >
           {icon}
         </span>
       </div>
       <p
         className={cn(
-          "mt-3 text-3xl font-semibold tracking-tight tabular-nums",
+          "mt-3 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl",
           loading && "opacity-50",
         )}
       >
         {value}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+      <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
     </div>
   );
 }

@@ -152,9 +152,9 @@ export function AdminAuditPanel() {
               <th className="px-3 py-2 font-medium">Time</th>
               <th className="px-3 py-2 font-medium">Action</th>
               <th className="px-3 py-2 font-medium">Detail</th>
-              <th className="px-3 py-2 font-medium">Admin</th>
+              <th className="hidden px-3 py-2 font-medium sm:table-cell">Admin</th>
               <th className="px-3 py-2 font-medium">Target</th>
-              <th className="px-3 py-2 font-medium">ID</th>
+              <th className="hidden px-3 py-2 font-medium lg:table-cell">ID</th>
             </tr>
           </thead>
           <tbody>
@@ -178,7 +178,7 @@ export function AdminAuditPanel() {
                     {entry.adminSteamId ?? "SYSTEM"}
                   </td>
                   <td className="px-3 py-2 text-sm">{auditTargetLabel(entry)}</td>
-                  <td className="text-muted-foreground px-3 py-2 font-mono text-xs">
+                  <td className="text-muted-foreground hidden px-3 py-2 font-mono text-xs lg:table-cell">
                     {auditTargetId(entry)}
                   </td>
                 </tr>

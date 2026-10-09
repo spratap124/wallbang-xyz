@@ -41,6 +41,10 @@ export type PaymentDoc = {
   invoiceNumber?: string | null;
   invoiceGeneratedAt?: Date | null;
   payuInvoiceSyncedAt?: Date | null;
+  /** GA4 client id captured at checkout (server-side purchase attribution). */
+  gaClientId?: string | null;
+  purchaseSentAt?: Date | null;
+  refundSentAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

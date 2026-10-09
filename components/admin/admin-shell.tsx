@@ -160,7 +160,7 @@ export function AdminShell({
   function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
     return (
       <nav aria-label="Admin" className="flex flex-1 flex-col gap-1 px-3">
-        <p className="mb-2 px-2 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+        <p className="text-muted-foreground mb-2 px-2 text-[10px] font-semibold tracking-[0.2em] uppercase">
           Admin
         </p>
         {visibleNav.map((item) => {
@@ -196,7 +196,7 @@ export function AdminShell({
 
   function UserChip() {
     return (
-      <div className="flex items-center gap-3 border-t border-sidebar-border px-4 py-4">
+      <div className="border-sidebar-border flex items-center gap-3 border-t px-4 py-4">
         {user.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -207,13 +207,13 @@ export function AdminShell({
             className="size-9 rounded-full"
           />
         ) : (
-          <span className="flex size-9 items-center justify-center rounded-full bg-secondary text-xs">
+          <span className="bg-secondary flex size-9 items-center justify-center rounded-full text-xs">
             {user.personaName.slice(0, 1).toUpperCase()}
           </span>
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{user.personaName}</p>
-          <span className="mt-0.5 inline-flex rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary uppercase">
+          <span className="bg-primary/20 text-primary mt-0.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
             {ROLE_LABELS[displayRole] ?? displayRole}
           </span>
         </div>
@@ -222,9 +222,9 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="bg-background flex min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+      <aside className="border-sidebar-border bg-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r md:flex">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <BrandLogo alt="" className="size-8" />
           <Link href="/admin" className="text-base font-semibold tracking-tight">
@@ -244,7 +244,7 @@ export function AdminShell({
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative flex h-full w-64 flex-col bg-sidebar shadow-xl">
+          <aside className="bg-sidebar relative flex h-full w-64 flex-col overflow-y-auto shadow-xl">
             <div className="flex items-center justify-between px-4 py-4">
               <div className="flex items-center gap-2.5">
                 <BrandLogo alt="" className="size-8" />
@@ -260,14 +260,14 @@ export function AdminShell({
               </Button>
             </div>
             <NavLinks onNavigate={() => setMobileOpen(false)} />
-            <div className="border-t border-sidebar-border px-3 py-3">
-              <p className="mb-2 px-2 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+            <div className="border-sidebar-border border-t px-3 py-3">
+              <p className="text-muted-foreground mb-2 px-2 text-[10px] font-semibold tracking-[0.2em] uppercase">
                 Site
               </p>
               <Link
                 href="/"
                 onClick={() => setMobileOpen(false)}
-                className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground block rounded-lg px-3 py-2 text-sm"
               >
                 Home
               </Link>
@@ -276,7 +276,7 @@ export function AdminShell({
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground block rounded-lg px-3 py-2 text-sm"
                 >
                   {item.title}
                 </Link>
@@ -288,7 +288,7 @@ export function AdminShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-md sm:px-6">
+        <header className="border-border bg-background/90 sticky top-0 z-40 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-md sm:px-6">
           <Button
             type="button"
             variant="ghost"
@@ -302,9 +302,7 @@ export function AdminShell({
 
           <div className="min-w-0 shrink-0">
             <p className="truncate text-sm font-semibold">{meta.title}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {meta.subtitle}
-            </p>
+            <p className="text-muted-foreground truncate text-xs">{meta.subtitle}</p>
           </div>
 
           <nav
@@ -313,7 +311,7 @@ export function AdminShell({
           >
             <Link
               href="/"
-              className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground rounded-md px-2.5 py-1.5 text-sm transition-colors"
             >
               Home
             </Link>
@@ -321,7 +319,7 @@ export function AdminShell({
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground rounded-md px-2.5 py-1.5 text-sm transition-colors"
               >
                 {item.title}
               </Link>
