@@ -5,6 +5,7 @@ import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 import { recordAuditLog } from "@/lib/permissions/service";
 import {
+  deleteGameServer,
   disableGameServer,
   getGameServerById,
   updateGameServer,
@@ -40,12 +41,14 @@ const updateSchema = z.object({
 });
 
 function toPaiseMap(
-  inr: {
-    "1_month"?: number;
-    "3_months"?: number;
-    "6_months"?: number;
-    "1_year"?: number;
-  } | undefined,
+  inr:
+    | {
+        "1_month"?: number;
+        "3_months"?: number;
+        "6_months"?: number;
+        "1_year"?: number;
+      }
+    | undefined,
 ): { "1_month"?: number; "3_months"?: number; "6_months"?: number; "1_year"?: number } {
   if (!inr) return {};
   return {
@@ -55,17 +58,13 @@ function toPaiseMap(
       inr["3_months"] !== undefined ? Math.round(inr["3_months"] * 100) : undefined,
     "6_months":
       inr["6_months"] !== undefined ? Math.round(inr["6_months"] * 100) : undefined,
-    "1_year":
-      inr["1_year"] !== undefined ? Math.round(inr["1_year"] * 100) : undefined,
+    "1_year": inr["1_year"] !== undefined ? Math.round(inr["1_year"] * 100) : undefined,
   };
 }
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function PATCH(
-  request: Request,
-  context: RouteContext,
-): Promise<Response> {
+export async function PATCH(request: Request, context: RouteContext): Promise<Response> {
   if (!isMongoConfigured()) {
     return jsonError("Database is not configured.", 503);
   }
@@ -124,10 +123,7 @@ export async function PATCH(
 }
 
 /** Soft-disable (hide from public list). */
-export async function DELETE(
-  _request: Request,
-  context: RouteContext,
-): Promise<Response> {
+export async function DELETE(request: Request, context: RouteContext): Promise<Response> {
   if (!isMongoConfigured()) {
     return jsonError("Database is not configured.", 503);
   }
@@ -138,8 +134,31 @@ export async function DELETE(
   const { id } = await context.params;
   if (!id) return jsonError("Missing server id.", 400);
 
+  const permanent = new URL(request.url).searchParams.get("permanent") === "1";
+
   const before = await getGameServerById(id, { includeDisabled: true });
   if (!before) return jsonError("Server not found.", 404);
+
+  if (permanent) {
+    const deleted = await deleteGameServer(id);
+    if (!deleted) return jsonError("Server not found.", 404);
+
+    await recordAuditLog({
+      adminId: auth.user.id,
+      adminSteamId: auth.user.steamId,
+      action: "DELETE_SERVER",
+      targetUserId: null,
+      targetSteamId: null,
+      targetPersonaName: null,
+      targetServerId: before.id,
+      targetServerName: before.name,
+      oldValue: serverAuditSnapshot(before),
+      newValue: null,
+      timestamp: new Date(),
+    });
+
+    return jsonOk({ deleted: true, id });
+  }
 
   const updated = await disableGameServer(id);
   if (!updated) return jsonError("Server not found.", 404);

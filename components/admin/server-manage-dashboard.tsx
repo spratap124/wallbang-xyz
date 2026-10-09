@@ -110,9 +110,7 @@ export function ServerManageDashboard({
 } = {}) {
   const [servers, setServers] = useState<GameServerAdminView[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(
-    initialEditId ?? null,
-  );
+  const [editingId, setEditingId] = useState<string | null>(initialEditId ?? null);
   const [formOpen, setFormOpen] = useState(
     () => initialMode === "create" || Boolean(initialEditId),
   );
@@ -345,6 +343,32 @@ export function ServerManageDashboard({
     });
   }
 
+  function deleteServer(server: GameServerAdminView) {
+    if (
+      !window.confirm(
+        `Permanently delete ${server.shortName || server.name}? Session history will be retained, but the server definition cannot be restored.`,
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/v1/admin/servers/${encodeURIComponent(server.id)}?permanent=1`,
+        { method: "DELETE" },
+      );
+      const payload = await readJson<{ deleted: boolean; id: string }>(res);
+      if (!payload.ok) {
+        setError(payload.error);
+        return;
+      }
+      setMessage(`Deleted ${server.id}.`);
+      load();
+    });
+  }
+
   function togglePower(server: GameServerAdminView) {
     const next = server.powerState === "stopped" ? "running" : "stopped";
     const prompt =
@@ -356,14 +380,11 @@ export function ServerManageDashboard({
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const res = await fetch(
-        `/api/v1/admin/servers/${encodeURIComponent(server.id)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ powerState: next }),
-        },
-      );
+      const res = await fetch(`/api/v1/admin/servers/${encodeURIComponent(server.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ powerState: next }),
+      });
       const payload = await readJson<GameServerAdminView>(res);
       if (!payload.ok) {
         setError(payload.error);
@@ -381,10 +402,10 @@ export function ServerManageDashboard({
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Fleet registry is stored in MongoDB. After adding a server, set the CS2
-          plugin <span className="font-mono text-xs">ServerId</span> to the same
-          id and enable WallBang.Presence so heartbeats and stats work.
+        <p className="text-muted-foreground max-w-2xl text-sm">
+          Fleet registry is stored in MongoDB. After adding a server, set the CS2 plugin{" "}
+          <span className="font-mono text-xs">ServerId</span> to the same id and enable
+          WallBang.Presence so heartbeats and stats work.
         </p>
         {!formOpen ? (
           <Button type="button" size="sm" onClick={startCreate}>
@@ -394,13 +415,11 @@ export function ServerManageDashboard({
       </div>
 
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
-      {message ? (
-        <p className="text-sm text-muted-foreground">{message}</p>
-      ) : null}
+      {message ? <p className="text-muted-foreground text-sm">{message}</p> : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
@@ -414,7 +433,7 @@ export function ServerManageDashboard({
           onChange={(e) =>
             setEnabledFilter(e.target.value as "all" | "enabled" | "disabled")
           }
-          className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:w-40"
+          className="border-border bg-background focus-visible:ring-ring/50 flex h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 sm:w-40"
         >
           <option value="all">All status</option>
           <option value="enabled">Enabled</option>
@@ -423,11 +442,11 @@ export function ServerManageDashboard({
       </div>
 
       {servers.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card/40 px-4 py-10 text-center text-sm text-muted-foreground">
+        <div className="border-border bg-card/40 text-muted-foreground rounded-xl border px-4 py-10 text-center text-sm">
           {pending ? "Loading…" : "No servers yet."}
         </div>
       ) : filteredServers.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card/40 px-4 py-10 text-center text-sm text-muted-foreground">
+        <div className="border-border bg-card/40 text-muted-foreground rounded-xl border px-4 py-10 text-center text-sm">
           No servers match this filter.
         </div>
       ) : (
@@ -437,9 +456,9 @@ export function ServerManageDashboard({
             return (
               <div
                 key={server.id}
-                className="overflow-hidden rounded-xl border border-border bg-card/40"
+                className="border-border bg-card/40 overflow-hidden rounded-xl border"
               >
-                <div className="relative h-28 bg-secondary">
+                <div className="bg-secondary relative h-28">
                   {thumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -448,19 +467,19 @@ export function ServerManageDashboard({
                       className="size-full object-cover opacity-80"
                     />
                   ) : null}
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
+                  <div className="from-background/90 absolute inset-0 bg-gradient-to-t to-transparent" />
                   <div className="absolute right-3 bottom-3 left-3 flex items-end justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">
                         {server.shortName || server.name}
                       </p>
-                      <p className="truncate font-mono text-[11px] text-muted-foreground">
+                      <p className="text-muted-foreground truncate font-mono text-[11px]">
                         {server.id}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap justify-end gap-1">
                       {server.featured ? (
-                        <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary uppercase">
+                        <span className="bg-primary/20 text-primary rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
                           Featured
                         </span>
                       ) : null}
@@ -487,13 +506,13 @@ export function ServerManageDashboard({
                     </div>
                   </div>
                 </div>
-                <div className="space-y-2 p-4 text-xs text-muted-foreground">
+                <div className="text-muted-foreground space-y-2 p-4 text-xs">
                   <p className="font-mono">
                     {server.host}:{server.port}
                   </p>
                   <p>
-                    {server.maxPlayersOverride ?? server.maxPlayers} slots ·{" "}
-                    {server.map} · {server.mode}
+                    {server.maxPlayersOverride ?? server.maxPlayers} slots · {server.map}{" "}
+                    · {server.mode}
                   </p>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     <Button
@@ -528,15 +547,21 @@ export function ServerManageDashboard({
                     <Button
                       type="button"
                       size="sm"
-                      variant={
-                        server.powerState === "stopped" ? "outline" : "ghost"
-                      }
+                      variant={server.powerState === "stopped" ? "outline" : "ghost"}
                       disabled={pending}
                       onClick={() => togglePower(server)}
                     >
-                      {server.powerState === "stopped"
-                        ? "Mark running"
-                        : "Mark stopped"}
+                      {server.powerState === "stopped" ? "Mark running" : "Mark stopped"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={pending}
+                      onClick={() => deleteServer(server)}
+                    >
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -547,9 +572,9 @@ export function ServerManageDashboard({
             <button
               type="button"
               onClick={startCreate}
-              className="flex min-h-[12rem] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-background/20 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              className="border-border bg-background/20 text-muted-foreground hover:border-primary/50 hover:text-foreground flex min-h-[12rem] flex-col items-center justify-center gap-3 rounded-xl border border-dashed text-sm transition-colors"
             >
-              <span className="flex size-10 items-center justify-center rounded-full border border-border">
+              <span className="border-border flex size-10 items-center justify-center rounded-full border">
                 <Plus className="size-4" />
               </span>
               Add Server
@@ -559,9 +584,9 @@ export function ServerManageDashboard({
       )}
 
       {formOpen ? (
-        <section className="rounded-lg border border-border bg-card/40 p-5">
+        <section className="border-border bg-card/40 rounded-lg border p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+            <h2 className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
               {editingId ? `Edit ${editingId}` : "Add server"}
             </h2>
             <Button type="button" size="sm" variant="ghost" onClick={closeForm}>

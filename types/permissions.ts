@@ -77,6 +77,7 @@ export type AuditAction =
   | "CREATE_SERVER"
   | "UPDATE_SERVER"
   | "DISABLE_SERVER"
+  | "DELETE_SERVER"
   | "STOP_SERVER"
   | "START_SERVER";
 
