@@ -29,9 +29,8 @@ function seedFallback(includeDisabled: boolean): RegisteredServer[] {
 }
 
 let indexesReady: Promise<void> | null = null;
-let cache:
-  | { at: number; includeDisabled: boolean; servers: RegisteredServer[] }
-  | null = null;
+let cache: { at: number; includeDisabled: boolean; servers: RegisteredServer[] } | null =
+  null;
 
 async function collection(): Promise<Collection<GameServerDoc>> {
   const db = await getDb();
@@ -141,15 +140,11 @@ export async function ensureGameServersSeeded(): Promise<void> {
   invalidateGameServersCache();
 }
 
-async function loadFromDb(
-  includeDisabled: boolean,
-): Promise<RegisteredServer[]> {
+async function loadFromDb(includeDisabled: boolean): Promise<RegisteredServer[]> {
   await ensureIndexes();
   await ensureGameServersSeeded();
   const col = await collection();
-  const filter: Filter<GameServerDoc> = includeDisabled
-    ? {}
-    : { enabled: true };
+  const filter: Filter<GameServerDoc> = includeDisabled ? {} : { enabled: true };
   const docs = await col.find(filter).sort({ featured: -1, id: 1 }).toArray();
   if (docs.length === 0) {
     return seedFallback(includeDisabled);
@@ -230,9 +225,7 @@ export async function getPrimaryRegisteredServer(
 
   if (online.length === 0) return featured;
 
-  online.sort(
-    (a, b) => (b.live?.players ?? 0) - (a.live?.players ?? 0),
-  );
+  online.sort((a, b) => (b.live?.players ?? 0) - (a.live?.players ?? 0));
   return online[0]!.def;
 }
 
@@ -258,9 +251,7 @@ export async function createGameServer(
   const col = await collection();
 
   if (!isValidServerId(input.id)) {
-    throw new Error(
-      "Invalid server id. Use lowercase letters, numbers, and hyphens.",
-    );
+    throw new Error("Invalid server id. Use lowercase letters, numbers, and hyphens.");
   }
 
   const existing = await col.findOne({ id: input.id });
@@ -351,10 +342,18 @@ export async function updateGameServer(
 }
 
 /** Soft-disable: hide from public list, keep for stats/history. */
-export async function disableGameServer(
-  id: string,
-): Promise<GameServerAdminView | null> {
+export async function disableGameServer(id: string): Promise<GameServerAdminView | null> {
   return updateGameServer(id, { enabled: false, featured: false });
+}
+
+/** Permanently remove a server definition; session/history rows are retained. */
+export async function deleteGameServer(id: string): Promise<boolean> {
+  await ensureIndexes();
+  const col = await collection();
+  const result = await col.deleteOne({ id });
+  if (result.deletedCount === 0) return false;
+  invalidateGameServersCache();
+  return true;
 }
 
 async function remapServerIdInCollection(
@@ -380,9 +379,7 @@ export async function renameGameServer(
   toId: string,
 ): Promise<GameServerAdminView | null> {
   if (!isValidServerId(toId)) {
-    throw new Error(
-      "Invalid server id. Use lowercase letters, numbers, and hyphens.",
-    );
+    throw new Error("Invalid server id. Use lowercase letters, numbers, and hyphens.");
   }
   if (fromId === toId) {
     throw new Error("New id must differ from the current id.");

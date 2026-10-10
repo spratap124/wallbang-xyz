@@ -56,6 +56,7 @@ function auditDetailLabel(entry: AuditLogDoc): string {
     case "CREATE_SERVER":
     case "UPDATE_SERVER":
     case "DISABLE_SERVER":
+    case "DELETE_SERVER":
     case "STOP_SERVER":
     case "START_SERVER": {
       const name =
@@ -79,6 +80,7 @@ function isServerAuditAction(action: AuditLogDoc["action"]): boolean {
     action === "CREATE_SERVER" ||
     action === "UPDATE_SERVER" ||
     action === "DISABLE_SERVER" ||
+    action === "DELETE_SERVER" ||
     action === "STOP_SERVER" ||
     action === "START_SERVER"
   );
