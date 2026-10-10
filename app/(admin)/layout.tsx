@@ -31,34 +31,41 @@ export default async function AdminLayout({
   }
 
   const resolved = await getUserPermissions({ userId: user.id });
-  if (!resolved?.permissions.includes("admin_panel")) {
+  const permissions = resolved?.permissions ?? [];
+  const canAccessAdminPanel = permissions.includes("admin_panel");
+  const canAccessModeration = permissions.includes("moderation_access");
+  if (!resolved || (!canAccessAdminPanel && !canAccessModeration)) {
     redirect("/");
   }
 
-  let healthLabel = "All Systems Operational";
+  let healthLabel = canAccessAdminPanel ? "All Systems Operational" : "Moderation access";
   let healthOk = true;
-  try {
-    const health = await getAdminHealth();
-    healthOk = health.overall === "operational";
-    if (health.overall === "operational") {
-      healthLabel = "All Systems Operational";
-    } else if (health.overall === "degraded") {
-      healthLabel = "Degraded Performance";
-    } else {
-      healthLabel = "Systems Down";
+  if (canAccessAdminPanel) {
+    try {
+      const health = await getAdminHealth();
+      healthOk = health.overall === "operational";
+      if (health.overall === "operational") {
+        healthLabel = "All Systems Operational";
+      } else if (health.overall === "degraded") {
+        healthLabel = "Degraded Performance";
+      } else {
+        healthLabel = "Systems Down";
+      }
+    } catch {
+      healthOk = false;
+      healthLabel = "Status Unavailable";
     }
-  } catch {
-    healthOk = false;
-    healthLabel = "Status Unavailable";
   }
 
-  const flags = await getRuntimeFeatureFlags().catch(() => featureFlags);
+  const flags = canAccessAdminPanel
+    ? await getRuntimeFeatureFlags().catch(() => featureFlags)
+    : featureFlags;
 
   return (
     <AdminShell
       user={user}
       displayRole={resolved.displayRole}
-      permissions={resolved.permissions}
+      permissions={permissions}
       healthLabel={healthLabel}
       healthOk={healthOk}
       steamAuthEnabled={steamAuthEnabled}

@@ -48,12 +48,14 @@ const NAV: NavItem[] = [
     label: "Overview",
     icon: LayoutDashboard,
     match: (path) => path === "/admin",
+    permission: "admin_panel",
   },
   {
     href: "/admin/servers",
     label: "Servers",
     icon: Server,
     match: (path) => path.startsWith("/admin/servers"),
+    permission: "admin_panel",
   },
   {
     href: "/admin/players",
@@ -67,6 +69,7 @@ const NAV: NavItem[] = [
     label: "Sessions",
     icon: Activity,
     match: (path) => path.startsWith("/admin/sessions"),
+    permission: "admin_panel",
   },
   {
     href: "/admin/permissions",
@@ -76,20 +79,32 @@ const NAV: NavItem[] = [
     permission: "manage_users",
   },
   {
+    href: "/admin/moderation",
+    label: "Moderation",
+    icon: Shield,
+    match: (path) => path.startsWith("/admin/moderation"),
+    permission: "moderation_access",
+  },
+  {
     href: "/admin/audit",
     label: "Audit Log",
     icon: ClipboardList,
     match: (path) => path.startsWith("/admin/audit"),
+    permission: "admin_panel",
   },
   {
     href: "/admin/settings",
     label: "Settings",
     icon: Settings,
     match: (path) => path.startsWith("/admin/settings"),
+    permission: "admin_panel",
   },
 ];
 
 function pageMeta(pathname: string): { title: string; subtitle: string } {
+  if (pathname.startsWith("/admin/moderation")) {
+    return { title: "Moderation", subtitle: "Global bans and player reports" };
+  }
   if (pathname.startsWith("/admin/servers")) {
     return { title: "Servers", subtitle: "Fleet registry" };
   }
@@ -146,6 +161,7 @@ export function AdminShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const meta = pageMeta(pathname);
   const canManageServers = permissions.includes("manage_servers");
+  const canAccessAdminPanel = permissions.includes("admin_panel");
   const siteNav = filterNavItems(mainNav, {
     vipPage: showVip,
     loadoutPage: showLoadout,
@@ -227,7 +243,10 @@ export function AdminShell({
       <aside className="border-sidebar-border bg-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r md:flex">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <BrandLogo alt="" className="size-8" />
-          <Link href="/admin" className="text-base font-semibold tracking-tight">
+          <Link
+            href={canAccessAdminPanel ? "/admin" : "/admin/moderation"}
+            className="text-base font-semibold tracking-tight"
+          >
             WallBang
           </Link>
         </div>
