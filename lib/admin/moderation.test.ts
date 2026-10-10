@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  BAN_DURATION_PRESETS,
+  BAN_TYPE_PRESETS,
+  CUSTOM_REASON_VALUE,
+  MAX_BAN_DURATION_HOURS,
+  buildBanReason,
+  customDateToDurationHours,
   filterReports,
   getBanDisplayStatus,
   getModerationCapabilities,
@@ -130,5 +136,44 @@ describe("moderation dashboard helpers", () => {
     assert.equal(admin.permanentBans, true);
     assert.equal(admin.revokeBans, true);
     assert.equal(admin.adminAudit, true);
+  });
+
+  it("keeps every ban type and duration preset usable", () => {
+    assert.ok(BAN_TYPE_PRESETS.length >= 4);
+    for (const preset of BAN_TYPE_PRESETS) {
+      assert.ok(preset.id.length > 0, "ban type needs an id");
+      assert.ok(preset.label.length > 0, "ban type needs a label");
+      assert.ok(preset.reasons.length > 0, `ban type ${preset.id} needs reasons`);
+    }
+    const ids = BAN_TYPE_PRESETS.map((preset) => preset.id);
+    assert.equal(new Set(ids).size, ids.length);
+
+    for (const preset of BAN_DURATION_PRESETS) {
+      if (preset.hours === null) continue;
+      assert.ok(preset.hours >= 1 && preset.hours <= MAX_BAN_DURATION_HOURS);
+    }
+  });
+
+  it("builds a readable reason from the ban type and the selected reason", () => {
+    assert.equal(
+      buildBanReason("Cheating", "Wallhack / vision assistance"),
+      "Cheating — Wallhack / vision assistance",
+    );
+    assert.equal(
+      buildBanReason("Cheating", CUSTOM_REASON_VALUE, "  manual review  "),
+      "Cheating — manual review",
+    );
+    assert.equal(buildBanReason("Other", "Other", "").slice(0, 5), "Other");
+    assert.equal(buildBanReason("Cheating", "x".repeat(600)).length, 500);
+  });
+
+  it("converts a custom end date to whole hours within the API limit", () => {
+    const now = Date.parse("2026-10-10T12:00:00.000Z");
+    assert.equal(customDateToDurationHours("", now), null);
+    assert.equal(customDateToDurationHours("not-a-date", now), null);
+    assert.equal(customDateToDurationHours("2026-10-10T11:00:00.000Z", now), null);
+    assert.equal(customDateToDurationHours("2026-10-10T13:00:00.000Z", now), 1);
+    assert.equal(customDateToDurationHours("2026-10-11T12:00:00.000Z", now), 24);
+    assert.equal(customDateToDurationHours("2027-10-12T12:00:00.000Z", now), null);
   });
 });

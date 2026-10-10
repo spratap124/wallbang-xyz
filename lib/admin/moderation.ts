@@ -65,6 +65,128 @@ export function filterReports(
   });
 }
 
+/** API hard limit: durationHours is an int between 1 and 365 days. */
+export const MAX_BAN_DURATION_HOURS = 24 * 365;
+
+/** Sentinel for the "type a custom reason" option in the reason dropdown. */
+export const CUSTOM_REASON_VALUE = "__custom__";
+
+export type BanTypePreset = {
+  id: string;
+  label: string;
+  /** Prewritten reasons shown in the reason dropdown for this ban type. */
+  reasons: string[];
+};
+
+/**
+ * Ban types and their predefined reasons. The moderation API stores a single
+ * `reason` string, so the dashboard sends "<type> — <reason>" and the ban type
+ * stays readable in history without an API/schema change.
+ */
+export const BAN_TYPE_PRESETS: BanTypePreset[] = [
+  {
+    id: "cheating",
+    label: "Cheating",
+    reasons: [
+      "Aim assistance / aimbot",
+      "Wallhack / vision assistance",
+      "Triggerbot",
+      "Spinbot / anti-aim abuse",
+      "Third-party software or injector",
+      "Other cheating",
+    ],
+  },
+  {
+    id: "griefing",
+    label: "Griefing",
+    reasons: [
+      "Team killing",
+      "Blocking or trapping teammates",
+      "Intentionally losing / throwing",
+      "Map exploit abuse",
+      "Other griefing",
+    ],
+  },
+  {
+    id: "abuse",
+    label: "Abusive behaviour",
+    reasons: [
+      "Hate speech or slurs",
+      "Harassment or threats",
+      "Excessive toxicity",
+      "Voice or mic spam",
+      "Other abusive behaviour",
+    ],
+  },
+  {
+    id: "exploit",
+    label: "Bug or exploit abuse",
+    reasons: [
+      "Out-of-map or geometry exploit",
+      "Economy or round exploit",
+      "Other exploit abuse",
+    ],
+  },
+  {
+    id: "other",
+    label: "Other",
+    reasons: ["Other"],
+  },
+];
+
+export type BanDurationPreset = {
+  id: string;
+  label: string;
+  /** null = pick a custom end date. */
+  hours: number | null;
+};
+
+export const BAN_DURATION_PRESETS: BanDurationPreset[] = [
+  { id: "1h", label: "1 hour", hours: 1 },
+  { id: "6h", label: "6 hours", hours: 6 },
+  { id: "12h", label: "12 hours", hours: 12 },
+  { id: "24h", label: "1 day", hours: 24 },
+  { id: "3d", label: "3 days", hours: 72 },
+  { id: "7d", label: "7 days", hours: 168 },
+  { id: "30d", label: "30 days", hours: 720 },
+  { id: "custom", label: "Custom end date…", hours: null },
+];
+
+export function findBanType(id: string): BanTypePreset | undefined {
+  return BAN_TYPE_PRESETS.find((preset) => preset.id === id);
+}
+
+export function findBanDuration(id: string): BanDurationPreset | undefined {
+  return BAN_DURATION_PRESETS.find((preset) => preset.id === id);
+}
+
+/** "<type> — <reason>", using the free-text value when the custom option is picked. */
+export function buildBanReason(
+  banTypeLabel: string,
+  reasonLabel: string,
+  customReason = "",
+): string {
+  const detail =
+    reasonLabel === CUSTOM_REASON_VALUE ? customReason.trim() : reasonLabel.trim();
+  return `${banTypeLabel.trim()} — ${detail}`.trim().slice(0, 500);
+}
+
+/**
+ * Convert a `datetime-local` value to whole hours from now.
+ * Returns null when empty, unparseable, in the past, or beyond the API limit.
+ */
+export function customDateToDurationHours(
+  value: string,
+  nowMs = Date.now(),
+): number | null {
+  if (!value) return null;
+  const target = Date.parse(value);
+  if (!Number.isFinite(target)) return null;
+  const hours = Math.ceil((target - nowMs) / 3_600_000);
+  if (hours < 1 || hours > MAX_BAN_DURATION_HOURS) return null;
+  return hours;
+}
+
 export function getModerationCapabilities(
   permissions: readonly PermissionCode[],
 ): ModerationCapabilities {
