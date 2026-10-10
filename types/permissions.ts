@@ -18,6 +18,11 @@ export const PERMISSION_CODES = [
   "admin_panel",
   "manage_users",
   "manage_servers",
+  "moderation_access",
+  "issue_timed_bans",
+  "issue_permanent_bans",
+  "revoke_bans",
+  "review_reports",
   "kick",
   "mute",
   "slay",
@@ -79,7 +84,12 @@ export type AuditAction =
   | "DISABLE_SERVER"
   | "DELETE_SERVER"
   | "STOP_SERVER"
-  | "START_SERVER";
+  | "START_SERVER"
+  | "CREATE_BAN"
+  | "REVOKE_BAN"
+  | "RECEIVE_REPORT"
+  | "ASSIGN_REPORT"
+  | "REVIEW_REPORT";
 
 export type AuditLogDoc = {
   _id: string;

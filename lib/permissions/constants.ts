@@ -1,13 +1,5 @@
-import type {
-  PermissionCode,
-  RoleCode,
-  RoleSource,
-} from "@/types/permissions";
-import {
-  PERMISSION_CODES,
-  ROLE_CODES,
-  ROLE_SOURCES,
-} from "@/types/permissions";
+import type { PermissionCode, RoleCode, RoleSource } from "@/types/permissions";
+import { PERMISSION_CODES, ROLE_CODES, ROLE_SOURCES } from "@/types/permissions";
 
 export { PERMISSION_CODES, ROLE_CODES, ROLE_SOURCES };
 
@@ -57,6 +49,26 @@ export const PERMISSION_META: Record<
     name: "Manage Servers",
     description: "Manage CS2 server configuration.",
   },
+  moderation_access: {
+    name: "Moderation Access",
+    description: "Access moderation tools and history.",
+  },
+  issue_timed_bans: {
+    name: "Issue Timed Bans",
+    description: "Issue temporary player bans.",
+  },
+  issue_permanent_bans: {
+    name: "Issue Permanent Bans",
+    description: "Issue permanent player bans.",
+  },
+  revoke_bans: {
+    name: "Revoke Bans",
+    description: "Revoke active player bans.",
+  },
+  review_reports: {
+    name: "Review Reports",
+    description: "Review, assign, and resolve player reports.",
+  },
   kick: {
     name: "Kick",
     description: "Kick players from the server.",
@@ -103,7 +115,15 @@ export const GAME_VIP_PERMISSIONS: PermissionCode[] = [
   "priority_queue",
 ];
 
-const MOD_PERMS: PermissionCode[] = ["kick", "mute", "slay", "change_map"];
+const MOD_PERMS: PermissionCode[] = [
+  "kick",
+  "mute",
+  "slay",
+  "change_map",
+  "moderation_access",
+  "issue_timed_bans",
+  "review_reports",
+];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, PermissionCode[]> = {
   USER: [],
@@ -116,6 +136,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, PermissionCode[]> = {
     "manage_users",
     "manage_servers",
     "admin_panel",
+    "moderation_access",
+    "issue_timed_bans",
+    "issue_permanent_bans",
+    "revoke_bans",
+    "review_reports",
   ],
   OWNER: [...PERMISSION_CODES],
 };
@@ -143,9 +168,7 @@ export function isRoleSource(value: string): value is RoleSource {
   return (ROLE_SOURCES as readonly string[]).includes(value);
 }
 
-export function parseOwnerSteamIds(
-  raw = process.env.OWNER_STEAM_IDS ?? "",
-): string[] {
+export function parseOwnerSteamIds(raw = process.env.OWNER_STEAM_IDS ?? ""): string[] {
   return raw
     .split(",")
     .map((id) => id.trim())

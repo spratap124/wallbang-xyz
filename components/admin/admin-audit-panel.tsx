@@ -23,6 +23,15 @@ function stringField(
 
 function auditDetailLabel(entry: AuditLogDoc): string {
   switch (entry.action) {
+    case "CREATE_BAN":
+      return `Ban created · ${stringField(entry.newValue, "banId") ?? "unknown"}`;
+    case "REVOKE_BAN":
+      return `Ban revoked · ${stringField(entry.oldValue, "banId") ?? "unknown"}`;
+    case "RECEIVE_REPORT":
+      return `Report received · ${stringField(entry.newValue, "reportId") ?? "unknown"}`;
+    case "ASSIGN_REPORT":
+    case "REVIEW_REPORT":
+      return `Report ${entry.action === "ASSIGN_REPORT" ? "assigned" : "reviewed"} · ${stringField(entry.newValue, "reportId") ?? "unknown"}`;
     case "GRANT_ROLE":
     case "REVOKE_ROLE": {
       const code =
