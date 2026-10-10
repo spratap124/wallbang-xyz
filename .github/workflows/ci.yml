@@ -36,6 +36,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Moderation tests
+        run: npm run test:moderation
+
       - name: Build
         env:
           NEXT_PUBLIC_SITE_URL: https://wallbang.xyz

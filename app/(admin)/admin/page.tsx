@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { OverviewDashboard } from "@/components/admin/overview-dashboard";
 import { getSession } from "@/lib/auth/session";
@@ -17,14 +18,17 @@ export default async function AdminOverviewPage() {
   if (!user) return null;
 
   const resolved = await getUserPermissions({ userId: user.id });
+  if (!resolved?.permissions.includes("admin_panel")) {
+    if (resolved?.permissions.includes("moderation_access"))
+      redirect("/admin/moderation");
+    redirect("/");
+  }
 
   return (
     <OverviewDashboard
       user={user}
       displayRole={resolved?.displayRole ?? "ADMIN"}
-      canManageServers={
-        resolved?.permissions.includes("manage_servers") ?? false
-      }
+      canManageServers={resolved?.permissions.includes("manage_servers") ?? false}
     />
   );
 }
