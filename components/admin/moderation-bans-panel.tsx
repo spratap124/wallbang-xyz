@@ -15,6 +15,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/admin/format";
 import {
+  BAN_DURATION_PRESETS,
+  BAN_TYPE_PRESETS,
+  CUSTOM_REASON_VALUE,
+  MAX_BAN_DURATION_HOURS,
+  buildBanReason,
+  customDateToDurationHours,
+  findBanDuration,
+  findBanType,
   getBanDisplayStatus,
   isValidSteamId64,
   type BanDisplayStatus,
@@ -34,6 +42,12 @@ async function readJson<T>(response: Response): Promise<ApiResult<T>> {
 
 function displayStatus(status: BanDisplayStatus): string {
   return status[0]!.toUpperCase() + status.slice(1);
+}
+
+/** `datetime-local` input value in the viewer's timezone. */
+function toLocalDateTimeInputValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export function ModerationBansPanel({
@@ -56,12 +70,21 @@ export function ModerationBansPanel({
   const [banKind, setBanKind] = useState<"timed" | "permanent">(
     canIssueTimed ? "timed" : "permanent",
   );
-  const [durationHours, setDurationHours] = useState("24");
+  const [banTypeId, setBanTypeId] = useState(BAN_TYPE_PRESETS[0]!.id);
+  const [reasonValue, setReasonValue] = useState(BAN_TYPE_PRESETS[0]!.reasons[0]!);
+  const [customReason, setCustomReason] = useState("");
+  const [durationId, setDurationId] = useState("24h");
+  const [customEnd, setCustomEnd] = useState("");
   const [newSteamId, setNewSteamId] = useState("");
-  const [reason, setReason] = useState("");
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
   const [now, setNow] = useState(() => Date.now());
+
+  const banType = findBanType(banTypeId) ?? BAN_TYPE_PRESETS[0]!;
+  const duration = findBanDuration(durationId);
+  const customHours = customDateToDurationHours(customEnd, now);
+  const isCustomReason = reasonValue === CUSTOM_REASON_VALUE;
+  const isCustomDuration = durationId === "custom";
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -74,6 +97,17 @@ export function ModerationBansPanel({
     if (banKind === "permanent" && !canIssuePermanent && canIssueTimed)
       setBanKind("timed");
   }, [banKind, canIssuePermanent, canIssueTimed]);
+
+  // Reason presets belong to the selected ban type.
+  useEffect(() => {
+    const type = findBanType(banTypeId);
+    if (!type) return;
+    setReasonValue((current) =>
+      current === CUSTOM_REASON_VALUE || type.reasons.includes(current)
+        ? current
+        : type.reasons[0]!,
+    );
+  }, [banTypeId]);
 
   const load = useCallback(
     async (isCurrent: () => boolean) => {
@@ -141,21 +175,33 @@ export function ModerationBansPanel({
     if (mutationPending) return;
     setMutationError(null);
     const steamId = newSteamId.trim();
-    const trimmedReason = reason.trim();
     if (!isValidSteamId64(steamId)) {
       setMutationError("SteamID64 must contain exactly 17 decimal digits.");
       return;
     }
+    if (isCustomReason && customReason.trim().length < 3) {
+      setMutationError("Describe the reason in at least 3 characters.");
+      return;
+    }
+
+    const trimmedReason = buildBanReason(banType.label, reasonValue, customReason);
     if (trimmedReason.length < 3 || trimmedReason.length > 500) {
       setMutationError("Reason must be between 3 and 500 characters.");
       return;
     }
 
     const permanent = banKind === "permanent";
-    const hours = Number(durationHours);
-    if (!permanent && (!Number.isInteger(hours) || hours < 1 || hours > 8760)) {
-      setMutationError("Timed bans must be between 1 and 8,760 whole hours.");
-      return;
+    let hours: number | null = null;
+    if (!permanent) {
+      hours = isCustomDuration ? customHours : (duration?.hours ?? null);
+      if (hours === null || hours < 1 || hours > MAX_BAN_DURATION_HOURS) {
+        setMutationError(
+          isCustomDuration
+            ? "Pick an end date between 1 hour and 365 days from now."
+            : "Choose a ban duration.",
+        );
+        return;
+      }
     }
     if (permanent && !window.confirm(`Confirm permanent global ban for ${steamId}?`))
       return;
@@ -169,7 +215,7 @@ export function ModerationBansPanel({
           steamId,
           reason: trimmedReason,
           permanent,
-          ...(permanent ? {} : { durationHours: hours }),
+          ...(permanent || hours === null ? {} : { durationHours: hours }),
         }),
       });
       const result = await readJson<BanView>(response);
@@ -178,7 +224,7 @@ export function ModerationBansPanel({
         return;
       }
       setNewSteamId("");
-      setReason("");
+      setCustomReason("");
       await reload();
     } catch {
       setMutationError("Unable to connect to the moderation API.");
@@ -234,8 +280,8 @@ export function ModerationBansPanel({
           <CardHeader>
             <CardTitle>Issue a global ban</CardTitle>
             <CardDescription>
-              Global bans apply across WallBang servers. Revoking a ban preserves its
-              history.
+              Global bans apply across WallBang servers. Pick a ban type and a predefined
+              reason, or enter a custom one. Revoking a ban preserves its history.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -262,7 +308,7 @@ export function ModerationBansPanel({
                 ) : null}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ban-kind">Duration</Label>
+                <Label htmlFor="ban-kind">Ban length</Label>
                 <select
                   id="ban-kind"
                   value={banKind}
@@ -278,33 +324,91 @@ export function ModerationBansPanel({
                 </select>
               </div>
               {banKind === "timed" ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="ban-duration-hours">Duration (hours)</Label>
-                  <Input
-                    id="ban-duration-hours"
-                    type="number"
-                    min={1}
-                    max={8760}
-                    step={1}
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ban-duration">Duration</Label>
+                    <select
+                      id="ban-duration"
+                      value={durationId}
+                      onChange={(event) => setDurationId(event.target.value)}
+                      className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-lg border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      {BAN_DURATION_PRESETS.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {isCustomDuration ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ban-custom-end">End date and time</Label>
+                      <Input
+                        id="ban-custom-end"
+                        type="datetime-local"
+                        value={customEnd}
+                        min={toLocalDateTimeInputValue(new Date(now + 3_600_000))}
+                        max={toLocalDateTimeInputValue(
+                          new Date(now + MAX_BAN_DURATION_HOURS * 3_600_000),
+                        )}
+                        onChange={(event) => setCustomEnd(event.target.value)}
+                        aria-invalid={Boolean(customEnd) && customHours === null}
+                      />
+                      <p className="text-muted-foreground text-xs">
+                        {customHours === null
+                          ? "Pick a time between 1 hour and 365 days from now."
+                          : `Bans for ${customHours} hour${customHours === 1 ? "" : "s"} (until ${formatDateTime(customEnd)}).`}
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+              <div className="space-y-1.5">
+                <Label htmlFor="ban-type">Ban type</Label>
+                <select
+                  id="ban-type"
+                  value={banTypeId}
+                  onChange={(event) => setBanTypeId(event.target.value)}
+                  className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-lg border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  {BAN_TYPE_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ban-reason">Reason</Label>
+                <select
+                  id="ban-reason"
+                  value={reasonValue}
+                  onChange={(event) => setReasonValue(event.target.value)}
+                  className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-lg border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  {banType.reasons.map((preset) => (
+                    <option key={preset} value={preset}>
+                      {preset}
+                    </option>
+                  ))}
+                  <option value={CUSTOM_REASON_VALUE}>Custom reason…</option>
+                </select>
+              </div>
+              {isCustomReason ? (
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="ban-custom-reason">Custom reason</Label>
+                  <Textarea
+                    id="ban-custom-reason"
+                    minLength={3}
+                    maxLength={500}
+                    rows={2}
                     required
-                    value={durationHours}
-                    onChange={(event) => setDurationHours(event.target.value)}
+                    value={customReason}
+                    onChange={(event) => setCustomReason(event.target.value)}
+                    placeholder="Describe the reason (3–500 characters)"
                   />
                 </div>
               ) : null}
-              <div className="space-y-1.5 md:col-span-2">
-                <Label htmlFor="ban-reason">Reason</Label>
-                <Textarea
-                  id="ban-reason"
-                  minLength={3}
-                  maxLength={500}
-                  rows={3}
-                  required
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder="Reason for the moderation action"
-                />
-              </div>
               {mutationError ? (
                 <p className="text-destructive text-sm md:col-span-2" role="alert">
                   {mutationError}
