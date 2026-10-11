@@ -28,7 +28,7 @@ esac' >/dev/null
 config_with_rclone() {
   write_config \
     "RCLONE_CRYPT_REMOTE='wallbang-backup-crypt'" \
-    "B2_ACCOUNT_ID='keyid-123'" \
+    "B2_KEY_ID='keyid-123'" \
     "B2_APPLICATION_KEY='appkey-456'" \
     "B2_BUCKET='wallbang-db-backups'" \
     "B2_REMOTE='wallbang-b2'" \
@@ -43,7 +43,7 @@ write_config "RCLONE_CONFIG='$SANDBOX/etc/rclone.conf'"
 # config template now defaults MONGODB_DATABASES etc; B2_* are unset here.
 run_script setup-rclone.sh
 assert_exit 1 "$RC" "exit code when B2/crypt values are missing"
-assert_contains "$OUTPUT" "B2_ACCOUNT_ID" "names a missing value"
+assert_contains "$OUTPUT" "B2_KEY_ID" "names a missing value"
 assert_not_contains "$(cat "$STUB_LOG")" "config" "no rclone config call attempted"
 
 test_start "creates both remotes and obscures the crypt secrets"
@@ -102,6 +102,22 @@ run_script setup-rclone.sh --dry-run
 assert_exit 0 "$RC" "dry-run exit code"
 assert_not_contains "$(cat "$STUB_LOG")" "config create" "dry-run creates nothing"
 assert_contains "$OUTPUT" "[dry-run]" "dry-run explained"
+
+test_start "legacy B2_ACCOUNT_ID still works with a deprecation warning"
+install_rclone_setup_stubs
+rm -f "$SANDBOX/etc/rclone.conf"
+: >"$STUB_LOG"
+write_config \
+  "RCLONE_CRYPT_REMOTE='wallbang-backup-crypt'" \
+  "B2_ACCOUNT_ID='legacy-keyid'" \
+  "B2_APPLICATION_KEY='appkey-456'" \
+  "CRYPT_PASSWORD='cryptPass-789'" \
+  "CRYPT_SALT='cryptSalt-000'" \
+  "RCLONE_CONFIG='$SANDBOX/etc/rclone.conf'"
+run_script setup-rclone.sh
+assert_exit 0 "$RC" "legacy key id accepted"
+assert_contains "$OUTPUT" "deprecated" "deprecation warning shown"
+assert_contains "$(cat "$STUB_LOG")" "account legacy-keyid" "legacy value used as the account"
 
 test_start "unsupported option shows usage"
 run_script setup-rclone.sh --nope
