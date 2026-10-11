@@ -125,7 +125,7 @@ apply_config_defaults() {
   : "${RCLONE_CONFIG:=/etc/wallbang-backup/rclone.conf}"
   : "${RCLONE_CACHE_DIR:=/var/cache/wallbang-backup}"
   # Optional scripted rclone setup (wallbang-backup-setup).
-  : "${B2_ACCOUNT_ID:=}"
+  : "${B2_KEY_ID:=}"
   : "${B2_APPLICATION_KEY:=}"
   : "${B2_BUCKET:=wallbang-db-backups}"
   : "${B2_REMOTE:=wallbang-b2}"
