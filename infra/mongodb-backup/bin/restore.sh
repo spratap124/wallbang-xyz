@@ -15,7 +15,19 @@
 #     [--allow-production] --confirm
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks so /usr/local/bin/wallbang-backup* links work: BASH_SOURCE
+# points at the symlink, not the installed script, unless we follow it.
+_backend_self="${BASH_SOURCE[0]}"
+while [ -L "$_backend_self" ]; do
+  _backend_dir="$(cd -P "$(dirname "$_backend_self")" && pwd)"
+  _backend_self="$(readlink "$_backend_self")"
+  case "$_backend_self" in
+    /*) ;;
+    *) _backend_self="$_backend_dir/$_backend_self" ;;
+  esac
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$_backend_self")" && pwd)"
+unset _backend_self _backend_dir
 LIB_DIR="${WALLBANG_BACKUP_LIB_DIR:-$SCRIPT_DIR/../lib}"
 # shellcheck source=../lib/common.sh
 . "$LIB_DIR/common.sh"
