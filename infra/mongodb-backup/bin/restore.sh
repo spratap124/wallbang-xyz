@@ -142,7 +142,7 @@ require_cmd "$MONGORESTORE_BIN" "mongorestore (mongodb-database-tools)"
 # Prompts for the restore point, and takes the target straight from
 # MONGODB_URI in the config so no credentials ever appear on the command line.
 prompt() {
-  # prompt <label> [default] -> prints the answer
+  # prompt <label> [default] -> prints the normalised answer
   _label="$1"
   _default="${2:-}"
   if [ -n "$_default" ]; then
@@ -151,6 +151,9 @@ prompt() {
     printf '%s: ' "$_label" >&2
   fi
   IFS= read -r _answer || _answer=""
+  # Terminals and pasted text can add carriage returns, stray spaces, or
+  # surrounding whitespace; normalise so "restore " and "RESTORE" still work.
+  _answer="$(printf '%s' "$_answer" | tr -d '\r' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
   [ -n "$_answer" ] || _answer="$_default"
   printf '%s' "$_answer"
 }
@@ -209,8 +212,8 @@ if [ "$PICK" -eq 1 ]; then
   fi
 
   if [ "$CONFIRMED" -ne 1 ]; then
-    _word="$(prompt "Type 'restore' to continue")"
-    [ "$_word" = "restore" ] || die "$EX_CONFIRM" "Aborted."
+    _word="$(printf '%s' "$(prompt "Type 'restore' to continue")" | tr '[:upper:]' '[:lower:]')"
+    [ "$_word" = "restore" ] || die "$EX_CONFIRM" "Confirmation did not match 'restore' (got '${_word:-<empty>}'). Aborted."
     CONFIRMED=1
   fi
   log_info "Restore point selected interactively."
