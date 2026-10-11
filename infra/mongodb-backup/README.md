@@ -223,8 +223,13 @@ sudo wallbang-backup-verify --all --remote
 # Fail if the newest backup is older than 2 days
 sudo wallbang-backup-verify --latest --max-age-days 2
 
-# Restore the newest backup — one command (local copy, or the off-site copy
-# with --remote). Add --dry-run to preview, drop --drop-in for extra safety.
+# Disaster recovery, one command, no credentials on the CLI:
+# lists the restore points on B2, prompts for one, prompts for 'restore',
+# and restores into MONGODB_URI from /etc/wallbang-backup/backup.env.
+sudo wallbang-backup-restore --pick
+sudo wallbang-backup-restore --pick --dry-run        # same, but writes nothing
+
+# Newest backup without prompting (add --remote for the off-site copy)
 sudo wallbang-backup-restore --latest --remote \
   --target-uri "mongodb+srv://test-user:pass@test-cluster/" --confirm
 
