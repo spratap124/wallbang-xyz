@@ -61,7 +61,7 @@ Schedule: daily at **02:00 Asia/Kolkata** via `wallbang-mongodb-backup.timer`.
 | `RCLONE_PATH` | same | Folder inside the remote (default `mongodb`). |
 | `RETENTION_DAYS` | same | Default `30`. |
 | `DISCORD_WEBHOOK_URL` | same | Optional failure notifications. |
-| `B2_ACCOUNT_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET`, `CRYPT_PASSWORD`, `CRYPT_SALT` | `backup.env` (consumed once by `wallbang-backup-setup`) | Optional scripted setup; never in this repo. |
+| `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET`, `CRYPT_PASSWORD`, `CRYPT_SALT` | `backup.env` (consumed once by `wallbang-backup-setup`) | Optional scripted setup; never in this repo. |
 | B2 key ID/secret | rclone config (`/etc/wallbang-backup/rclone.conf`) | Written by the setup script. |
 | `RCLONE_CONFIG` / `RCLONE_CACHE_DIR` | config file | `/etc/wallbang-backup/rclone.conf`, `/var/cache/wallbang-backup`. |
 | crypt password + salt | rclone config | **Escrow these** (see Secrets below). |
@@ -104,8 +104,8 @@ sudo nano /etc/wallbang-backup/backup.env      # set MONGODB_URI, RCLONE_* …
 #    Put the values in the config file and let the utility build the remotes
 #    (it obscures the crypt password/salt and never prints them):
 sudo nano /etc/wallbang-backup/backup.env
-#   B2_ACCOUNT_ID='<B2_KEY_ID>'
-#   B2_APPLICATION_KEY='<B2_APPLICATION_KEY>'
+#   B2_KEY_ID='<Backblaze keyID>'
+#   B2_APPLICATION_KEY='<Backblaze applicationKey (secret)>'
 #   B2_BUCKET='wallbang-db-backups'
 #   RCLONE_CRYPT_REMOTE='wallbang-backup-crypt'
 #   CRYPT_PASSWORD='<a long random string you save in your password manager>'

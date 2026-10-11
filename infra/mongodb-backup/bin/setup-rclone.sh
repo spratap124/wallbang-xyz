@@ -31,7 +31,7 @@ Options:
   --help              Show this help.
 
 Required config values (in /etc/wallbang-backup/backup.env):
-  B2_ACCOUNT_ID, B2_APPLICATION_KEY, B2_BUCKET,
+  B2_KEY_ID, B2_APPLICATION_KEY, B2_BUCKET,
   RCLONE_CRYPT_REMOTE, CRYPT_PASSWORD, CRYPT_SALT
 
 Exit codes: 0 ok, 1 config, 2 prereq, 9 setup failure.
@@ -65,8 +65,14 @@ CONFIG_PATH="${RCLONE_CONFIG:-/etc/wallbang-backup/rclone.conf}"
 
 require_cmd "$RCLONE_BIN" "rclone"
 
+# Backwards compatibility: B2_KEY_ID was briefly named B2_ACCOUNT_ID.
+if [ -z "${B2_KEY_ID:-}" ] && [ -n "${B2_ACCOUNT_ID:-}" ]; then
+  log_warn "B2_ACCOUNT_ID is deprecated; rename it to B2_KEY_ID."
+  B2_KEY_ID="$B2_ACCOUNT_ID"
+fi
+
 missing=""
-for _var in B2_ACCOUNT_ID B2_APPLICATION_KEY B2_BUCKET RCLONE_CRYPT_REMOTE CRYPT_PASSWORD CRYPT_SALT; do
+for _var in B2_KEY_ID B2_APPLICATION_KEY B2_BUCKET RCLONE_CRYPT_REMOTE CRYPT_PASSWORD CRYPT_SALT; do
   eval "_value=\${$_var:-}"
   if [ -z "$_value" ]; then missing="$missing $_var"; fi
 done
@@ -106,7 +112,7 @@ else
   if [ "$DRY_RUN" -eq 1 ]; then
     log_info "[dry-run] rclone config create $B2_REMOTE b2 account=<redacted> key=<redacted>"
   elif ! rclone config create "$B2_REMOTE" b2 \
-    account "$B2_ACCOUNT_ID" key "$B2_APPLICATION_KEY"; then
+    account "$B2_KEY_ID" key "$B2_APPLICATION_KEY"; then
     die "$EX_SETUP" "Could not create the B2 remote. Check the key ID/secret."
   fi
 fi
