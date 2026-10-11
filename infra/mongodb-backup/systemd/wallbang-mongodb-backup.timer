@@ -1,0 +1,16 @@
+[Unit]
+Description=Daily WallBang MongoDB backup (02:00 Asia/Kolkata)
+Documentation=file:/opt/wallbang-backup/README.md
+
+[Timer]
+# 02:00 IST every day. The timezone is declared explicitly so the schedule is
+# correct regardless of the server's local timezone (UTC on most VPS images).
+OnCalendar=*-*-* 02:00:00 Asia/Kolkata
+# Run a missed backup shortly after boot if the server was down at 02:00.
+Persistent=true
+RandomizedDelaySec=5m
+AccuracySec=1m
+Unit=wallbang-mongodb-backup.service
+
+[Install]
+WantedBy=timers.target

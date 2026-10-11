@@ -1,0 +1,38 @@
+[Unit]
+Description=WallBang MongoDB backup (Atlas -> Backblaze B2, rclone crypt)
+Documentation=file:/opt/wallbang-backup/README.md
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/wallbang-backup/backup.env
+
+[Service]
+Type=oneshot
+# Secrets are read from the config file by the script; nothing sensitive is
+# passed on the command line.
+Environment=WALLBANG_BACKUP_CONFIG=/etc/wallbang-backup/backup.env
+Environment=WALLBANG_BACKUP_LIB_DIR=/opt/wallbang-backup/lib
+# ProtectHome hides /root, so rclone reads its config from /etc instead.
+Environment=RCLONE_CONFIG=/etc/wallbang-backup/rclone.conf
+Environment=RCLONE_CACHE_DIR=/var/cache/wallbang-backup
+ExecStart=/opt/wallbang-backup/bin/backup.sh
+User=root
+Group=root
+# Only the backup dir, log dir and rclone cache may be written.
+ProtectSystem=strict
+ReadWritePaths=/var/backups/wallbang-mongodb /var/log/wallbang-backup /var/cache/wallbang-backup
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# Allow outbound Atlas/B2 traffic but no listening sockets.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+TimeoutStartSec=3600
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target
