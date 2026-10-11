@@ -1,0 +1,7 @@
+# Real credentials must never be committed from this directory.
+# Templates (*.example) are safe to keep in Git.
+backup.env
+rclone.conf
+rclone-pass
+*.archive.gz
+*.sha256

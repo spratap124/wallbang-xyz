@@ -95,6 +95,30 @@ Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
 
 ### Backups
 
+Portable MongoDB Atlas → Backblaze B2 backups live in
+[`infra/mongodb-backup/`](infra/mongodb-backup/README.md) and are installed by
+`scripts/hostinger-bootstrap.sh` (skip with `SKIP_BACKUP_SETUP=1`).
+
+```bash
+# installed by the bootstrap; configure then enable the daily 02:00 IST timer
+sudo nano /etc/wallbang-backup/backup.env
+sudo wallbang-backup-verify --remote      # validate without dumping
+sudo wallbang-backup                      # manual backup
+sudo systemctl enable --now wallbang-mongodb-backup.timer
+
+# verify / restore
+sudo wallbang-backup-verify --latest --remote
+sudo wallbang-backup-restore --archive <file|remote-path> --target-uri <uri> --confirm
+```
+
+Install manually on any Ubuntu 22.04/24.04 VPS:
+
+```bash
+sudo ./infra/mongodb-backup/install.sh
+```
+
+Legacy in-stack scripts (deprecated in favour of the utility above):
+
 ```bash
 ./scripts/backup_db.sh
 ./scripts/restore_db.sh backups/db/mongo_YYYYMMDD_HHMMSS.archive.gz
