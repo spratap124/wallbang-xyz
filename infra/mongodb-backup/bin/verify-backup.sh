@@ -88,7 +88,10 @@ verify_one() {
   fi
   _sidecar="$_archive.sha256"
   if [ -f "$_sidecar" ]; then
-    if (cd "$(dirname "$_archive")" && "$SHA256_BIN" -c "$(basename "$_sidecar")") >/dev/null 2>&1; then
+    # Compare hashes so sidecars written with an absolute path still verify.
+    _expected="$(awk '{print $1; exit}' "$_sidecar" 2>/dev/null)"
+    _actual="$("$SHA256_BIN" "$_archive" | awk '{print $1; exit}')"
+    if [ -n "$_expected" ] && [ "$_expected" = "$_actual" ]; then
       log_info "OK  checksum  $(basename "$_archive")"
     else
       log_error "BAD checksum  $(basename "$_archive")"

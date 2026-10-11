@@ -170,7 +170,7 @@ if [ "$VALIDATE_ARCHIVE" = "true" ]; then
   log_info "Archive validation passed."
 fi
 
-(umask 077 && "$SHA256_BIN" "$ARCHIVE_PATH" >"$CHECKSUM_PATH")
+(umask 077 && cd "$WORK_DIR" && "$SHA256_BIN" "$ARCHIVE_NAME" >"$ARCHIVE_NAME.sha256")
 log_info "SHA-256 written to $CHECKSUM_PATH"
 
 # --- upload ------------------------------------------------------------------

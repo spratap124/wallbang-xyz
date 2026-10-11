@@ -37,10 +37,19 @@ usage() {
 WallBang MongoDB restore (manual, explicitly confirmed)
 
 Usage: wallbang-backup-restore --archive <source> --target-uri <uri> --confirm [options]
+       wallbang-backup-restore --latest [--remote] --target-uri <uri> --confirm [options]
 
 Options:
   --archive <path>     Local archive file, or a remote path
                        (e.g. wallbang-b2-crypt:wallbang-db-backups/mongodb/<stamp>/mongodb-<stamp>.archive.gz)
+  --latest             Resolve the newest backup automatically instead of
+                       passing --archive. Local by default; combine with
+                       --remote to use the newest off-site copy.
+  --pick               Interactive: list the restore points on B2, prompt for
+                       one, and restore into MONGODB_URI from the config
+                       (no credentials on the command line). Prompts for a
+                       typed confirmation instead of requiring --confirm.
+  --remote             With --latest: pick the newest archive on the rclone remote.
   --target-uri <uri>   Target MongoDB connection string (required).
   --ns-from <db>       Source namespace pattern for renaming (default: unchanged).
   --ns-to <db>         Destination namespace pattern (default: unchanged).
@@ -63,6 +72,10 @@ DROP=0
 DRY_RUN=0
 ALLOW_PRODUCTION=0
 CONFIRMED=0
+LATEST=0
+USE_REMOTE=0
+PICK=0
+TARGET_FROM_CONFIG=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -86,6 +99,9 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY_RUN=1 ;;
     --allow-production) ALLOW_PRODUCTION=1 ;;
     --confirm) CONFIRMED=1 ;;
+    --latest) LATEST=1 ;;
+    --remote) USE_REMOTE=1 ;;
+    --pick) PICK=1 ;;
     --help | -h)
       usage
       exit 0
@@ -98,18 +114,19 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-[ -n "$ARCHIVE" ] || {
-  usage >&2
-  die "$EX_CONFIG" "--archive is required."
-}
-[ -n "$TARGET_URI" ] || {
-  usage >&2
-  die "$EX_CONFIG" "--target-uri is required (restores never default to production)."
-}
-[ "$CONFIRMED" -eq 1 ] || die "$EX_CONFIRM" "Refusing to restore without --confirm."
+if [ "$USE_REMOTE" -eq 1 ] && [ "$LATEST" -eq 0 ] && [ "$PICK" -eq 0 ]; then
+  die "$EX_CONFIG" "--remote is only meaningful together with --latest or --pick."
+fi
+if [ "$LATEST" -eq 1 ] && [ -n "$ARCHIVE" ]; then
+  die "$EX_CONFIG" "Use either --archive or --latest, not both."
+fi
+if [ "$PICK" -eq 1 ] && { [ "$LATEST" -eq 1 ] || [ -n "$ARCHIVE" ]; }; then
+  die "$EX_CONFIG" "--pick cannot be combined with --archive or --latest."
+fi
 
 # Config is optional here (a fresh VPS may restore before configuring backups),
-# but load it when present so MONGODB_URI can be compared for the safety check.
+# but load it when present so the target can come from it and so MONGODB_URI can
+# be compared for the safety check.
 if [ -f "$(config_file_path)" ]; then
   # shellcheck disable=SC1090
   . "$(config_file_path)"
@@ -120,6 +137,122 @@ fi
 log_init
 
 require_cmd "$MONGORESTORE_BIN" "mongorestore (mongodb-database-tools)"
+
+# --- interactive picker ------------------------------------------------------
+# Prompts for the restore point, and takes the target straight from
+# MONGODB_URI in the config so no credentials ever appear on the command line.
+prompt() {
+  # prompt <label> [default] -> prints the answer
+  _label="$1"
+  _default="${2:-}"
+  if [ -n "$_default" ]; then
+    printf '%s [%s]: ' "$_label" "$_default" >&2
+  else
+    printf '%s: ' "$_label" >&2
+  fi
+  IFS= read -r _answer || _answer=""
+  [ -n "$_answer" ] || _answer="$_default"
+  printf '%s' "$_answer"
+}
+
+format_stamp() {
+  printf '%s' "$1" | sed -E 's/^([0-9]{4})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$/\1-\2-\3 \4:\5:\6 UTC/'
+}
+
+uri_host() {
+  printf '%s' "$1" | sed -E 's#^mongodb(\+srv)?://([^@]*@)?([^/?#]+).*#\3#'
+}
+
+pick_remote_archive() {
+  [ -n "${RCLONE_CRYPT_REMOTE:-}" ] || die "$EX_CONFIG" "RCLONE_CRYPT_REMOTE is not configured."
+  _stamps="$(rclone lsf "$(remote_root)" 2>/dev/null \
+    | grep -E "^${BACKUP_PREFIX}-[0-9]{8}-[0-9]{6}/$" \
+    | sed 's:/$::' | sort -r)"
+  [ -n "$_stamps" ] || die "$EX_CONFIG" "No backups found on $(remote_root)."
+
+  printf '\nAvailable restore points on B2 (%s):\n\n' "$(remote_root)" >&2
+  _i=0
+  printf '%s\n' "$_stamps" | while IFS= read -r _stamp; do
+    _i=$((_i + 1))
+    printf '  %2d) %s  %s\n' "$_i" "$(format_stamp "${_stamp#${BACKUP_PREFIX}-}")" "$_stamp" >&2
+  done
+
+  _choice="$(prompt "Select restore point" "1")"
+  case "$_choice" in
+    '' | *[!0-9]*) die "$EX_CONFIG" "Invalid selection: $_choice" ;;
+  esac
+  _name="$(printf '%s\n' "$_stamps" | sed -n "${_choice}p")"
+  [ -n "$_name" ] || die "$EX_CONFIG" "No restore point number $_choice."
+  printf '%s/%s/%s.archive.gz' "$(remote_root)" "$_name" "$_name"
+}
+
+if [ "$PICK" -eq 1 ]; then
+  require_cmd "$RCLONE_BIN" "rclone"
+  if [ -z "$TARGET_URI" ]; then
+    [ -n "${MONGODB_URI:-}" ] || die "$EX_CONFIG" "--pick needs MONGODB_URI in $(config_file_path) (or pass --target-uri)."
+    TARGET_URI="$MONGODB_URI"
+    TARGET_FROM_CONFIG=1
+  fi
+  ARCHIVE="$(pick_remote_archive)"
+
+  printf '\nAbout to restore:\n' >&2
+  printf '  restore point : %s\n' "$(basename "$(dirname "$ARCHIVE")")" >&2
+  printf '  target cluster: %s\n' "$(uri_host "$TARGET_URI")" >&2
+  printf '  source config : %s\n' "$(config_file_path)" >&2
+  if [ "$DROP" -eq 1 ]; then
+    printf '  mode          : --drop (existing collections in scope will be REPLACED)\n' >&2
+  else
+    printf '  mode          : merge into existing namespaces (no --drop)\n' >&2
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '  mode          : dry run (no writes)\n' >&2
+  fi
+
+  if [ "$CONFIRMED" -ne 1 ]; then
+    _word="$(prompt "Type 'restore' to continue")"
+    [ "$_word" = "restore" ] || die "$EX_CONFIRM" "Aborted."
+    CONFIRMED=1
+  fi
+  log_info "Restore point selected interactively."
+fi
+
+if [ "$LATEST" -eq 0 ] && [ "$PICK" -eq 0 ] && [ -z "$ARCHIVE" ]; then
+  usage >&2
+  die "$EX_CONFIG" "--archive (or --latest / --pick) is required."
+fi
+[ -n "$TARGET_URI" ] || {
+  usage >&2
+  die "$EX_CONFIG" "--target-uri is required (restores never default to production)."
+}
+[ "$CONFIRMED" -eq 1 ] || die "$EX_CONFIRM" "Refusing to restore without --confirm."
+
+# --- resolve --latest --------------------------------------------------------
+latest_local_archive() {
+  _dir="$(find "$LOCAL_BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -name "$BACKUP_PREFIX-*" 2>/dev/null | sort | tail -n1)"
+  [ -n "$_dir" ] || return 1
+  printf '%s/%s.archive.gz' "$_dir" "$(basename "$_dir")"
+}
+
+latest_remote_archive() {
+  [ -n "${RCLONE_CRYPT_REMOTE:-}" ] || return 1
+  _dirs="$(rclone lsf "$(remote_root)" 2>/dev/null | grep -E "^${BACKUP_PREFIX}-[0-9]{8}-[0-9]{6}/$" | sort)"
+  _dir="$(printf '%s\n' "$_dirs" | tail -n1)"
+  [ -n "$_dir" ] || return 1
+  _name="${_dir%/}"
+  printf '%s/%s/%s.archive.gz' "$(remote_root)" "$_name" "$_name"
+}
+
+if [ "$LATEST" -eq 1 ]; then
+  require_cmd "$RCLONE_BIN" "rclone" # only when --latest needs the remote
+  if [ "$USE_REMOTE" -eq 1 ]; then
+    ARCHIVE="$(latest_remote_archive)" || die "$EX_CONFIG" "No remote backups found under $(remote_root)."
+    log_info "Latest off-site archive: $(basename "$(dirname "$ARCHIVE")")/$(basename "$ARCHIVE")"
+  else
+    ARCHIVE="$(latest_local_archive)" || die "$EX_CONFIG" "No local backups found in $LOCAL_BACKUP_DIR."
+    log_info "Latest local archive: $(basename "$ARCHIVE")"
+  fi
+fi
+
 if [ -x "$RCLONE_BIN" ] && printf '%s' "$ARCHIVE" | grep -q ':'; then
   RESOLVE_WITH_RCLONE=1
 else
@@ -127,7 +260,7 @@ else
 fi
 
 if [ -n "${MONGODB_URI:-}" ] && [ "$TARGET_URI" = "$MONGODB_URI" ]; then
-  if [ "$ALLOW_PRODUCTION" -ne 1 ]; then
+  if [ "$ALLOW_PRODUCTION" -ne 1 ] && [ "$TARGET_FROM_CONFIG" -ne 1 ]; then
     die "$EX_CONFIRM" "Target URI equals the configured production MONGODB_URI. Re-run with --allow-production to override."
   fi
   log_warn "Restoring into the PRODUCTION database (explicitly allowed)."
@@ -141,23 +274,34 @@ trap cleanup EXIT
 
 if [ "$RESOLVE_WITH_RCLONE" -eq 1 ]; then
   STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/wallbang-restore.XXXXXX")"
+  # Stage under the original file name so the checksum sidecar matches.
+  STAGED_NAME="$(basename "$ARCHIVE")"
   log_info "Fetching archive from remote (redacted path)."
-  if ! rclone copyto "$ARCHIVE" "$STAGE_DIR/restore.archive.gz"; then
+  if ! rclone copyto "$ARCHIVE" "$STAGE_DIR/$STAGED_NAME"; then
     die "$EX_UPLOAD" "Could not download archive from remote."
   fi
-  LOCAL_ARCHIVE="$STAGE_DIR/restore.archive.gz"
+  # Best-effort: bring the checksum sidecar along so integrity is verified.
+  if rclone copyto "$ARCHIVE.sha256" "$STAGE_DIR/$STAGED_NAME.sha256" 2>/dev/null; then
+    log_info "Downloaded checksum sidecar."
+  else
+    log_warn "No checksum sidecar on the remote; skipping integrity verification."
+  fi
+  LOCAL_ARCHIVE="$STAGE_DIR/$STAGED_NAME"
 else
   LOCAL_ARCHIVE="$ARCHIVE"
 fi
 
 [ -f "$LOCAL_ARCHIVE" ] || die "$EX_CONFIG" "Archive not found: $LOCAL_ARCHIVE"
 
-# Verify checksum when a sidecar is available.
+# Verify the SHA-256 by comparing hashes rather than `sha256sum -c`, so sidecars
+# written with an absolute path (older releases) still verify after a move.
 SIDECAR="$LOCAL_ARCHIVE.sha256"
 if [ -f "$SIDECAR" ] && [ -x "$SHA256_BIN" ]; then
   log_info "Verifying SHA-256 checksum."
-  if ! (cd "$(dirname "$LOCAL_ARCHIVE")" && "$SHA256_BIN" -c "$(basename "$SIDECAR")") >/dev/null 2>&1; then
-    die "$EX_VALIDATE" "Checksum verification failed for $LOCAL_ARCHIVE."
+  EXPECTED_HASH="$(awk '{print $1; exit}' "$SIDECAR" 2>/dev/null)"
+  ACTUAL_HASH="$("$SHA256_BIN" "$LOCAL_ARCHIVE" | awk '{print $1; exit}')"
+  if [ -z "$EXPECTED_HASH" ] || [ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]; then
+    die "$EX_VALIDATE" "Checksum mismatch for $LOCAL_ARCHIVE (expected ${EXPECTED_HASH:-none}, got ${ACTUAL_HASH:-none})."
   fi
   log_info "Checksum OK."
 else
