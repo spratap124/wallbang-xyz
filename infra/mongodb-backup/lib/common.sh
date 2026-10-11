@@ -20,6 +20,7 @@ EX_UPLOAD=5
 EX_VERIFY=6
 EX_PRUNE=7
 EX_CONFIRM=8
+EX_SETUP=9
 EX_LOCKED=75 # EX_TEMPFAIL
 
 # --- logging -----------------------------------------------------------------
@@ -123,6 +124,27 @@ apply_config_defaults() {
   : "${RCLONE_CONFIG_PASS_COMMAND:=}"
   : "${RCLONE_CONFIG:=/etc/wallbang-backup/rclone.conf}"
   : "${RCLONE_CACHE_DIR:=/var/cache/wallbang-backup}"
+  # Optional scripted rclone setup (wallbang-backup-setup).
+  : "${B2_ACCOUNT_ID:=}"
+  : "${B2_APPLICATION_KEY:=}"
+  : "${B2_BUCKET:=wallbang-db-backups}"
+  : "${B2_REMOTE:=wallbang-b2}"
+  : "${CRYPT_PASSWORD:=}"
+  : "${CRYPT_SALT:=}"
+}
+
+# MongoDB publishes no 7.0 apt repository for Ubuntu 24.04+, so pick a repo
+# series that actually exists for the running codename.
+mongodb_repo_series_for_codename() {
+  case "${1:-}" in
+    jammy | focal | bionic) printf '7.0' ;;
+    *) printf '8.0' ;;
+  esac
+}
+
+curl_fetch() {
+  # curl_fetch <url> <dest>
+  "$CURL_BIN" -fsSL --max-time "${CURL_TIMEOUT_SECONDS:-15}" -o "$2" "$1"
 }
 
 # Wrapper so the util works under systemd hardening (ProtectHome hides /root):

@@ -112,10 +112,8 @@ Next:
        docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
        # Optional renew hook: sudo ln -sf ${APP_DIR}/scripts/renew-certs.sh /etc/letsencrypt/renewal-hooks/deploy/wallbang-nginx
   4. MongoDB backups (installed by this bootstrap):
-       sudo nano /etc/wallbang-backup/backup.env          # MONGODB_URI + remote settings
-       sudo rclone --config /etc/wallbang-backup/rclone.conf config create b2 wallbang-b2 type b2 account "<KEY_ID>" key "<APP_KEY>"
-       sudo rclone --config /etc/wallbang-backup/rclone.conf config create wallbang-backup-crypt crypt remote wallbang-b2:wallbang-db-backups password "<CRYPT_PASSWORD>" password2 "<CRYPT_SALT>"
-       sudo chmod 0600 /etc/wallbang-backup/rclone.conf
+       sudo nano /etc/wallbang-backup/backup.env          # MONGODB_URI + B2_*/CRYPT_* values
+       sudo wallbang-backup-setup                          # creates the rclone remotes, verifies access
        sudo wallbang-backup-verify --remote                # validate, no dump
        sudo wallbang-backup                                # manual backup
        sudo systemctl enable --now wallbang-mongodb-backup.timer

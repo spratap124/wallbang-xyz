@@ -74,6 +74,15 @@ assert_contains "$(cat "$CONFIG_FILE")" "sentinel-secret" "existing config prese
 }
 TIMER_COUNT=$(find "$UNIT_DIR" -maxdepth 1 -name 'wallbang-mongodb-backup.timer' | wc -l | tr -d ' ')
 assert_eq "1" "$TIMER_COUNT" "timer installed exactly once"
+for _cmd in wallbang-backup wallbang-backup-verify wallbang-backup-restore wallbang-backup-setup; do
+  if [ -L "$BIN_LINK_DIR/$_cmd" ]; then
+    PASS_COUNT=$((PASS_COUNT + 1))
+    printf '   ok: %s symlinked\n' "$_cmd"
+  else
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    printf '   FAIL: %s symlink missing\n' "$_cmd"
+  fi
+done
 assert_contains "$(cat "$SANDBOX/install2.log")" "unchanged" "second run detected no changes"
 
 test_start "installer --dry-run changes nothing"

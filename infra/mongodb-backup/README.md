@@ -61,7 +61,8 @@ Schedule: daily at **02:00 Asia/Kolkata** via `wallbang-mongodb-backup.timer`.
 | `RCLONE_PATH` | same | Folder inside the remote (default `mongodb`). |
 | `RETENTION_DAYS` | same | Default `30`. |
 | `DISCORD_WEBHOOK_URL` | same | Optional failure notifications. |
-| B2 key ID/secret | rclone config (`/etc/wallbang-backup/rclone.conf`) | Never in this repo. |
+| `B2_ACCOUNT_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET`, `CRYPT_PASSWORD`, `CRYPT_SALT` | `backup.env` (consumed once by `wallbang-backup-setup`) | Optional scripted setup; never in this repo. |
+| B2 key ID/secret | rclone config (`/etc/wallbang-backup/rclone.conf`) | Written by the setup script. |
 | `RCLONE_CONFIG` / `RCLONE_CACHE_DIR` | config file | `/etc/wallbang-backup/rclone.conf`, `/var/cache/wallbang-backup`. |
 | crypt password + salt | rclone config | **Escrow these** (see Secrets below). |
 | rclone config password | `/etc/wallbang-backup/rclone-pass` (0600) | Only if `rclone.conf` is encrypted. |
@@ -99,26 +100,21 @@ Then configure:
 #    SRV string into the config file.
 sudo nano /etc/wallbang-backup/backup.env      # set MONGODB_URI, RCLONE_* …
 
-# 4. Backblaze B2 + rclone crypt remote (interactive; secrets stay out of Git)
-#    The systemd unit runs under ProtectHome=true, so rclone must NOT read
-#    /root/.config — keep its config in /etc/wallbang-backup/rclone.conf.
-sudo -i
-RCLONE="rclone --config /etc/wallbang-backup/rclone.conf"
-$RCLONE config create b2 wallbang-b2 \
-  type b2 \
-  account "<B2_KEY_ID>" \
-  key "<B2_APPLICATION_KEY>"
+# 4. Backblaze B2 + rclone crypt remote — scripted from backup.env
+#    Put the values in the config file and let the utility build the remotes
+#    (it obscures the crypt password/salt and never prints them):
+sudo nano /etc/wallbang-backup/backup.env
+#   B2_ACCOUNT_ID='<B2_KEY_ID>'
+#   B2_APPLICATION_KEY='<B2_APPLICATION_KEY>'
+#   B2_BUCKET='wallbang-db-backups'
+#   RCLONE_CRYPT_REMOTE='wallbang-backup-crypt'
+#   CRYPT_PASSWORD='<a long random string you save in your password manager>'
+#   CRYPT_SALT='<another long random string you save>'
+sudo wallbang-backup-setup          # creates wallbang-b2 + the crypt remote, then verifies
 
-#    The crypt remote wraps the bucket so uploads are encrypted client-side.
-$RCLONE config create wallbang-backup-crypt crypt \
-  remote wallbang-b2:wallbang-db-backups \
-  filename_encryption standard \
-  directory_name_encryption true \
-  password "<CRYPT_PASSWORD>" \
-  password2 "<CRYPT_SALT>"
-
-chown root:root /etc/wallbang-backup/rclone.conf
-chmod 0600 /etc/wallbang-backup/rclone.conf
+# Prefer doing it by hand? The systemd unit runs under ProtectHome=true, so
+# rclone must NOT read /root/.config — keep its config under /etc:
+#   sudo rclone --config /etc/wallbang-backup/rclone.conf config create ...
 
 # 5. (Recommended) Encrypt rclone.conf and load its password from a root-only file
 rclone --config /etc/wallbang-backup/rclone.conf config password
@@ -158,14 +154,11 @@ migrating backups. Follow this whenever the app moves to another provider.
    Reuse the same bucket and the same crypt remote name so existing archives
    stay readable:
    ```bash
-   sudo -i
-   RCLONE="rclone --config /etc/wallbang-backup/rclone.conf"
-   $RCLONE config create b2 wallbang-b2 type b2 \
-     account "<B2_KEY_ID>" key "<B2_APPLICATION_KEY>"
-   $RCLONE config create wallbang-backup-crypt crypt \
-     remote wallbang-b2:wallbang-db-backups \
-     password "<CRYPT_PASSWORD>" password2 "<CRYPT_SALT>"
-   chmod 0600 /etc/wallbang-backup/rclone.conf
+   # Reuse the SAME bucket, remote names, crypt password and salt, otherwise
+   # existing archives become unreadable. Then either:
+   sudo wallbang-backup-setup          # reads B2_*/CRYPT_* from backup.env
+   # or configure rclone by hand:
+   #   sudo rclone --config /etc/wallbang-backup/rclone.conf config create ...
    ```
    Restoring history is a matter of listing the remote; nothing is imported into
    the new VPS.
@@ -276,6 +269,20 @@ backups** provided you follow this procedure:
 3. Record the crypt parameters in your runbook so a successor can rebuild the
    remote.
 
+## Why credentials live in `rclone.conf` (not only `backup.env`)
+
+`wallbang-backup-setup` reads B2/crypt values from `backup.env` so you only have
+one file to fill in, but the operational copy ends up in rclone's own config:
+
+- plain `rclone lsd/copy/config` recovery commands work without exporting env vars;
+- a crypt remote must hold `password`/`password2` anyway, so env-only storage
+  would split one secret set across two mechanisms;
+- environment variables are visible in `/proc/<pid>/environ`, while a `0600`
+  config file is not.
+
+Both files are root-owned `0600`. Keep the **plaintext** crypt password and salt
+in your password manager — they are what make the archives decryptable.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
@@ -283,6 +290,7 @@ backups** provided you follow this procedure:
 | `Config file not found` | Install the utility and edit `/etc/wallbang-backup/backup.env`. |
 | `Missing required config values: MONGODB_URI` | Fill in the config (values are quoted). |
 | `Cannot reach remote …` | B2 key expired, bucket renamed, or rclone remote name wrong: `sudo rclone lsd <crypt>:`. |
+| Installer 404s on the MongoDB apt repo | Fixed: the installer now picks a repo series that exists for your Ubuntu release (24.04/noble → 8.0) and falls back to the official `.deb`, removing any repo it added if that fails. Re-run `sudo ./install.sh` after a `git pull`. |
 | `mongodump failed` | Atlas user lacks `readAnyDatabase`, IP not allow-listed, or SRV string stale. Check `journalctl -u wallbang-mongodb-backup`. |
 | `Archive validation failed` | Archive truncated (disk full during dump) — check `MIN_FREE_DISK_MB` and `df -h`. |
 | `another backup run is already in progress` | Overlap; the lock file is `/var/lock/wallbang-mongodb-backup.lock`. |

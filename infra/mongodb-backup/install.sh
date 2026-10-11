@@ -150,17 +150,40 @@ if [ "$INSTALL_DEPS" -eq 1 ]; then
   if [ ! -x /usr/bin/mongodump ] && [ ! -x /usr/local/bin/mongodump ]; then
     log_info "Installing MongoDB Database Tools."
     _codename="$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-jammy}")"
+    _series="$(mongodb_repo_series_for_codename "$_codename")"
     if [ "$DRY_RUN" -eq 1 ]; then
-      printf '[dry-run] install mongodb-database-tools for %s\n' "$_codename"
+      printf '[dry-run] install mongodb-database-tools (repo series %s for %s)\n' "$_series" "$_codename"
     else
       apt-get install -y --no-install-recommends mongodb-database-tools 2>/dev/null || {
-        log_warn "Package mongodb-database-tools not in apt; adding the MongoDB repository."
-        curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc \
-          | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg
-        echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu ${_codename}/mongodb-org/7.0 multiverse" \
-          >/etc/apt/sources.list.d/mongodb-org-7.0.list
-        apt-get update -y
-        apt-get install -y --no-install-recommends mongodb-database-tools
+        log_warn "mongodb-database-tools not in the configured apt sources; adding the MongoDB ${_series} repository."
+        _list="/etc/apt/sources.list.d/mongodb-org-${_series}.list"
+        _keyring="/usr/share/keyrings/mongodb-server-${_series}.gpg"
+        if curl_fetch "https://www.mongodb.org/static/pgp/server-${_series}.asc" /tmp/mongodb-${_series}.asc; then
+          gpg --dearmor --yes -o "$_keyring" /tmp/mongodb-${_series}.asc
+        fi
+        echo "deb [ signed-by=$_keyring ] https://repo.mongodb.org/apt/ubuntu ${_codename}/mongodb-org/${_series} multiverse" >"$_list"
+        if ! apt-get update -y || ! apt-get install -y --no-install-recommends mongodb-database-tools; then
+          # Never leave a repo that breaks apt for the host.
+          log_warn "MongoDB ${_series} repo unavailable for ${_codename}; removing it and installing the official .deb."
+          rm -f "$_list"
+          apt-get update -y >/dev/null 2>&1 || true
+          _arch="$(dpkg --print-architecture)"
+          case "$_arch" in
+            amd64) _deb_arch="x86_64" ;;
+            arm64) _deb_arch="arm64" ;;
+            *) _deb_arch="" ;;
+          esac
+          _deb_version="${MONGODB_TOOLS_VERSION:-100.13.0}"
+          _deb_url="https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-${_deb_arch}-${_deb_version}.deb"
+          if [ -n "$_deb_arch" ] && curl_fetch "$_deb_url" "/tmp/mongodb-database-tools.deb"; then
+            dpkg -i /tmp/mongodb-database-tools.deb || {
+              die "$EX_PREREQ" "Could not install MongoDB Database Tools. Install them manually, then re-run with --no-deps."
+            }
+            rm -f /tmp/mongodb-database-tools.deb
+          else
+            die "$EX_PREREQ" "Could not install MongoDB Database Tools automatically. Install them manually, then re-run with --no-deps."
+          fi
+        fi
       }
     fi
   else
@@ -180,7 +203,7 @@ ensure_dir "$LOG_DIR" 0750
 ensure_dir "${RCLONE_CACHE_DIR:-/var/cache/wallbang-backup}" 0750
 
 # --- files -------------------------------------------------------------------
-for _f in backup.sh restore.sh verify-backup.sh; do
+for _f in backup.sh restore.sh verify-backup.sh setup-rclone.sh; do
   install_file_if_changed "$SCRIPT_DIR/bin/$_f" "$INSTALL_ROOT/bin/$_f" 0755
 done
 install_file_if_changed "$SCRIPT_DIR/lib/common.sh" "$INSTALL_ROOT/lib/common.sh" 0644
@@ -190,7 +213,7 @@ install_file_if_changed "$SCRIPT_DIR/config/backup.env.example" "$INSTALL_ROOT/c
 
 # Convenience commands (relative links stay valid if /opt is relocated).
 ensure_dir "$BIN_LINK_DIR" 0755
-for _c in backup:wallbang-backup verify-backup:wallbang-backup-verify restore:wallbang-backup-restore; do
+for _c in backup:wallbang-backup verify-backup:wallbang-backup-verify restore:wallbang-backup-restore setup-rclone:wallbang-backup-setup; do
   _src="${_c%%:*}"
   _dst="${_c##*:}"
   if [ -L "$BIN_LINK_DIR/$_dst" ] || [ ! -e "$BIN_LINK_DIR/$_dst" ]; then
@@ -237,15 +260,15 @@ cat <<EOF
 
 Installation summary
 --------------------
-  Scripts     : $INSTALL_ROOT/bin (symlinked as wallbang-backup, wallbang-backup-verify, wallbang-backup-restore)
+  Scripts     : $INSTALL_ROOT/bin (symlinked as wallbang-backup, wallbang-backup-verify, wallbang-backup-restore, wallbang-backup-setup)
   Config      : $CONFIG_FILE   (edit this; mode 0600)
   Local store : $BACKUP_DIR
   Logs        : ${LOG_FILE:-$LOG_DIR/backup.log} (journald: journalctl -u wallbang-mongodb-backup)
 
 Next steps
 ----------
-  1. Edit $CONFIG_FILE (MongoDB URI, rclone crypt remote, retention).
-  2. Configure rclone + the crypt remote (see README, "First-time setup").
+  1. Edit $CONFIG_FILE (MongoDB URI, B2_*/CRYPT_* values, retention).
+  2. Create the rclone remotes from those values:  sudo wallbang-backup-setup
   3. Validate without dumping:  sudo wallbang-backup-verify --remote
   4. Manual backup:             sudo wallbang-backup
   5. Enable the schedule:       sudo systemctl enable --now wallbang-mongodb-backup.timer
