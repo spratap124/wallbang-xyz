@@ -28,6 +28,11 @@ cd /home/wallbang/wallbang-xyz
 bash scripts/hostinger-bootstrap.sh
 ```
 
+The bootstrap also installs the portable MongoDB backup utility
+(`infra/mongodb-backup/install.sh`): scripts under `/opt/wallbang-backup`,
+config template at `/etc/wallbang-backup/backup.env`, and systemd units
+(disabled until you enable them). Skip it with `SKIP_BACKUP_SETUP=1`.
+
 ## Manual start
 
 ```bash
@@ -77,6 +82,35 @@ Deploy path on the VPS: `/home/ubuntu/wallbang-xyz` (uses `github.com-xyz` remot
 
 
 ## Backups
+
+Portable MongoDB Atlas → Backblaze B2 backups:
+[`infra/mongodb-backup/README.md`](../infra/mongodb-backup/README.md). Installed
+by the bootstrap; the timer is enabled explicitly after configuration.
+
+```bash
+sudo nano /etc/wallbang-backup/backup.env            # MONGODB_URI + rclone crypt remote
+sudo rclone --config /etc/wallbang-backup/rclone.conf config create b2 wallbang-b2 type b2 \
+  account "<KEY_ID>" key "<APP_KEY>"
+sudo rclone --config /etc/wallbang-backup/rclone.conf config create wallbang-backup-crypt crypt \
+  remote wallbang-b2:wallbang-db-backups password "<CRYPT_PASSWORD>" password2 "<CRYPT_SALT>"
+sudo chmod 0600 /etc/wallbang-backup/rclone.conf
+
+sudo wallbang-backup-verify --remote        # validate, no dump
+sudo wallbang-backup                        # manual backup
+sudo systemctl enable --now wallbang-mongodb-backup.timer
+
+# verify / restore
+sudo wallbang-backup-verify --latest --remote
+sudo wallbang-backup-restore --archive <file|remote-path> --target-uri <uri> --confirm
+```
+
+Re-run the installer any time (idempotent, never overwrites config):
+
+```bash
+sudo ./infra/mongodb-backup/install.sh
+```
+
+Legacy in-stack scripts (deprecated):
 
 ```bash
 ./scripts/backup_db.sh

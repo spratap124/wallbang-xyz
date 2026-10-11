@@ -5,6 +5,11 @@
 # Expected layout:
 #   /home/wallbang/wallbang-cs2-server/
 #   /home/wallbang/wallbang-xyz/
+#
+# Environment overrides:
+#   APP_DIR   target checkout (default /home/wallbang/wallbang-xyz)
+#   REPO_URL / BRANCH
+#   SKIP_BACKUP_SETUP=1   skip installing the MongoDB backup utility
 
 set -euo pipefail
 
@@ -77,6 +82,24 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
   sleep 3
 done
 
+# Portable MongoDB backup utility (Atlas -> Backblaze B2). Installs scripts,
+# config template, systemd units and logrotate. It is idempotent and never
+# overwrites an existing config or deletes backups. The daily timer stays
+# DISABLED until you configure credentials and enable it explicitly.
+if [[ "${SKIP_BACKUP_SETUP:-0}" != "1" ]]; then
+  echo "==> Installing the MongoDB backup utility…"
+  if [[ -f "${APP_DIR}/infra/mongodb-backup/install.sh" ]]; then
+    if sudo bash "${APP_DIR}/infra/mongodb-backup/install.sh"; then
+      echo "Backup utility installed (timer not enabled yet)."
+    else
+      echo "WARN: backup utility install failed — re-run manually:"
+      echo "      sudo bash ${APP_DIR}/infra/mongodb-backup/install.sh"
+    fi
+  else
+    echo "WARN: ${APP_DIR}/infra/mongodb-backup/install.sh not found; skipping."
+  fi
+fi
+
 cat <<EOF
 
 Bootstrap complete.
@@ -88,8 +111,15 @@ Next:
        git checkout -- nginx/conf.d/wallbang.conf   # restore TLS vhost from repo
        docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
        # Optional renew hook: sudo ln -sf ${APP_DIR}/scripts/renew-certs.sh /etc/letsencrypt/renewal-hooks/deploy/wallbang-nginx
-  4. Optional daily DB backup:
-       sudo ln -sf ${APP_DIR}/scripts/backup_db.sh /etc/cron.daily/wallbang-db-backup
+  4. MongoDB backups (installed by this bootstrap):
+       sudo nano /etc/wallbang-backup/backup.env          # MONGODB_URI + remote settings
+       sudo rclone --config /etc/wallbang-backup/rclone.conf config create b2 wallbang-b2 type b2 account "<KEY_ID>" key "<APP_KEY>"
+       sudo rclone --config /etc/wallbang-backup/rclone.conf config create wallbang-backup-crypt crypt remote wallbang-b2:wallbang-db-backups password "<CRYPT_PASSWORD>" password2 "<CRYPT_SALT>"
+       sudo chmod 0600 /etc/wallbang-backup/rclone.conf
+       sudo wallbang-backup-verify --remote                # validate, no dump
+       sudo wallbang-backup                                # manual backup
+       sudo systemctl enable --now wallbang-mongodb-backup.timer
+       # Docs: ${APP_DIR}/infra/mongodb-backup/README.md
   5. Keep wallbang-cs2-server/ running natively (not managed by this Compose file)
 
 EOF
