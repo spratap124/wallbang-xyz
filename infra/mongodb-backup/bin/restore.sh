@@ -53,8 +53,12 @@ Options:
   --target-uri <uri>   Target MongoDB connection string (required).
   --ns-from <db>       Source namespace pattern for renaming (default: unchanged).
   --ns-to <db>         Destination namespace pattern (default: unchanged).
-  --drop               DROP existing collections in the target namespaces.
-                       Never used by default.
+  --replace            Replace the target with the restore point: drops the
+                       collections contained in the archive before restoring.
+                       (Alias: --drop.)
+  --merge              Opt out of replacing: insert only, leave existing
+                       documents untouched. Never the default for --pick.
+  --drop               Alias for --replace.
   --dry-run            Pass --dryRun to mongorestore (no writes).
   --allow-production   Required when --target-uri equals the configured MONGODB_URI.
   --confirm            Acknowledge that this writes data. Required.
@@ -76,6 +80,7 @@ LATEST=0
 USE_REMOTE=0
 PICK=0
 TARGET_FROM_CONFIG=0
+MERGE=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -96,6 +101,8 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --drop) DROP=1 ;;
+    --replace) DROP=1 ;;
+    --merge) MERGE=1 ;;
     --dry-run) DRY_RUN=1 ;;
     --allow-production) ALLOW_PRODUCTION=1 ;;
     --confirm) CONFIRMED=1 ;;
@@ -191,6 +198,11 @@ pick_remote_archive() {
 
 if [ "$PICK" -eq 1 ]; then
   require_cmd "$RCLONE_BIN" "rclone"
+  # An explicitly confirmed interactive restore means "put the database back to
+  # this point", so replace by default; --merge opts out.
+  if [ "$MERGE" -eq 0 ]; then
+    DROP=1
+  fi
   if [ -z "$TARGET_URI" ]; then
     [ -n "${MONGODB_URI:-}" ] || die "$EX_CONFIG" "--pick needs MONGODB_URI in $(config_file_path) (or pass --target-uri)."
     TARGET_URI="$MONGODB_URI"
@@ -203,9 +215,9 @@ if [ "$PICK" -eq 1 ]; then
   printf '  target cluster: %s\n' "$(uri_host "$TARGET_URI")" >&2
   printf '  source config : %s\n' "$(config_file_path)" >&2
   if [ "$DROP" -eq 1 ]; then
-    printf '  mode          : --drop (existing collections in scope will be REPLACED)\n' >&2
+    printf '  mode          : REPLACE — collections in the archive are dropped and replaced by the restore point\n' >&2
   else
-    printf '  mode          : merge into existing namespaces (no --drop)\n' >&2
+    printf '  mode          : MERGE — insert only; existing documents are kept\n' >&2
   fi
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '  mode          : dry run (no writes)\n' >&2
