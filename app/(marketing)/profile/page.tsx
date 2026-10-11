@@ -7,7 +7,6 @@ import { isProfilePageEnabled } from "@/lib/platform/feature-flags";
 import { getProfileDashboard } from "@/lib/profile/dashboard";
 import { ensurePlayerDomain, getMyProfile } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
-
 export const metadata = createPageMetadata({
   title: "My Profile",
   description: "Your WallBang account — VIP membership, retake servers, and loadout.",
@@ -44,7 +43,7 @@ export default async function MyProfilePage() {
 
   return (
     <ProfilePageView
-      profile={{ ...profile, showSteamId: true }}
+      profile={{ ...profile, showSteamId: true, accountLinked: true }}
       dashboard={dashboard}
     />
   );

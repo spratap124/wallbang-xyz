@@ -91,6 +91,13 @@ function ProfileDashboard({ profile, dashboard }: ProfilePageViewProps) {
           </div>
         ) : null}
 
+        {!profile.accountLinked ? (
+          <div className="border-border bg-card/40 text-muted-foreground rounded-xl border px-4 py-3 text-xs">
+            This SteamID has no WallBang account yet. Only in-game activity is
+            shown, and this page is visible to staff only.
+          </div>
+        ) : null}
+
         <div className="grid items-stretch gap-4 lg:grid-cols-2">
           <StatsSection profile={profile} />
           <ServerActivityCard activity={profile.serverActivity ?? null} />
@@ -112,7 +119,12 @@ function ProfileDashboard({ profile, dashboard }: ProfilePageViewProps) {
           />
         </div>
 
-        <RetakeServerList servers={servers} hasLoaded={hasLoaded} />
+        {/* The fleet server list is generic marketing content, not player data —
+            it only belongs on the owner's own profile. */}
+        {profile.isOwner ? (
+          <RetakeServerList servers={servers} hasLoaded={hasLoaded} />
+        ) : null}
+
         <LoadoutPreview
           loadout={dashboard.loadout}
           isOwner={profile.isOwner}

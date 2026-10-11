@@ -149,6 +149,26 @@ async function buildLoadoutPreview(
   };
 }
 
+/** Standalone empty dashboard for players without an account or loadout. */
+export function emptyProfileDashboard(input: {
+  serverMeta: ProfileServerMeta[];
+  joinedLabel?: string;
+}): ProfileDashboardExtras {
+  return {
+    vip: {
+      active: false,
+      lifetime: false,
+      expiresOn: null,
+      daysRemaining: null,
+      expiredOn: null,
+      subline: null,
+    },
+    loadout: EMPTY_SLOTS,
+    serverMeta: input.serverMeta,
+    joinedLabel: input.joinedLabel ?? "",
+  };
+}
+
 export async function getProfileDashboard(input: {
   userId: string;
   steamId: string;
