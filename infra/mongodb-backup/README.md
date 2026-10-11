@@ -223,7 +223,12 @@ sudo wallbang-backup-verify --all --remote
 # Fail if the newest backup is older than 2 days
 sudo wallbang-backup-verify --latest --max-age-days 2
 
-# Dry-run a restore (no writes) from a local archive
+# Restore the newest backup — one command (local copy, or the off-site copy
+# with --remote). Add --dry-run to preview, drop --drop-in for extra safety.
+sudo wallbang-backup-restore --latest --remote \
+  --target-uri "mongodb+srv://test-user:pass@test-cluster/" --confirm
+
+# Dry-run (no writes) from a specific local archive
 sudo wallbang-backup-restore --archive /var/backups/wallbang-mongodb/<stamp>/mongodb-<stamp>.archive.gz \
   --target-uri "mongodb+srv://test-user:pass@test-cluster/" --dry-run --confirm
 
@@ -234,9 +239,11 @@ sudo wallbang-backup-restore \
   --ns-from 'wallbang.*' --ns-to 'wallbang_restore.*' --confirm
 ```
 
-Exit codes: `0` ok, `1` config, `2` prerequisite, `3` dump, `4` validation,
-`5` upload, `6` verification, `7` prune, `8` missing confirmation,
-`75` another run holds the lock.
+`--latest` resolves the newest backup for you: local by default, or the newest
+off-site archive with `--latest --remote` (its checksum sidecar is fetched and
+verified too). Exit codes: `0` ok, `1` config, `2` prerequisite, `3` dump,
+`4` validation, `5` upload, `6` verification, `7` prune, `8` missing
+confirmation, `9` setup failure, `75` another run holds the lock.
 
 ## Secrets, encryption and escrow
 

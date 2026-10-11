@@ -14,6 +14,7 @@ CURRENT_TEST=""
 setup_sandbox() {
   # Creates an isolated tree + command stubs, exports paths for the scripts.
   SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/wallbang-backup-test.XXXXXX")"
+  export SANDBOX
   BIN="$SANDBOX/bin"
   mkdir -p "$BIN" "$SANDBOX/backups" "$SANDBOX/logs" "$SANDBOX/etc" "$SANDBOX/lock"
   STUB_LOG="$SANDBOX/stub.log"

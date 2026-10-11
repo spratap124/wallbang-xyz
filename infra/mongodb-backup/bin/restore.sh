@@ -37,10 +37,15 @@ usage() {
 WallBang MongoDB restore (manual, explicitly confirmed)
 
 Usage: wallbang-backup-restore --archive <source> --target-uri <uri> --confirm [options]
+       wallbang-backup-restore --latest [--remote] --target-uri <uri> --confirm [options]
 
 Options:
   --archive <path>     Local archive file, or a remote path
                        (e.g. wallbang-b2-crypt:wallbang-db-backups/mongodb/<stamp>/mongodb-<stamp>.archive.gz)
+  --latest             Resolve the newest backup automatically instead of
+                       passing --archive. Local by default; combine with
+                       --remote to use the newest off-site copy.
+  --remote             With --latest: pick the newest archive on the rclone remote.
   --target-uri <uri>   Target MongoDB connection string (required).
   --ns-from <db>       Source namespace pattern for renaming (default: unchanged).
   --ns-to <db>         Destination namespace pattern (default: unchanged).
@@ -63,6 +68,8 @@ DROP=0
 DRY_RUN=0
 ALLOW_PRODUCTION=0
 CONFIRMED=0
+LATEST=0
+USE_REMOTE=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -86,6 +93,8 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY_RUN=1 ;;
     --allow-production) ALLOW_PRODUCTION=1 ;;
     --confirm) CONFIRMED=1 ;;
+    --latest) LATEST=1 ;;
+    --remote) USE_REMOTE=1 ;;
     --help | -h)
       usage
       exit 0
@@ -98,10 +107,16 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-[ -n "$ARCHIVE" ] || {
+if [ "$USE_REMOTE" -eq 1 ] && [ "$LATEST" -eq 0 ]; then
+  die "$EX_CONFIG" "--remote is only meaningful together with --latest."
+fi
+if [ "$LATEST" -eq 1 ] && [ -n "$ARCHIVE" ]; then
+  die "$EX_CONFIG" "Use either --archive or --latest, not both."
+fi
+if [ "$LATEST" -eq 0 ] && [ -z "$ARCHIVE" ]; then
   usage >&2
-  die "$EX_CONFIG" "--archive is required."
-}
+  die "$EX_CONFIG" "--archive (or --latest) is required."
+fi
 [ -n "$TARGET_URI" ] || {
   usage >&2
   die "$EX_CONFIG" "--target-uri is required (restores never default to production)."
@@ -120,6 +135,34 @@ fi
 log_init
 
 require_cmd "$MONGORESTORE_BIN" "mongorestore (mongodb-database-tools)"
+
+# --- resolve --latest --------------------------------------------------------
+latest_local_archive() {
+  _dir="$(find "$LOCAL_BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -name "$BACKUP_PREFIX-*" 2>/dev/null | sort | tail -n1)"
+  [ -n "$_dir" ] || return 1
+  printf '%s/%s.archive.gz' "$_dir" "$(basename "$_dir")"
+}
+
+latest_remote_archive() {
+  [ -n "${RCLONE_CRYPT_REMOTE:-}" ] || return 1
+  _dirs="$(rclone lsf "$(remote_root)" 2>/dev/null | grep -E "^${BACKUP_PREFIX}-[0-9]{8}-[0-9]{6}/$" | sort)"
+  _dir="$(printf '%s\n' "$_dirs" | tail -n1)"
+  [ -n "$_dir" ] || return 1
+  _name="${_dir%/}"
+  printf '%s/%s/%s.archive.gz' "$(remote_root)" "$_name" "$_name"
+}
+
+if [ "$LATEST" -eq 1 ]; then
+  require_cmd "$RCLONE_BIN" "rclone" # only when --latest needs the remote
+  if [ "$USE_REMOTE" -eq 1 ]; then
+    ARCHIVE="$(latest_remote_archive)" || die "$EX_CONFIG" "No remote backups found under $(remote_root)."
+    log_info "Latest off-site archive: $(basename "$(dirname "$ARCHIVE")")/$(basename "$ARCHIVE")"
+  else
+    ARCHIVE="$(latest_local_archive)" || die "$EX_CONFIG" "No local backups found in $LOCAL_BACKUP_DIR."
+    log_info "Latest local archive: $(basename "$ARCHIVE")"
+  fi
+fi
+
 if [ -x "$RCLONE_BIN" ] && printf '%s' "$ARCHIVE" | grep -q ':'; then
   RESOLVE_WITH_RCLONE=1
 else
@@ -141,23 +184,34 @@ trap cleanup EXIT
 
 if [ "$RESOLVE_WITH_RCLONE" -eq 1 ]; then
   STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/wallbang-restore.XXXXXX")"
+  # Stage under the original file name so the checksum sidecar matches.
+  STAGED_NAME="$(basename "$ARCHIVE")"
   log_info "Fetching archive from remote (redacted path)."
-  if ! rclone copyto "$ARCHIVE" "$STAGE_DIR/restore.archive.gz"; then
+  if ! rclone copyto "$ARCHIVE" "$STAGE_DIR/$STAGED_NAME"; then
     die "$EX_UPLOAD" "Could not download archive from remote."
   fi
-  LOCAL_ARCHIVE="$STAGE_DIR/restore.archive.gz"
+  # Best-effort: bring the checksum sidecar along so integrity is verified.
+  if rclone copyto "$ARCHIVE.sha256" "$STAGE_DIR/$STAGED_NAME.sha256" 2>/dev/null; then
+    log_info "Downloaded checksum sidecar."
+  else
+    log_warn "No checksum sidecar on the remote; skipping integrity verification."
+  fi
+  LOCAL_ARCHIVE="$STAGE_DIR/$STAGED_NAME"
 else
   LOCAL_ARCHIVE="$ARCHIVE"
 fi
 
 [ -f "$LOCAL_ARCHIVE" ] || die "$EX_CONFIG" "Archive not found: $LOCAL_ARCHIVE"
 
-# Verify checksum when a sidecar is available.
+# Verify the SHA-256 by comparing hashes rather than `sha256sum -c`, so sidecars
+# written with an absolute path (older releases) still verify after a move.
 SIDECAR="$LOCAL_ARCHIVE.sha256"
 if [ -f "$SIDECAR" ] && [ -x "$SHA256_BIN" ]; then
   log_info "Verifying SHA-256 checksum."
-  if ! (cd "$(dirname "$LOCAL_ARCHIVE")" && "$SHA256_BIN" -c "$(basename "$SIDECAR")") >/dev/null 2>&1; then
-    die "$EX_VALIDATE" "Checksum verification failed for $LOCAL_ARCHIVE."
+  EXPECTED_HASH="$(awk '{print $1; exit}' "$SIDECAR" 2>/dev/null)"
+  ACTUAL_HASH="$("$SHA256_BIN" "$LOCAL_ARCHIVE" | awk '{print $1; exit}')"
+  if [ -z "$EXPECTED_HASH" ] || [ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]; then
+    die "$EX_VALIDATE" "Checksum mismatch for $LOCAL_ARCHIVE (expected ${EXPECTED_HASH:-none}, got ${ACTUAL_HASH:-none})."
   fi
   log_info "Checksum OK."
 else

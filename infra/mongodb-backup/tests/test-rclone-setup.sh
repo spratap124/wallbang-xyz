@@ -103,8 +103,7 @@ assert_exit 0 "$RC" "dry-run exit code"
 assert_not_contains "$(cat "$STUB_LOG")" "config create" "dry-run creates nothing"
 assert_contains "$OUTPUT" "[dry-run]" "dry-run explained"
 
-test_start "legacy B2_ACCOUNT_ID still works with a deprecation warning"
-install_rclone_setup_stubs
+test_start "legacy B2_ACCOUNT_ID still works with a deprecation warning"install_rclone_setup_stubs
 rm -f "$SANDBOX/etc/rclone.conf"
 : >"$STUB_LOG"
 write_config \
