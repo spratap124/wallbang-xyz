@@ -11,6 +11,14 @@ export {
   patchPlayerProfile,
   DEFAULT_PRIVACY,
 } from "@/lib/profile/service";
+export { getPlayerServerActivity } from "@/lib/profile/sessions";
+export {
+  PUBLIC_PROFILE_FIELDS,
+  PRIVATE_PROFILE_FIELDS,
+  canViewSteamId,
+  toAnonymousPublicProfile,
+  toPublicPlayerProfile,
+} from "@/lib/profile/public";
 export {
   BADGE_LABELS,
   badgeLabel,

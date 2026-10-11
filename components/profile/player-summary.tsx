@@ -16,6 +16,8 @@ import type { PlayerProfileView } from "@/types/profile";
 type PlayerSummaryCardProps = {
   profile: PlayerProfileView;
   showSettings?: boolean;
+  /** SteamID64 is owner/admin only; defaults to hidden. */
+  showSteamId?: boolean;
 };
 
 function SummaryRow({
@@ -38,6 +40,7 @@ function SummaryRow({
 export function PlayerSummary({
   profile,
   showSettings = false,
+  showSteamId = false,
 }: PlayerSummaryCardProps) {
   const { summary } = profile;
 
@@ -59,7 +62,9 @@ export function PlayerSummary({
           />
         )}
         <dl>
-          <SummaryRow label="SteamID64" value={summary.steamId} />
+          {showSteamId ? (
+            <SummaryRow label="SteamID64" value={summary.steamId} />
+          ) : null}
           <SummaryRow
             label="Member Since"
             value={formatMonthYear(summary.memberSince)}

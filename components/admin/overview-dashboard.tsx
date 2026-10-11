@@ -249,23 +249,26 @@ export function OverviewDashboard({
                           )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="truncate font-medium">
+                              <Link
+                                href={`/profile/${session.steamId}`}
+                                title="View WallBang profile"
+                                className="hover:text-primary truncate font-medium transition-colors"
+                              >
                                 {session.personaName ?? "Unknown"}
-                              </span>
+                              </Link>
                               {session.active ? (
                                 <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-emerald-400 uppercase">
                                   Live
                                 </span>
                               ) : null}
                             </div>
-                            <a
-                              href={`https://steamcommunity.com/profiles/${session.steamId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <Link
+                              href={`/profile/${session.steamId}`}
+                              title="View WallBang profile"
                               className="text-muted-foreground hover:text-foreground block truncate font-mono text-[11px] transition-colors hover:underline"
                             >
                               {session.steamId}
-                            </a>
+                            </Link>
                           </div>
                         </div>
                       </td>

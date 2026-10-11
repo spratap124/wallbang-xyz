@@ -145,18 +145,20 @@ export function AdminPlayersPanel() {
                         </span>
                       )}
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{user.personaName}</p>
-                        <a
-                          href={
-                            user.profileUrl ||
-                            `https://steamcommunity.com/profiles/${user.steamId}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <Link
+                          href={`/profile/${user.steamId}`}
+                          title="View WallBang profile"
+                          className="hover:text-primary block truncate font-medium transition-colors"
+                        >
+                          {user.personaName}
+                        </Link>
+                        <Link
+                          href={`/profile/${user.steamId}`}
+                          title="View WallBang profile"
                           className="text-muted-foreground hover:text-foreground block truncate font-mono text-xs transition-colors hover:underline"
                         >
                           {user.steamId}
-                        </a>
+                        </Link>
                       </div>
                     </div>
                   </td>
@@ -167,17 +169,30 @@ export function AdminPlayersPanel() {
                     {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right sm:px-4 sm:py-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      render={
-                        <Link
-                          href={`/admin/permissions?steamId=${encodeURIComponent(user.steamId)}`}
-                        />
-                      }
-                    >
-                      Manage roles
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        render={
+                          <Link
+                            href={`/profile/${encodeURIComponent(user.steamId)}`}
+                          />
+                        }
+                      >
+                        Public profile
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        render={
+                          <Link
+                            href={`/admin/permissions?steamId=${encodeURIComponent(user.steamId)}`}
+                          />
+                        }
+                      >
+                        Manage roles
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))

@@ -3,17 +3,26 @@ import Image from "next/image";
 
 import { VipBadge } from "@/components/profile/vip-badge";
 import { Button } from "@/components/ui/button";
-import type { PlayerProfileView } from "@/types/profile";
+
+type ProfileHeroIdentity = {
+  displayName: string;
+  /** Steam persona name; omitted for anonymous viewers. */
+  personaName?: string;
+  avatarUrl: string;
+  steamProfileUrl: string;
+};
 
 type ProfileHeroProps = {
-  profile: PlayerProfileView;
+  profile: ProfileHeroIdentity;
   isVip: boolean;
   joinedLabel: string;
 };
 
 export function ProfileHero({ profile, isVip, joinedLabel }: ProfileHeroProps) {
   const steamName =
-    profile.displayName !== profile.personaName ? profile.personaName : null;
+    profile.personaName && profile.displayName !== profile.personaName
+      ? profile.personaName
+      : null;
 
   return (
     <section className="border-border bg-card relative overflow-hidden rounded-xl border">

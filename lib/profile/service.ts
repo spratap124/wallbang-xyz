@@ -34,8 +34,8 @@ import {
 import { resolveCurrentServer } from "@/lib/profile/presence";
 import { grantPlayerBadge as grantBadgeInternal } from "@/lib/profile/activity";
 import { canViewerAccess } from "@/lib/profile/privacy";
-
-const STEAM_ID64_RE = /^\d{17}$/;
+import { getPlayerServerActivity } from "@/lib/profile/sessions";
+import { isValidSteamId64 } from "@/lib/profile/public";
 
 export const DEFAULT_PRIVACY: PrivacySettings = {
   stats: "public",
@@ -44,9 +44,7 @@ export const DEFAULT_PRIVACY: PrivacySettings = {
   activity: "public",
 };
 
-export function isValidSteamId64(steamId: string): boolean {
-  return STEAM_ID64_RE.test(steamId);
-}
+export { isValidSteamId64 } from "@/lib/profile/public";
 
 function defaultSettings(steamId: string): Omit<PlayerSettingsDoc, "_id"> {
   return {
@@ -267,6 +265,7 @@ export async function getPlayerProfile(
   const showWebsiteBadge = permissions.includes("website_badge") || isVip;
 
   const badges = await loadBadges(steamId, roles);
+  const canViewStats = canViewerAccess(settings.privacy.stats, isOwner);
   const stats = redactStatsForPrivacy(
     toQuickStats(statsDoc),
     settings.privacy,
@@ -284,6 +283,11 @@ export async function getPlayerProfile(
     hasMatches: statsDoc.matchesPlayed > 0,
   });
   const currentServer = await resolveCurrentServer(steamId);
+  // Retained session activity is supplementary: never fail the whole profile
+  // when the aggregate is unavailable (e.g. transient Mongo error).
+  const serverActivity = await getPlayerServerActivity(steamId).catch(
+    () => null,
+  );
 
   return {
     steamId: user.steamId,
@@ -315,6 +319,8 @@ export async function getPlayerProfile(
       preferredSide: profile.preferredSide,
     },
     stats,
+    statsHidden: !canViewStats && statsDoc.matchesPlayed > 0,
+    serverActivity,
     badges,
     privacy: settings.privacy,
   };

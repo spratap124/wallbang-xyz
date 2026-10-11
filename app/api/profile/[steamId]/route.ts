@@ -1,10 +1,28 @@
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk } from "@/lib/permissions/authz";
-import { getPlayerProfile, isValidSteamId64 } from "@/lib/profile";
+import {
+  canViewSteamId,
+  getPlayerProfile,
+  isValidSteamId64,
+  toAnonymousPublicProfile,
+  toPublicPlayerProfile,
+} from "@/lib/profile";
+import { hasPermission } from "@/lib/permissions/service";
+
+export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ steamId: string }> };
 
+/**
+ * Public player profile.
+ *
+ * Anonymous visitors receive an explicit allowlisted projection
+ * (`toPublicPlayerProfile`) — never the raw aggregate view, and never the
+ * underlying user document. The profile owner keeps the richer view so
+ * account-level features keep working. SteamID64 is withheld from everyone
+ * except the owner and admins.
+ */
 export async function GET(
   _request: Request,
   context: RouteContext,
@@ -24,5 +42,31 @@ export async function GET(
     return jsonError("Profile not found.", 404);
   }
 
-  return jsonOk(profile);
+  const isOwner = viewer?.steamId === steamId;
+  const isAdmin = viewer
+    ? await hasPermission({ userId: viewer.id, permission: "admin_panel" })
+    : false;
+
+  let payload: unknown = profile;
+  if (!isOwner) {
+    const publicProfile = toPublicPlayerProfile(profile);
+    payload =
+      publicProfile && canViewSteamId({ isOwner, isAdmin })
+        ? publicProfile
+        : publicProfile && toAnonymousPublicProfile(publicProfile);
+  }
+
+  const response = jsonOk(payload);
+
+  // Only the public payload is safe to share-cache.
+  if (isOwner) {
+    response.headers.set("Cache-Control", "private, no-store");
+  } else {
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300",
+    );
+  }
+
+  return response;
 }

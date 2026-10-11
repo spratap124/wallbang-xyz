@@ -15,9 +15,11 @@ import {
   getLifetimeSessionStats,
 } from "@/lib/profile/session-stats";
 import { istDayBounds, istDayKey, listRecentIstDayKeys } from "@/lib/time/ist";
+import { playerSessionRetentionSeconds } from "@/lib/profile/collections";
 import type {
   FleetOverviewRecentSession,
   FleetOverviewResponse,
+  PlayerServerActivity,
   PlayerSessionDoc,
   ServerStatsDayBucket,
   ServerStatsRange,
@@ -26,6 +28,66 @@ import type {
   ServerStatsSummary,
 } from "@/types/profile";
 import type { Filter } from "mongodb";
+
+/**
+ * Retained server activity for one player in a single aggregation:
+ * session count, play time, and first/last seen within the session retention
+ * window. Returns empty totals for players with no sessions.
+ */
+export async function getPlayerServerActivity(
+  steamId: string,
+): Promise<PlayerServerActivity> {
+  const windowDays = Math.round(playerSessionRetentionSeconds() / 86_400);
+  const empty: PlayerServerActivity = {
+    sessions: 0,
+    playTimeMs: 0,
+    firstSeenAt: null,
+    lastSeenAt: null,
+    windowDays,
+  };
+  if (!/^\d{17}$/.test(steamId)) return empty;
+
+  await ensureProfileIndexes();
+  const col = await playerSessionsCollection();
+  const [row] = await col
+    .aggregate<{
+      sessions: number;
+      firstSeenAt: Date | null;
+      lastSeenAt: Date | null;
+      playTimeMs: number | null;
+    }>([
+      { $match: { steamId } },
+      {
+        $group: {
+          _id: null,
+          sessions: { $sum: 1 },
+          firstSeenAt: { $min: "$joinedAt" },
+          lastSeenAt: { $max: "$lastSeenAt" },
+          playTimeMs: {
+            $sum: {
+              $subtract: [{ $ifNull: ["$leftAt", "$lastSeenAt"] }, "$joinedAt"],
+            },
+          },
+        },
+      },
+    ])
+    .toArray();
+
+  if (!row) return empty;
+
+  const playTimeMs =
+    typeof row.playTimeMs === "number" && Number.isFinite(row.playTimeMs)
+      ? Math.max(0, Math.round(row.playTimeMs))
+      : 0;
+
+  return {
+    sessions: row.sessions ?? 0,
+    playTimeMs,
+    firstSeenAt: row.firstSeenAt?.toISOString() ?? null,
+    lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
+    windowDays,
+  };
+}
 
 function rangeDayCount(range: ServerStatsRange): number {
   return range === "1d" ? 1 : range === "7d" ? 7 : 30;
