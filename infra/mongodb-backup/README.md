@@ -225,9 +225,12 @@ sudo wallbang-backup-verify --latest --max-age-days 2
 
 # Disaster recovery, one command, no credentials on the CLI:
 # lists the restore points on B2, prompts for one, prompts for 'restore',
-# and restores into MONGODB_URI from /etc/wallbang-backup/backup.env.
+# then REPLACES the target with that restore point (collections contained in
+# the archive are dropped first) using MONGODB_URI from backup.env.
 sudo wallbang-backup-restore --pick
 sudo wallbang-backup-restore --pick --dry-run        # same, but writes nothing
+sudo wallbang-backup-restore --pick --merge          # insert-only, keep live docs
+sudo wallbang-backup-restore --pick --ns-to 'wallbang_restore.*'   # rehearse elsewhere
 
 # Newest backup without prompting (add --remote for the off-site copy)
 sudo wallbang-backup-restore --latest --remote \
@@ -243,6 +246,13 @@ sudo wallbang-backup-restore \
   --target-uri "mongodb+srv://test-user:pass@test-cluster/" \
   --ns-from 'wallbang.*' --ns-to 'wallbang_restore.*' --confirm
 ```
+
+**Merge vs replace:** `--pick` replaces by default (`--drop`, i.e. the archive's
+collections are dropped and restored, giving the DB the restore point's state).
+`--merge` inserts missing documents and leaves existing ones untouched — useful
+for rehearsals, but it will *not* revert edits or deletions. Collections not
+present in the archive are never touched either way, so clean up any scratch
+databases you created yourself.
 
 `--latest` resolves the newest backup for you: local by default, or the newest
 off-site archive with `--latest --remote` (its checksum sidecar is fetched and

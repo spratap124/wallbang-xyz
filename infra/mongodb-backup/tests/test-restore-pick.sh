@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests: interactive `--pick` restore (no credentials on the command line).
+# Tests: interactive `--pick` restore (credentials from config, replace by default).
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-test-harness.sh"
 
@@ -7,8 +7,6 @@ setup_sandbox
 install_stub_tools
 trap teardown_sandbox EXIT
 
-# Seed two local backups (used as the "remote" bytes by the rclone stub) plus a
-# config that carries MONGODB_URI.
 seed_local_backup() {
   _stamp="$1"
   _dir="$SANDBOX/backups/mongodb-$_stamp"
@@ -21,6 +19,8 @@ seed_local_backup 20260101-020000
 seed_local_backup 20260105-020000
 
 write_config "MONGODB_DATABASES='wallbang'"
+MONGODB_URI_VALUE='mongodb+srv://appuser:SuperSecret@wallbang.lpn8iur.mongodb.net/?retryWrites=false'
+printf "MONGODB_URI='%s'\n" "$MONGODB_URI_VALUE" >>"$SANDBOX/etc/backup.env"
 
 # rclone stub: lsf lists restore points; copyto mirrors the seeded bytes.
 make_stub rclone 'sub=""
@@ -55,11 +55,8 @@ run_pick() {
   set -e
 }
 
-test_start "--pick lists restore points and restores into the configured DB"
+test_start "--pick REPLACES by default so the restore point wins"
 : >"$STUB_LOG"
-CONFIG_MONGODB_URI="mongodb+srv://appuser:SuperSecret@wallbang.lpn8iur.mongodb.net/?retryWrites=false"
-sed -i.bak "s|^MONGODB_URI=.*|MONGODB_URI='$CONFIG_MONGODB_URI'|" "$SANDBOX/etc/backup.env" 2>/dev/null || \
-  printf "MONGODB_URI='%s'\n" "$CONFIG_MONGODB_URI" >>"$SANDBOX/etc/backup.env"
 run_pick "2
 restore
 "
@@ -68,15 +65,25 @@ assert_contains "$OUTPUT" "Available restore points on B2" "restore points liste
 assert_contains "$OUTPUT" "1) 2026-01-05" "newest listed first"
 assert_contains "$OUTPUT" "2) 2026-01-01" "older listed second"
 assert_contains "$OUTPUT" "20260101-020000" "selected (older) restore point announced"
+assert_contains "$OUTPUT" "REPLACE" "replace mode announced"
 LOG="$(cat "$STUB_LOG")"
 assert_contains "$LOG" "copyto test-crypt:mongodb/mongodb-20260101-020000/mongodb-20260101-020000.archive.gz" "chosen archive downloaded"
 assert_contains "$LOG" "mongorestore" "restore invoked"
-assert_not_contains "$LOG" "--drop" "no --drop by default"
+assert_contains "$LOG" "--drop" "collections dropped for a true point-in-time restore"
 
 test_start "--pick never exposes the MongoDB password"
 assert_not_contains "$OUTPUT" "SuperSecret" "password absent from output"
 assert_not_contains "$LOG" "SuperSecret" "password absent from process args"
 assert_not_contains "$OUTPUT" "appuser" "user absent from output"
+
+test_start "--pick --merge inserts only"
+: >"$STUB_LOG"
+run_pick "1
+restore
+" --merge
+assert_exit 0 "$RC" "merge exit code"
+assert_contains "$OUTPUT" "MERGE" "merge mode announced"
+assert_not_contains "$(cat "$STUB_LOG")" "--drop" "merge never drops"
 
 test_start "--pick takes the default (newest) restore point on empty input"
 : >"$STUB_LOG"
@@ -142,5 +149,17 @@ restore
 " --archive /tmp/x
 assert_exit 1 "$RC" "conflicting flags rejected"
 assert_contains "$OUTPUT" "cannot be combined" "conflict explained"
+
+test_start "scripted --replace maps to --drop"
+write_config
+make_stub mongorestore 'if [ "${FAIL_MONGORESTORE:-0}" = "1" ]; then exit 1; fi'
+printf 'bytes' >"$SANDBOX/archive.gz"
+set +e
+OUTPUT="$("$UTIL_DIR/bin/restore.sh" --archive "$SANDBOX/archive.gz" \
+  --target-uri "mongodb://u:p@test-cluster:27017/" --replace --confirm 2>&1)"
+RC=$?
+set -e
+assert_exit 0 "$RC" "scripted replace exit code"
+assert_contains "$(cat "$STUB_LOG")" "--drop" "replace maps to --drop for scripted runs"
 
 summary
