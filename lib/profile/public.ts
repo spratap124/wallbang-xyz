@@ -1,7 +1,11 @@
 import type {
+  CurrentServerInfo,
   PlayerProfileView,
+  PlayerServerActivity,
+  ProfilePageProfile,
   PublicPlayerProfile,
   PublicPlayerSummary,
+  QuickStats,
 } from "@/types/profile";
 
 const STEAM_ID64_RE = /^\d{17}$/;
@@ -45,18 +49,117 @@ export const PRIVATE_PROFILE_FIELDS = [
 ] as const;
 
 /**
- * SteamID64 is only shown to the account owner and to admins; public visitors
- * see the profile without it.
+ * Staff = admin/owner (`admin_panel`) or moderator (`moderation_access`).
+ * Staff may view profiles of players who never registered a WallBang account.
+ */
+export function isStaffViewer(input: {
+  isAdmin: boolean;
+  isModerator: boolean;
+}): boolean {
+  return input.isAdmin || input.isModerator;
+}
+
+/**
+ * SteamID64 is only shown to the account owner and to staff (admins and
+ * moderators); public visitors see the profile without it.
  */
 export function canViewSteamId(input: {
   isOwner: boolean;
   isAdmin: boolean;
+  isModerator?: boolean;
 }): boolean {
-  return input.isOwner || input.isAdmin;
+  return (
+    input.isOwner ||
+    isStaffViewer({
+      isAdmin: input.isAdmin,
+      isModerator: input.isModerator ?? false,
+    })
+  );
 }
 
+/** Shown when a SteamID has no WallBang account (staff-only view). */
+export const UNREGISTERED_PLAYER_NAME = "Unregistered player";
+
 /**
- * Drops the SteamID64 (and the Steam profile URL, which embeds it) for
+ * Builds the staff-only profile for an in-game player who never signed in.
+ * Only game-derived data is available — there is no account, avatar, persona,
+ * VIP status, or loadout, and nothing is invented for those fields.
+ */
+export function buildLimitedPublicProfile(input: {
+  steamId: string;
+  showSteamId: boolean;
+  stats: QuickStats | null;
+  activity: PlayerServerActivity | null;
+  currentServer: CurrentServerInfo | null;
+}): ProfilePageProfile {
+  const activity = input.activity ?? null;
+  const firstSeen = activity?.firstSeenAt ?? null;
+  const lastSeen = activity?.lastSeenAt ?? null;
+
+  return {
+    steamId: input.showSteamId ? input.steamId : "",
+    displayName: UNREGISTERED_PLAYER_NAME,
+    avatarUrl: "",
+    steamProfileUrl: input.showSteamId
+      ? `https://steamcommunity.com/profiles/${input.steamId}`
+      : "",
+    bannerUrl: null,
+    countryCode: null,
+    bio: null,
+    role: "USER",
+    isVip: false,
+    showWebsiteBadge: false,
+    joinedAt: firstSeen ?? "",
+    lastLoginAt: lastSeen ?? "",
+    profileViews: 0,
+    stats: input.stats ?? emptyPublicStats(),
+    statsHidden: false,
+    serverActivity: activity,
+    badges: [],
+    summary: {
+      memberSince: firstSeen ?? "",
+      lastLoginAt: lastSeen ?? "",
+      role: "USER",
+      favoriteWeapon: null,
+      favoriteMap: null,
+      preferredSide: null,
+      currentServer: input.currentServer,
+    },
+    isOwner: false,
+    showSteamId: input.showSteamId,
+    accountLinked: false,
+  };
+}
+
+function emptyPublicStats(): QuickStats {
+  return {
+    matchesPlayed: 0,
+    wins: 0,
+    losses: 0,
+    winRate: null,
+    kills: 0,
+    deaths: 0,
+    assists: 0,
+    kd: null,
+    headshots: 0,
+    headshotPercent: null,
+    damage: 0,
+    adr: null,
+    roundsPlayed: 0,
+    roundsWon: 0,
+    roundsLost: 0,
+    roundWinRate: null,
+    plants: 0,
+    plantAttempts: 0,
+    defuses: 0,
+    defuseAttempts: 0,
+    mvps: 0,
+    rating: 0,
+    hoursPlayed: 0,
+  };
+}
+
+/** Drops the SteamID64 (and the Steam profile URL, which embeds it) for
  * viewers who are not allowed to see the ID. Used for anonymous API payloads;
  * the profile page still renders the Steam link as an explicit navigation
  * control.

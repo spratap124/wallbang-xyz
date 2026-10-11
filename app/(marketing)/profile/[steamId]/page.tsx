@@ -4,14 +4,7 @@ import { ProfilePageView } from "@/components/profile/profile-page-view";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { isProfilePageEnabled } from "@/lib/platform/feature-flags";
-import { getProfileDashboard } from "@/lib/profile/dashboard";
-import {
-  canViewSteamId,
-  getPlayerProfile,
-  isValidSteamId64,
-  toPublicPlayerProfile,
-} from "@/lib/profile";
-import { hasPermission } from "@/lib/permissions/service";
+import { getPlayerProfile, isValidSteamId64, loadPlayerProfilePage } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
 
 type PageProps = {
@@ -33,9 +26,12 @@ export async function generateMetadata({ params }: PageProps) {
     incrementViews: false,
   });
   if (!profile) {
+    // In-game-only players have a staff-only profile built from game data:
+    // never index it and never advertise a persona we do not have.
     return createPageMetadata({
-      title: "Profile Not Found",
-      description: "This WallBang player profile could not be found.",
+      title: "Player profile",
+      description:
+        "SteamID64 profile for a Counter-Strike 2 player seen on WallBang servers.",
       path: `/profile/${steamId}`,
       noIndex: true,
     });
@@ -59,34 +55,14 @@ export default async function PublicProfilePage({ params }: PageProps) {
   }
 
   const viewer = await getSession();
-  const profile = await getPlayerProfile(steamId, viewer);
-  if (!profile) {
+  // Registered players are public; players with no WallBang account are
+  // staff-only (admins, owners, moderators). Everyone else gets a 404.
+  const page = await loadPlayerProfilePage({ steamId, viewer });
+  if (!page) {
     notFound();
   }
 
-  // Anonymous/other viewers only ever receive the allowlisted projection; the
-  // owner keeps the full view so account-level features keep working.
-  const isAdmin = viewer
-    ? await hasPermission({ userId: viewer.id, permission: "admin_panel" })
-    : false;
-  const showSteamId = canViewSteamId({ isOwner: profile.isOwner, isAdmin });
-  const publicProfile = profile.isOwner
-    ? null
-    : toPublicPlayerProfile(profile);
-  const pageProfile = profile.isOwner
-    ? { ...profile, showSteamId }
-    : publicProfile && { ...publicProfile, isOwner: false, showSteamId };
-
-  if (!pageProfile) {
-    notFound();
-  }
-
-  const dashboard = await getProfileDashboard({
-    userId: profile.userId,
-    steamId: profile.steamId,
-    fallbackVip: profile.isVip,
-    joinedAt: profile.joinedAt,
-  });
-
-  return <ProfilePageView profile={pageProfile} dashboard={dashboard} />;
+  return (
+    <ProfilePageView profile={page.profile} dashboard={page.dashboard} />
+  );
 }

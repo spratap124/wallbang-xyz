@@ -415,6 +415,20 @@ export async function getPlayerStats(
   return toQuickStats(doc);
 }
 
+/**
+ * Read-only stats lookup that does not require a WallBang account and never
+ * writes. Used for staff viewing in-game-only players.
+ */
+export async function readPublicPlayerStats(
+  steamId: string,
+): Promise<QuickStats | null> {
+  if (!isValidSteamId64(steamId)) return null;
+  await ensureProfileIndexes();
+  const col = await playerStatsCollection();
+  const doc = await col.findOne({ steamId });
+  return doc ? toQuickStats(normalizeStatsDoc(doc)) : null;
+}
+
 export async function getPlayerBadges(
   steamId: string,
 ): Promise<ProfileBadge[]> {

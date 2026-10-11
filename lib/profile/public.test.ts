@@ -5,7 +5,10 @@ import { canViewerAccess } from "@/lib/profile/privacy";
 import {
   PRIVATE_PROFILE_FIELDS,
   PUBLIC_PROFILE_FIELDS,
+  UNREGISTERED_PLAYER_NAME,
+  buildLimitedPublicProfile,
   canViewSteamId,
+  isStaffViewer,
   isValidSteamId64,
   toAnonymousPublicProfile,
   toPublicPlayerProfile,
@@ -186,10 +189,63 @@ test("privacy levels gate non-owner access without leaking data", () => {
   assert.equal(canViewerAccess("private", true), true);
 });
 
-test("SteamID64 is visible to owners and admins only", () => {
+test("SteamID64 is visible to owners and staff (admins, moderators)", () => {
   assert.equal(canViewSteamId({ isOwner: false, isAdmin: false }), false);
+  assert.equal(
+    canViewSteamId({ isOwner: false, isAdmin: false, isModerator: true }),
+    true,
+  );
   assert.equal(canViewSteamId({ isOwner: false, isAdmin: true }), true);
   assert.equal(canViewSteamId({ isOwner: true, isAdmin: false }), true);
+});
+
+test("staff means admin or moderator", () => {
+  assert.equal(isStaffViewer({ isAdmin: false, isModerator: false }), false);
+  assert.equal(isStaffViewer({ isAdmin: true, isModerator: false }), true);
+  assert.equal(isStaffViewer({ isAdmin: false, isModerator: true }), true);
+});
+
+test("limited profile for unregistered players invents no account data", () => {
+  const limited = buildLimitedPublicProfile({
+    steamId: "76561198865074734",
+    showSteamId: true,
+    stats: null,
+    activity: {
+      sessions: 3,
+      playTimeMs: 7_200_000,
+      firstSeenAt: "2026-09-01T10:00:00.000Z",
+      lastSeenAt: "2026-10-01T10:00:00.000Z",
+      windowDays: 30,
+    },
+    currentServer: null,
+  });
+
+  assert.equal(limited.accountLinked, false);
+  assert.equal(limited.displayName, UNREGISTERED_PLAYER_NAME);
+  assert.equal(limited.avatarUrl, "");
+  assert.equal(limited.isVip, false);
+  assert.equal(limited.badges.length, 0);
+  assert.equal(limited.bio, null);
+  assert.equal(limited.countryCode, null);
+  assert.equal(limited.stats.matchesPlayed, 0);
+  assert.equal(limited.serverActivity?.sessions, 3);
+  // First/last seen come from retained sessions, not an account.
+  assert.equal(limited.joinedAt, "2026-09-01T10:00:00.000Z");
+  assert.equal(limited.lastLoginAt, "2026-10-01T10:00:00.000Z");
+});
+
+test("limited profile hides the SteamID when the viewer may not see it", () => {
+  const limited = buildLimitedPublicProfile({
+    steamId: "76561198865074734",
+    showSteamId: false,
+    stats: null,
+    activity: null,
+    currentServer: null,
+  });
+  assert.equal(limited.steamId, "");
+  assert.equal(limited.steamProfileUrl, "");
+  assert.equal(limited.showSteamId, false);
+  assert.doesNotMatch(JSON.stringify(limited), /76561198865074734/);
 });
 
 test("public API payload omits SteamID64 for non-owner non-admin viewers", () => {

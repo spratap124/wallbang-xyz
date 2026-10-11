@@ -409,11 +409,14 @@ export type PublicPlayerProfile = Pick<
 /**
  * Shape the profile page components render. Owners get the full view; public
  * visitors get the allowlisted projection plus the `isOwner: false` flag.
- * `showSteamId` is resolved server-side (owner or admin only).
+ * `showSteamId` is resolved server-side (owner or staff only).
+ * `accountLinked` is false for in-game players with no WallBang account
+ * (staff-only view built from game data).
  */
 export type ProfilePageProfile = PublicPlayerProfile & {
   isOwner: boolean;
   showSteamId: boolean;
+  accountLinked: boolean;
 };
 
 export type PatchProfileInput = {

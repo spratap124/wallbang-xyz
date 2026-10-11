@@ -1,4 +1,3 @@
-export { getProfileDashboard } from "@/lib/profile/dashboard";
 export {
   ensurePlayerDomain,
   getMyProfile,
@@ -9,16 +8,25 @@ export {
   grantPlayerBadge,
   isValidSteamId64,
   patchPlayerProfile,
+  readPublicPlayerStats,
   DEFAULT_PRIVACY,
 } from "@/lib/profile/service";
+export {
+  emptyProfileDashboard,
+  getProfileDashboard,
+} from "@/lib/profile/dashboard";
 export { getPlayerServerActivity } from "@/lib/profile/sessions";
 export {
   PUBLIC_PROFILE_FIELDS,
   PRIVATE_PROFILE_FIELDS,
+  UNREGISTERED_PLAYER_NAME,
+  buildLimitedPublicProfile,
   canViewSteamId,
+  isStaffViewer,
   toAnonymousPublicProfile,
   toPublicPlayerProfile,
 } from "@/lib/profile/public";
+export { loadPlayerProfilePage } from "@/lib/profile/public-page";
 export {
   BADGE_LABELS,
   badgeLabel,
