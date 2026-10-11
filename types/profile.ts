@@ -325,6 +325,18 @@ export type PlayerSummary = {
 };
 
 /**
+ * Retained server activity for a player (bounded by session retention).
+ * `windowDays` tells the UI how far back the numbers actually reach.
+ */
+export type PlayerServerActivity = {
+  sessions: number;
+  playTimeMs: number;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  windowDays: number;
+};
+
+/**
  * Aggregated view model for the profile page.
  * Combines User (auth) + Player domain collections.
  */
@@ -347,8 +359,61 @@ export type PlayerProfileView = {
   isOwner: boolean;
   summary: PlayerSummary;
   stats: QuickStats;
+  /** True when the owner keeps their stats private and the viewer is not them. */
+  statsHidden?: boolean;
+  /** Retained session activity; null when unavailable. */
+  serverActivity?: PlayerServerActivity | null;
   badges: ProfileBadge[];
   privacy: PrivacySettings;
+};
+
+/** Public summary subset — never includes completion or internal counters. */
+export type PublicPlayerSummary = Pick<
+  PlayerSummary,
+  | "memberSince"
+  | "lastLoginAt"
+  | "role"
+  | "favoriteWeapon"
+  | "favoriteMap"
+  | "preferredSide"
+  | "currentServer"
+>;
+
+/**
+ * Explicit public projection of a player profile.
+ * Anything not listed here must never be sent to anonymous visitors.
+ */
+export type PublicPlayerProfile = Pick<
+  PlayerProfileView,
+  | "steamId"
+  | "displayName"
+  | "avatarUrl"
+  | "steamProfileUrl"
+  | "bannerUrl"
+  | "countryCode"
+  | "bio"
+  | "role"
+  | "isVip"
+  | "showWebsiteBadge"
+  | "joinedAt"
+  | "lastLoginAt"
+  | "profileViews"
+  | "stats"
+  | "statsHidden"
+  | "serverActivity"
+  | "badges"
+> & {
+  summary: PublicPlayerSummary;
+};
+
+/**
+ * Shape the profile page components render. Owners get the full view; public
+ * visitors get the allowlisted projection plus the `isOwner: false` flag.
+ * `showSteamId` is resolved server-side (owner or admin only).
+ */
+export type ProfilePageProfile = PublicPlayerProfile & {
+  isOwner: boolean;
+  showSteamId: boolean;
 };
 
 export type PatchProfileInput = {

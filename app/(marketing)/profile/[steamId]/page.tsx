@@ -5,7 +5,13 @@ import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { isProfilePageEnabled } from "@/lib/platform/feature-flags";
 import { getProfileDashboard } from "@/lib/profile/dashboard";
-import { getPlayerProfile, isValidSteamId64 } from "@/lib/profile";
+import {
+  canViewSteamId,
+  getPlayerProfile,
+  isValidSteamId64,
+  toPublicPlayerProfile,
+} from "@/lib/profile";
+import { hasPermission } from "@/lib/permissions/service";
 import { createPageMetadata } from "@/seo/metadata";
 
 type PageProps = {
@@ -58,6 +64,23 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
+  // Anonymous/other viewers only ever receive the allowlisted projection; the
+  // owner keeps the full view so account-level features keep working.
+  const isAdmin = viewer
+    ? await hasPermission({ userId: viewer.id, permission: "admin_panel" })
+    : false;
+  const showSteamId = canViewSteamId({ isOwner: profile.isOwner, isAdmin });
+  const publicProfile = profile.isOwner
+    ? null
+    : toPublicPlayerProfile(profile);
+  const pageProfile = profile.isOwner
+    ? { ...profile, showSteamId }
+    : publicProfile && { ...publicProfile, isOwner: false, showSteamId };
+
+  if (!pageProfile) {
+    notFound();
+  }
+
   const dashboard = await getProfileDashboard({
     userId: profile.userId,
     steamId: profile.steamId,
@@ -65,5 +88,5 @@ export default async function PublicProfilePage({ params }: PageProps) {
     joinedAt: profile.joinedAt,
   });
 
-  return <ProfilePageView profile={profile} dashboard={dashboard} />;
+  return <ProfilePageView profile={pageProfile} dashboard={dashboard} />;
 }

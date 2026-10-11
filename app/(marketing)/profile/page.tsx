@@ -42,5 +42,10 @@ export default async function MyProfilePage() {
     joinedAt: profile.joinedAt,
   });
 
-  return <ProfilePageView profile={profile} dashboard={dashboard} />;
+  return (
+    <ProfilePageView
+      profile={{ ...profile, showSteamId: true }}
+      dashboard={dashboard}
+    />
+  );
 }

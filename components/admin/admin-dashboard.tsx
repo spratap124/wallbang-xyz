@@ -422,17 +422,13 @@ export function AdminDashboard() {
                       >
                         {user.personaName}
                       </button>
-                      <a
-                        href={
-                          user.profileUrl ||
-                          `https://steamcommunity.com/profiles/${user.steamId}`
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <Link
+                        href={`/profile/${user.steamId}`}
+                        title="View WallBang profile"
                         className="block truncate font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
                       >
                         {user.steamId}
-                      </a>
+                      </Link>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {user.role}
@@ -466,17 +462,13 @@ export function AdminDashboard() {
                   <h2 className="truncate text-xl font-semibold">
                     {selected.personaName}
                   </h2>
-                  <a
-                    href={
-                      selected.profileUrl ||
-                      `https://steamcommunity.com/profiles/${selected.steamId}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/profile/${selected.steamId}`}
+                    title="View WallBang profile"
                     className="inline-block font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
                   >
                     {selected.steamId}
-                  </a>
+                  </Link>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Display role:{" "}
                     <span className="text-foreground">
