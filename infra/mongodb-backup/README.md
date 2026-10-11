@@ -55,8 +55,8 @@ Schedule: daily at **02:00 Asia/Kolkata** via `wallbang-mongodb-backup.timer`.
 
 | Value | Where | Notes |
 | --- | --- | --- |
-| `MONGODB_URI` | `/etc/wallbang-backup/backup.env` | Dedicated Atlas user with `readAnyDatabase` only. Quote it. |
-| `MONGODB_DATABASES` | same | Optional space-separated list; empty = every readable database. |
+| `MONGODB_URI` | `/etc/wallbang-backup/backup.env` | Simplest: reuse the app's Atlas URI. Quote it. |
+| `MONGODB_DATABASES` | same | Scope the dump, e.g. `wallbang`. Empty = every readable database. |
 | `RCLONE_CRYPT_REMOTE` | same | Name of the rclone **crypt** remote (e.g. `wallbang-backup-crypt`). |
 | `RCLONE_PATH` | same | Folder inside the remote (default `mongodb`). |
 | `RETENTION_DAYS` | same | Default `30`. |
@@ -95,9 +95,13 @@ sudo ./install.sh
 Then configure:
 
 ```bash
-# 3. MongoDB Atlas: create a backup-only database user (Atlas UI) and put the
-#    SRV string into the config file.
-sudo nano /etc/wallbang-backup/backup.env      # set MONGODB_URI, RCLONE_* …
+# 3. MongoDB Atlas: reuse the application's connection string (simplest) and
+#    scope the dump to the app database. A dedicated read-only user is optional
+#    hardening, not a requirement — mongodump only reads.
+sudo nano /etc/wallbang-backup/backup.env
+#   MONGODB_URI='mongodb+srv://wallbangcs2_db_user:<PASS>@wallbang.lpn8iur.mongodb.net/?retryWrites=false&appName=wallbang-backup'
+#   MONGODB_DATABASES='wallbang'
+#   RCLONE_CRYPT_REMOTE='wallbang-backup-crypt'   (plus RCLONE_PATH, RETENTION_DAYS)
 
 # 4. Backblaze B2 + rclone crypt remote (interactive; secrets stay out of Git)
 #    The systemd unit runs under ProtectHome=true, so rclone must NOT read
@@ -170,7 +174,8 @@ migrating backups. Follow this whenever the app moves to another provider.
    Restoring history is a matter of listing the remote; nothing is imported into
    the new VPS.
 5. **Restore MongoDB Atlas credentials** from your password manager/secret
-   store into `MONGODB_URI` (or re-create an equivalent backup-only Atlas user).
+   store into `MONGODB_URI` (the app's URI is fine; a dedicated read-only user
+   is optional hardening).
 6. **Run the installation script** (`sudo ./install.sh`). It never overwrites an
    existing `/etc/wallbang-backup/backup.env` and never deletes backups.
 7. **Validate the configuration without a production dump**:
@@ -283,7 +288,7 @@ backups** provided you follow this procedure:
 | `Config file not found` | Install the utility and edit `/etc/wallbang-backup/backup.env`. |
 | `Missing required config values: MONGODB_URI` | Fill in the config (values are quoted). |
 | `Cannot reach remote …` | B2 key expired, bucket renamed, or rclone remote name wrong: `sudo rclone lsd <crypt>:`. |
-| `mongodump failed` | Atlas user lacks `readAnyDatabase`, IP not allow-listed, or SRV string stale. Check `journalctl -u wallbang-mongodb-backup`. |
+| `mongodump failed` | Atlas user lacks read access to `wallbang`, VPS IP not allow-listed, or SRV string/password stale. Check `journalctl -u wallbang-mongodb-backup`. |
 | `Archive validation failed` | Archive truncated (disk full during dump) — check `MIN_FREE_DISK_MB` and `df -h`. |
 | `another backup run is already in progress` | Overlap; the lock file is `/var/lock/wallbang-mongodb-backup.lock`. |
 | `Remote size mismatch` | Upload interrupted; re-run. Do not prune; old backups are still intact. |
