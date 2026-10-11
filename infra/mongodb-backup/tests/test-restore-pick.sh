@@ -92,8 +92,33 @@ run_pick "1
 nope
 "
 assert_exit 8 "$RC" "wrong confirmation word aborts"
-assert_contains "$OUTPUT" "Aborted" "abort reported"
+assert_contains "$OUTPUT" "did not match 'restore'" "abort explains the mismatch"
+assert_contains "$OUTPUT" "got 'nope'" "abort echoes what was typed"
 assert_not_contains "$(cat "$STUB_LOG")" "mongorestore" "no restore performed"
+
+test_start "--pick tolerates surrounding whitespace and upper case"
+: >"$STUB_LOG"
+run_pick "1
+   RESTORE  
+"
+assert_exit 0 "$RC" "padded/uppercase confirmation accepted"
+assert_contains "$(cat "$STUB_LOG")" "mongorestore" "restore performed"
+
+test_start "--pick tolerates a carriage return (pasted text)"
+: >"$STUB_LOG"
+run_pick "1
+restore$(printf '\r')
+"
+assert_exit 0 "$RC" "CR-terminated confirmation accepted"
+assert_contains "$(cat "$STUB_LOG")" "mongorestore" "restore performed"
+
+test_start "--pick trims whitespace around the restore-point number"
+: >"$STUB_LOG"
+run_pick "  2  
+restore
+"
+assert_exit 0 "$RC" "padded selection accepted"
+assert_contains "$OUTPUT" "20260101-020000" "padded number resolved to the right point"
 
 test_start "--pick rejects an out-of-range selection"
 run_pick "9
