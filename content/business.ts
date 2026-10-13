@@ -86,12 +86,14 @@ export function hostedAccessPlanBlurb(durationDays: number): string {
 
 export function checkoutProductDescription(input: {
   durationDays: number;
-  accessType: "ALL_RETAKES" | "INDIVIDUAL_SERVER";
+  accessType: "ALL_RETAKES" | "INDIVIDUAL_SERVER" | "BUNDLE";
 }): string {
   const scope =
     input.accessType === "ALL_RETAKES"
       ? "all WallBang CS2 community servers"
-      : "selected WallBang CS2 community server";
+      : input.accessType === "BUNDLE"
+        ? "your selected WallBang CS2 community servers"
+        : "selected WallBang CS2 community server";
   return `${hostedAccessDaysLabel(input.durationDays)} (${scope})`;
 }
 

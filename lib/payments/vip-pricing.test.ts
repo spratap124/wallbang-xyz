@@ -164,7 +164,7 @@ describe("individual server pricing", () => {
           },
         },
       ],
-      testEnv,
+      { env: testEnv },
     );
     const plans = catalog.servers[0]?.durationOptions ?? [];
     assert.deepEqual(
@@ -312,5 +312,153 @@ describe("validation and entitlements", () => {
     const options = buildAllRetakesDurationOptions(testEnv);
     assert.equal(options[0]?.amountPaise, 14_900);
     assert.equal(options[3]?.amountPaise, 169_900);
+  });
+});
+
+describe("custom server bundles", () => {
+  const bundle = {
+    id: "mumbai-starter",
+    name: "Mumbai Starter",
+    serverIds: [serverA.id, serverB.id],
+    pricingByPlan: {
+      "1_month": 15_900,
+      "3_months": 41_900,
+      "6_months": 79_900,
+      "1_year": 149_900,
+    },
+    enabled: true,
+  };
+
+  it("prices every duration from the bundle, not the individual servers", () => {
+    const quote = quoteVipOrder({
+      accessType: "BUNDLE",
+      bundleId: bundle.id,
+      planId: "3_months",
+      servers: [serverA, serverB],
+      bundles: [bundle],
+      env: testEnv,
+    });
+    assert.equal(quote.accessType, "BUNDLE");
+    assert.equal(quote.amountPaise, 41_900);
+    assert.equal(quote.durationId, "3_months");
+    assert.equal(quote.bundleKind, "custom");
+    assert.equal(quote.bundleId, "mumbai-starter");
+    assert.equal(quote.serverId, null);
+    assert.deepEqual(quote.serverIds, ["retake-1-mumbai", "retake-2-mumbai"]);
+  });
+
+  it("ignores bundle servers that no longer exist", () => {
+    const quote = quoteVipOrder({
+      accessType: "BUNDLE",
+      bundleId: bundle.id,
+      planId: "1_month",
+      servers: [serverA],
+      bundles: [bundle],
+      env: testEnv,
+    });
+    assert.deepEqual(quote.serverIds, ["retake-1-mumbai"]);
+  });
+
+  it("refuses unknown, disabled, or server-less bundles", () => {
+    assert.throws(
+      () =>
+        quoteVipOrder({
+          accessType: "BUNDLE",
+          bundleId: "nope",
+          planId: "1_month",
+          servers: [serverA],
+          bundles: [bundle],
+          env: testEnv,
+        }),
+      /Unknown bundle/,
+    );
+    assert.throws(
+      () =>
+        quoteVipOrder({
+          accessType: "BUNDLE",
+          bundleId: bundle.id,
+          planId: "1_month",
+          servers: [serverA],
+          bundles: [{ ...bundle, enabled: false }],
+          env: testEnv,
+        }),
+      /not available/,
+    );
+    assert.throws(
+      () =>
+        quoteVipOrder({
+          accessType: "BUNDLE",
+          bundleId: bundle.id,
+          planId: "1_month",
+          servers: [serverB],
+          bundles: [{ ...bundle, serverIds: [serverA.id] }],
+          env: testEnv,
+        }),
+      /no available servers/,
+    );
+  });
+
+  it("quotes bundle durations in the shop", () => {
+    const quote = buildVipShopQuote({
+      accessType: "BUNDLE",
+      bundleId: bundle.id,
+      servers: [serverA, serverB],
+      bundles: [bundle],
+      env: testEnv,
+    });
+    assert.equal(quote.accessType, "BUNDLE");
+    assert.equal(quote.bundleId, "mumbai-starter");
+    assert.deepEqual(
+      quote.durations.map((plan) => plan.amountPaise),
+      [15_900, 41_900, 79_900, 149_900],
+    );
+  });
+
+  it("exposes enabled bundles in the catalog with their servers", () => {
+    const catalog = getVipShopCatalog(
+      [
+        {
+          id: serverA.id,
+          name: serverA.name,
+          shortName: serverA.shortName,
+          mode: serverA.mode,
+          city: serverA.city,
+          region: serverA.region,
+          map: serverA.map,
+          maxPlayers: serverA.maxPlayers,
+          pingMs: serverA.pingMs,
+          status: serverA.status,
+        },
+        {
+          id: serverB.id,
+          name: serverB.name,
+          shortName: serverB.shortName,
+          mode: serverB.mode,
+          city: serverB.city,
+          region: serverB.region,
+          map: serverB.map,
+          maxPlayers: serverB.maxPlayers,
+          pingMs: serverB.pingMs,
+          status: serverB.status,
+        },
+      ],
+      { bundles: [bundle, { ...bundle, id: "off", enabled: false }], env: testEnv },
+    );
+    assert.equal(catalog.bundles.length, 1, "disabled bundles are hidden");
+    assert.deepEqual(catalog.bundles[0]?.serverIds, [serverA.id, serverB.id]);
+    assert.equal(catalog.bundles[0]?.servers.length, 2);
+    assert.equal(catalog.bundles[0]?.durations.length, 4);
+  });
+
+  it("grants VIP on exactly the bundle's servers", () => {
+    const entitled = resolveVipEntitledServerIds({
+      accessType: "BUNDLE",
+      bundleKind: "custom",
+      bundleId: "mumbai-starter",
+      serverId: null,
+      serverIds: [serverA.id, serverB.id, "retake-gone"],
+      eligibleServerIds: [serverA.id, serverB.id],
+    });
+    assert.deepEqual(entitled, ["retake-1-mumbai", "retake-2-mumbai"]);
   });
 });

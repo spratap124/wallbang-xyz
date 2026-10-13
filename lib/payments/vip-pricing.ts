@@ -1,10 +1,12 @@
 import type {
   VipAccessType,
+  VipBundleDoc,
   VipDurationMeta,
   VipDurationOption,
   VipPlanId,
   VipPricingByPlan,
   VipQuote,
+  VipShopBundle,
   VipShopCatalog,
   VipShopQuote,
   VipShopServer,
@@ -23,6 +25,12 @@ export type VipPricingServer = {
   status: "live" | "offline" | "maintenance";
   vipPricingByPlan?: VipPricingByPlan;
 };
+
+/** Minimal bundle shape needed for pricing/quotes. */
+export type VipPricingBundle = Pick<
+  VipBundleDoc,
+  "id" | "name" | "serverIds" | "pricingByPlan" | "enabled"
+>;
 
 type PricingEnv = {
   individualDefaultPaise: Record<VipPlanId, number>;
@@ -99,7 +107,11 @@ export function isVipPlanId(value: string): value is VipPlanId {
 }
 
 export function isVipAccessType(value: string): value is VipAccessType {
-  return value === "INDIVIDUAL_SERVER" || value === "ALL_RETAKES";
+  return (
+    value === "INDIVIDUAL_SERVER" ||
+    value === "ALL_RETAKES" ||
+    value === "BUNDLE"
+  );
 }
 
 function individualServerPaise(
@@ -152,10 +164,53 @@ export function buildAllRetakesDurationOptions(
   return toDurationOptions(env.allRetakesPaise);
 }
 
+function bundlePaise(bundle: VipPricingBundle, planId: VipPlanId): number {
+  const amount = bundle.pricingByPlan?.[planId];
+  if (!Number.isFinite(amount) || (amount ?? 0) <= 0) {
+    throw new Error("Bundle pricing is incomplete for this duration.");
+  }
+  return amount as number;
+}
+
+export function buildBundleDurationOptions(
+  bundle: VipPricingBundle,
+): VipDurationOption[] {
+  const prices = durationMetas().reduce(
+    (acc, meta) => {
+      acc[meta.id] = bundlePaise(bundle, meta.id);
+      return acc;
+    },
+    {} as Record<VipPlanId, number>,
+  );
+  return toDurationOptions(prices);
+}
+
+function toShopBundle(
+  bundle: VipPricingBundle,
+  servers: VipPricingServer[],
+): VipShopBundle {
+  const serverIds = bundle.serverIds.filter((id) =>
+    servers.some((server) => server.id === id),
+  );
+  return {
+    id: bundle.id,
+    name: bundle.name,
+    description: (bundle as VipBundleDoc).description ?? null,
+    serverIds,
+    servers: serverIds.map((id) => {
+      const server = servers.find((row) => row.id === id)!;
+      return { id: server.id, name: server.shortName || server.name };
+    }),
+    durations: buildBundleDurationOptions(bundle),
+  };
+}
+
 export function buildVipShopQuote(input: {
   accessType: VipAccessType;
   serverId?: string | null;
+  bundleId?: string | null;
   servers: VipPricingServer[];
+  bundles?: VipPricingBundle[];
   env?: PricingEnv;
 }): VipShopQuote {
   const env = input.env ?? readPricingEnv();
@@ -164,7 +219,24 @@ export function buildVipShopQuote(input: {
     return {
       accessType: "ALL_RETAKES",
       serverId: null,
+      bundleId: null,
       durations: buildAllRetakesDurationOptions(env),
+    };
+  }
+
+  if (input.accessType === "BUNDLE") {
+    const bundle =
+      input.bundles?.find((row) => row.id === input.bundleId && row.enabled) ??
+      input.bundles?.find((row) => row.enabled) ??
+      null;
+    if (!bundle) {
+      throw new Error("No VIP bundles are available.");
+    }
+    return {
+      accessType: "BUNDLE",
+      serverId: null,
+      bundleId: bundle.id,
+      durations: buildBundleDurationOptions(bundle),
     };
   }
 
@@ -178,6 +250,7 @@ export function buildVipShopQuote(input: {
   return {
     accessType: "INDIVIDUAL_SERVER",
     serverId,
+    bundleId: null,
     durations: server
       ? buildServerDurationOptions(server, env)
       : durationMetas().map((meta) => ({
@@ -195,8 +268,10 @@ export function buildVipShopQuote(input: {
 export function quoteVipOrder(input: {
   accessType: VipAccessType;
   serverId?: string | null;
+  bundleId?: string | null;
   planId: string;
   servers: VipPricingServer[];
+  bundles?: VipPricingBundle[];
   env?: PricingEnv;
 }): VipQuote {
   const env = input.env ?? readPricingEnv();
@@ -215,8 +290,38 @@ export function quoteVipOrder(input: {
       durationId: meta.id,
       durationDays: meta.durationDays,
       serverId: null,
+      serverIds: [],
       bundleKind: "all",
       bundleId: "all_retakes",
+    };
+  }
+
+  if (input.accessType === "BUNDLE") {
+    if (!input.bundleId) {
+      throw new Error("Select a bundle.");
+    }
+    const bundle = input.bundles?.find((row) => row.id === input.bundleId);
+    if (!bundle) {
+      throw new Error("Unknown bundle.");
+    }
+    if (!bundle.enabled) {
+      throw new Error("This bundle is not available.");
+    }
+    const serverIds = bundle.serverIds.filter((id) =>
+      input.servers.some((server) => server.id === id),
+    );
+    if (serverIds.length === 0) {
+      throw new Error("This bundle has no available servers.");
+    }
+    return {
+      accessType: "BUNDLE",
+      amountPaise: bundlePaise(bundle, meta.id),
+      durationId: meta.id,
+      durationDays: meta.durationDays,
+      serverId: null,
+      serverIds,
+      bundleKind: "custom",
+      bundleId: bundle.id,
     };
   }
 
@@ -235,6 +340,7 @@ export function quoteVipOrder(input: {
     durationId: meta.id,
     durationDays: meta.durationDays,
     serverId: server.id,
+    serverIds: [server.id],
     bundleKind: "server",
     bundleId: server.id,
   };
@@ -255,8 +361,9 @@ export function getVipShopCatalog(
     status: "live" | "offline" | "maintenance";
     vipPricingByPlan?: VipPricingByPlan | null;
   }>,
-  env: PricingEnv = readPricingEnv(),
+  options: { bundles?: VipPricingBundle[]; env?: PricingEnv } = {},
 ): VipShopCatalog {
+  const env = options.env ?? readPricingEnv();
   const shopServers: VipShopServer[] = servers.map((server) => {
     const pricingServer: VipPricingServer = {
       id: server.id,
@@ -278,16 +385,21 @@ export function getVipShopCatalog(
   });
 
   const firstServerId = shopServers[0]?.id ?? null;
+  const enabledBundles = (options.bundles ?? []).filter(
+    (bundle) => bundle.enabled,
+  );
 
   return {
     servers: shopServers,
     allRetakes: {
       durations: buildAllRetakesDurationOptions(env),
     },
+    bundles: enabledBundles.map((bundle) => toShopBundle(bundle, shopServers)),
     quote: buildVipShopQuote({
       accessType: "INDIVIDUAL_SERVER",
       serverId: firstServerId,
       servers: shopServers,
+      bundles: enabledBundles,
       env,
     }),
   };

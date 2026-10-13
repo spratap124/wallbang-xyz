@@ -30,6 +30,7 @@ import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
 import { isVipAccessType } from "@/lib/payments/quote";
+import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { isPaymentConfigured, isPayuActive } from "@/lib/payments/provider";
 import {
   isPricingPageEnabled,
@@ -90,7 +91,9 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
 
   const params = await searchParams;
   const servers = await getGameServers();
-  const catalog = getVipShopCatalog(servers);
+  const catalog = getVipShopCatalog(servers, {
+    bundles: await listVipBundleDocs(),
+  });
   const session = await getSession();
   const purchasesEnabled = isPaymentConfigured();
   const paymentProvider = isPayuActive() ? "payu" : "razorpay";

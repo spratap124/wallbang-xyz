@@ -11,11 +11,12 @@ export type VipPricingByPlan = Partial<Record<VipPlanId, number>>;
 export const VIP_ACCESS_TYPES = [
   "INDIVIDUAL_SERVER",
   "ALL_RETAKES",
+  "BUNDLE",
 ] as const;
 
 export type VipAccessType = (typeof VIP_ACCESS_TYPES)[number];
 
-export const VIP_BUNDLE_KINDS = ["all", "server"] as const;
+export const VIP_BUNDLE_KINDS = ["all", "server", "custom"] as const;
 
 export type VipBundleKind = (typeof VIP_BUNDLE_KINDS)[number];
 
@@ -41,6 +42,40 @@ export type VipDurationOption = {
 export type VipShopQuote = {
   accessType: VipAccessType;
   serverId: string | null;
+  /** Set when accessType is BUNDLE. */
+  bundleId: string | null;
+  durations: VipDurationOption[];
+};
+
+/** A named, admin-managed bundle of servers with its own pricing. */
+export type VipBundleDoc = {
+  _id: string;
+  id: string;
+  name: string;
+  description: string | null;
+  serverIds: string[];
+  pricingByPlan: VipPricingByPlan;
+  enabled: boolean;
+  featured: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/** Admin-facing bundle with resolved durations and server names. */
+export type VipBundleView = Omit<VipBundleDoc, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+  durations: VipDurationOption[];
+  servers: VipServerRef[];
+};
+
+/** Public shop representation of a bundle. */
+export type VipShopBundle = {
+  id: string;
+  name: string;
+  description: string | null;
+  serverIds: string[];
+  servers: VipServerRef[];
   durations: VipDurationOption[];
 };
 
@@ -65,6 +100,7 @@ export type VipShopCatalog = {
   allRetakes: {
     durations: VipDurationOption[];
   };
+  bundles: VipShopBundle[];
   quote: VipShopQuote;
 };
 
@@ -75,6 +111,8 @@ export type VipQuote = {
   durationId: VipPlanId;
   durationDays: number;
   serverId: string | null;
+  /** Servers covered by this purchase (bundle or multi-server legacy). */
+  serverIds: string[];
   bundleKind: VipBundleKind;
   bundleId: string;
 };

@@ -109,6 +109,8 @@ type BuyVipButtonProps = {
   accessType: VipAccessType;
   planId: string;
   serverId: string | null;
+  /** Set for custom bundle purchases. */
+  bundleId?: string | null;
   label: string;
   loggedIn: boolean;
   paymentProvider: PaymentProvider;
@@ -123,6 +125,7 @@ export function BuyVipButton({
   accessType,
   planId,
   serverId,
+  bundleId = null,
   label,
   loggedIn,
   paymentProvider,
@@ -193,7 +196,12 @@ export function BuyVipButton({
         items: [
           vipGaItem({
             accessType,
-            bundleKind: accessType === "ALL_RETAKES" ? "all" : "server",
+            bundleKind:
+        accessType === "ALL_RETAKES"
+          ? "all"
+          : accessType === "BUNDLE"
+            ? "custom"
+            : "server",
             plan: planId,
             amountPaise,
             serverId,
@@ -215,6 +223,7 @@ export function BuyVipButton({
         accessType,
         planId,
         ...(serverId ? { serverId } : {}),
+        ...(bundleId ? { bundleId } : {}),
         email: trimmedEmail,
         phone: trimmedPhone,
         gaClientId: readGaClientId() ?? undefined,
@@ -240,6 +249,7 @@ export function BuyVipButton({
         accessType,
         planId,
         ...(serverId ? { serverId } : {}),
+        ...(bundleId ? { bundleId } : {}),
         email: trimmedEmail,
         phone: trimmedPhone,
         gaClientId: readGaClientId() ?? undefined,

@@ -157,6 +157,7 @@ export function VipShop({
     catalog.quote.serverId ?? catalog.servers[0]?.id ?? null,
   );
   const [durationId, setDurationId] = useState<VipPlanId>("1_month");
+  const [bundleId, setBundleId] = useState<string | null>(null);
   const [shopQuote, setShopQuote] = useState<VipShopQuote>(catalog.quote);
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
@@ -164,7 +165,14 @@ export function VipShop({
     if (!allRetakesEnabled && accessType === "ALL_RETAKES") {
       setAccessType("INDIVIDUAL_SERVER");
     }
-  }, [accessType, allRetakesEnabled]);
+    if (
+      accessType === "BUNDLE" &&
+      !catalog.bundles.some((bundle) => bundle.id === bundleId)
+    ) {
+      setAccessType("INDIVIDUAL_SERVER");
+      setBundleId(null);
+    }
+  }, [accessType, allRetakesEnabled, bundleId, catalog.bundles]);
 
   // GA4 ecommerce: offer views + explicit selections (no PII in payloads).
   const itemForPlan = (input: {
@@ -174,11 +182,17 @@ export function VipShop({
   }) =>
     vipGaItem({
       accessType: input.accessTypeOverride ?? accessType,
-      bundleKind: accessType === "ALL_RETAKES" ? "all" : "server",
+      bundleKind:
+        accessType === "ALL_RETAKES"
+          ? "all"
+          : accessType === "BUNDLE"
+            ? "custom"
+            : "server",
       plan: input.plan,
       amountPaise: input.amountPaise,
-      serverId: selectedServerId,
+      serverId: accessType === "BUNDLE" ? null : selectedServerId,
       serverShortName: selectedServer?.shortName ?? null,
+      bundleName: selectedBundle?.name ?? null,
     });
 
   useEffect(() => {
@@ -222,11 +236,17 @@ export function VipShop({
       items: [
         vipGaItem({
           accessType: input.accessTypeOverride ?? accessType,
-          bundleKind: accessType === "ALL_RETAKES" ? "all" : "server",
+          bundleKind:
+            accessType === "ALL_RETAKES"
+              ? "all"
+              : accessType === "BUNDLE"
+                ? "custom"
+                : "server",
           plan: input.plan,
           amountPaise: input.amountOverride ?? 0,
-          serverId: selectedServerId,
+          serverId: accessType === "BUNDLE" ? null : selectedServerId,
           serverShortName: input.serverShortName ?? selectedServer?.shortName ?? null,
+          bundleName: selectedBundle?.name ?? null,
         }),
       ],
     });
@@ -270,6 +290,7 @@ export function VipShop({
             ...(accessType === "INDIVIDUAL_SERVER" && selectedServerId
               ? { serverId: selectedServerId }
               : {}),
+            ...(accessType === "BUNDLE" && bundleId ? { bundleId } : {}),
           }),
         });
         const payload = (await response.json()) as ApiResult<VipShopQuote>;
@@ -289,7 +310,7 @@ export function VipShop({
     return () => {
       cancelled = true;
     };
-  }, [accessType, selectedServerId]);
+  }, [accessType, selectedServerId, bundleId]);
 
   const duration =
     shopQuote.durations.find((item) => item.id === durationId) ??
@@ -301,15 +322,21 @@ export function VipShop({
       ? catalog.servers.find((server) => server.id === selectedServerId) ?? null
       : null;
 
+  const selectedBundle =
+    accessType === "BUNDLE"
+      ? (catalog.bundles.find((bundle) => bundle.id === bundleId) ?? null)
+      : null;
+
   const checkoutReady =
     accessType === "ALL_RETAKES" ||
+    (accessType === "BUNDLE" && Boolean(selectedBundle)) ||
     (accessType === "INDIVIDUAL_SERVER" && Boolean(selectedServerId));
 
-  const serverStep = allRetakesEnabled ? 2 : 1;
-  const durationStep = allRetakesEnabled ? 3 : 2;
-  const accessEditHref = allRetakesEnabled
-    ? "#choose-access"
-    : "#choose-servers";
+  const hasAccessChoices =
+    allRetakesEnabled || catalog.bundles.length > 0;
+  const serverStep = hasAccessChoices ? 2 : 1;
+  const durationStep = hasAccessChoices ? 3 : 2;
+  const accessEditHref = hasAccessChoices ? "#choose-access" : "#choose-servers";
 
   if (catalog.servers.length === 0) {
     return (
@@ -325,7 +352,7 @@ export function VipShop({
       className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]"
     >
       <div className="space-y-10">
-        {allRetakesEnabled ? (
+        {hasAccessChoices ? (
           <section id="choose-access">
             <h2 className="text-lg font-semibold tracking-tight">
               <span className="text-primary">1.</span> Choose your access
@@ -375,6 +402,63 @@ export function VipShop({
                   Access all premium retake servers
                 </p>
               </button>
+              {catalog.bundles.map((bundle) => (
+                <button
+                  key={bundle.id}
+                  type="button"
+                  onClick={() => {
+                    setAccessType("BUNDLE");
+                    setBundleId(bundle.id);
+                    trackSelectItem({
+                      plan: durationId,
+                      accessTypeOverride: "BUNDLE",
+                      amountOverride: bundle.durations[0]?.amountPaise ?? null,
+                    });
+                  }}
+                  className={cn(
+                    "rounded-xl border p-4 text-left transition-colors",
+                    accessType === "BUNDLE" && bundleId === bundle.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-card/50 hover:border-primary/30",
+                  )}
+                >
+                  <p className="font-semibold">{bundle.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {bundle.servers.length} server
+                    {bundle.servers.length === 1 ? "" : "s"}
+                    {bundle.durations[0]
+                      ? ` — from ${formatInrFromPaise(bundle.durations[0].amountPaise)}/mo`
+                      : ""}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {accessType === "BUNDLE" && selectedBundle ? (
+          <section id="choose-bundle">
+            <h2 className="text-lg font-semibold tracking-tight">
+              <span className="text-primary">{serverStep}.</span> Included
+              servers
+            </h2>
+            <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+              <p className="font-semibold">{selectedBundle.name}</p>
+              {selectedBundle.description ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedBundle.description}
+                </p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedBundle.servers.map((server) => (
+                  <span
+                    key={server.id}
+                    className="rounded-full border border-border bg-background/60 px-3 py-1 text-xs"
+                  >
+                    {server.name}
+                  </span>
+                ))}
+              </div>
             </div>
           </section>
         ) : null}
@@ -597,6 +681,7 @@ export function VipShop({
                 serverId={
                   accessType === "INDIVIDUAL_SERVER" ? selectedServerId : null
                 }
+                bundleId={accessType === "BUNDLE" ? bundleId : null}
                 loggedIn={loggedIn}
                 paymentProvider={paymentProvider}
                 disabled={
@@ -607,7 +692,9 @@ export function VipShop({
                 }
                 collectContact={checkoutEnabled}
                 amountPaise={duration?.amountPaise ?? null}
-                serverShortName={selectedServer?.shortName ?? null}
+                serverShortName={
+                  selectedBundle?.name ?? selectedServer?.shortName ?? null
+                }
                 label={
                   checkoutEnabled
                     ? loggedIn

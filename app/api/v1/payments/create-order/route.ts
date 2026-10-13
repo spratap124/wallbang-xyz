@@ -12,7 +12,7 @@ import {
   isVipPageEnabled,
 } from "@/lib/platform/feature-flags";
 
-const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES"]);
+const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES", "BUNDLE"]);
 
 const bodySchema = z
   .object({
@@ -20,6 +20,7 @@ const bodySchema = z
     planId: z.string().min(1),
     serverId: z.string().min(1).optional(),
     serverIds: z.array(z.string().min(1)).optional(),
+    bundleId: z.string().min(1).max(64).optional(),
     email: z.string().trim().email("Enter a valid email."),
     phone: z
       .string()
@@ -56,6 +57,30 @@ const bodySchema = z
         code: "custom",
         message: "All Retakes purchases must not include a server.",
         path: ["serverId"],
+      });
+    }
+
+    if (value.accessType === "BUNDLE" && !value.bundleId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Select a bundle.",
+        path: ["bundleId"],
+      });
+    }
+
+    if (value.accessType !== "BUNDLE" && value.bundleId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Only bundle purchases may include a bundleId.",
+        path: ["bundleId"],
+      });
+    }
+
+    if (value.accessType === "BUNDLE" && (value.serverId || (value.serverIds?.length ?? 0) > 0)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Bundle purchases must not include individual servers.",
+        path: ["bundleId"],
       });
     }
   });
@@ -107,6 +132,7 @@ export async function POST(request: Request): Promise<Response> {
       accessType: parsed.data.accessType,
       planId: parsed.data.planId,
       serverId: parsed.data.serverId ?? null,
+      bundleId: parsed.data.bundleId ?? null,
       email: parsed.data.email,
       phone: parsed.data.phone,
       gaClientId: parsed.data.gaClientId ?? null,
