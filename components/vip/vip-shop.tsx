@@ -539,7 +539,9 @@ export function VipShop({
               </div>
             </div>
           </section>
-        ) : allRetakesEnabled ? (
+        ) : null}
+
+        {accessType === "ALL_RETAKES" && allRetakesEnabled ? (
           <section id="choose-all-retakes">
             <h2 className="text-lg font-semibold tracking-tight">
               <span className="text-primary">{serverStep}.</span> All Retakes
