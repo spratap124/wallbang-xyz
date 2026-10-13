@@ -77,6 +77,8 @@ export type VipShopBundle = {
   serverIds: string[];
   servers: VipServerRef[];
   durations: VipDurationOption[];
+  /** Marked "Recommended" in the shop (first featured bundle wins). */
+  featured: boolean;
 };
 
 export type VipShopServer = {

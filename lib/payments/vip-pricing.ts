@@ -30,7 +30,10 @@ export type VipPricingServer = {
 export type VipPricingBundle = Pick<
   VipBundleDoc,
   "id" | "name" | "serverIds" | "pricingByPlan" | "enabled"
->;
+> & {
+  /** Optional: marks the bundle as the shop's "Recommended" option. */
+  featured?: boolean;
+};
 
 type PricingEnv = {
   individualDefaultPaise: Record<VipPlanId, number>;
@@ -202,6 +205,7 @@ function toShopBundle(
       return { id: server.id, name: server.shortName || server.name };
     }),
     durations: buildBundleDurationOptions(bundle),
+    featured: bundle.featured ?? false,
   };
 }
 

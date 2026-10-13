@@ -322,6 +322,12 @@ export function VipShop({
       ? catalog.servers.find((server) => server.id === selectedServerId) ?? null
       : null;
 
+  // The featured bundle is recommended; otherwise the first one listed.
+  const recommendedBundleId =
+    catalog.bundles.find((bundle) => bundle.featured)?.id ??
+    catalog.bundles[0]?.id ??
+    null;
+
   const selectedBundle =
     accessType === "BUNDLE"
       ? (catalog.bundles.find((bundle) => bundle.id === bundleId) ?? null)
@@ -393,10 +399,6 @@ export function VipShop({
                     : "border-border bg-card/50 hover:border-primary/30",
                 )}
               >
-                <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-primary-foreground uppercase">
-                  <Sparkles className="size-3" />
-                  Recommended
-                </span>
                 <p className="font-semibold">All Retakes</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Access all premium retake servers
@@ -416,12 +418,18 @@ export function VipShop({
                     });
                   }}
                   className={cn(
-                    "rounded-xl border p-4 text-left transition-colors",
+                    "relative rounded-xl border p-4 text-left transition-colors",
                     accessType === "BUNDLE" && bundleId === bundle.id
                       ? "border-primary bg-primary/5"
                       : "border-border bg-card/50 hover:border-primary/30",
                   )}
                 >
+                  {bundle.id === recommendedBundleId ? (
+                    <span className="bg-primary text-primary-foreground absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide uppercase">
+                      <Sparkles className="size-3" />
+                      Recommended
+                    </span>
+                  ) : null}
                   <p className="font-semibold">{bundle.name}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {bundle.servers.length} server
