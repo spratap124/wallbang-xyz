@@ -49,7 +49,11 @@ export const metadata = createPageMetadata({
 });
 
 type PricingPageProps = {
-  searchParams: Promise<{ access?: string; serverId?: string }>;
+  searchParams: Promise<{
+    access?: string;
+    serverId?: string;
+    bundle?: string;
+  }>;
 };
 
 const howItWorks = [
@@ -117,11 +121,13 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
       ? {
           accessType: accessParam,
           serverId: params.serverId ?? null,
+          bundleId: params.bundle ?? null,
         }
       : params.serverId
         ? {
             accessType: "INDIVIDUAL_SERVER",
             serverId: params.serverId,
+            bundleId: null,
           }
         : null;
 

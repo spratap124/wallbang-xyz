@@ -39,6 +39,8 @@ import type { PaymentProvider } from "@/types/payments";
 export type VipShopRenewTarget = {
   accessType: VipAccessType;
   serverId: string | null;
+  /** Set when renewing a specific bundle. */
+  bundleId?: string | null;
 };
 
 function serverLabel(server: VipShopServer): string {
@@ -260,6 +262,15 @@ export function VipShop({
 
   useEffect(() => {
     if (!renewTarget) return;
+    if (
+      renewTarget.accessType === "BUNDLE" &&
+      renewTarget.bundleId &&
+      catalog.bundles.some((bundle) => bundle.id === renewTarget.bundleId)
+    ) {
+      setAccessType("BUNDLE");
+      setBundleId(renewTarget.bundleId);
+      return;
+    }
     if (renewTarget.accessType === "ALL_RETAKES") {
       const fallback = catalog.bundles[0]?.id ?? null;
       if (fallback) {

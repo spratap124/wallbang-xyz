@@ -113,6 +113,29 @@ function renewHref(entitlement: VipEntitlement): string {
   return pricingCheckoutHref({ accessType: "INDIVIDUAL_SERVER", serverId: null });
 }
 
+function purchaseStatusLabel(record: VipPurchaseRecord): string {
+  if (record.status === "covered") return "Covered by a bundle";
+  if (record.status === "expired") return "Expired";
+  return "Active";
+}
+
+function formatInr(paise: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: paise % 100 === 0 ? 0 : 2,
+  }).format(paise / 100);
+}
+
+/** Opens the pricing page with this exact bundle preselected. */
+function renewBundleHref(bundle: VipBundleEntitlement): string {
+  if (bundle.bundleId === "all_retakes") return "/pricing";
+  return pricingCheckoutHref({
+    accessType: "BUNDLE",
+    bundleId: bundle.bundleId,
+  });
+}
+
 function canRenew(entitlement: VipEntitlement, showPricing: boolean): boolean {
   return showPricing && entitlement.kind !== "lifetime";
 }
@@ -354,7 +377,7 @@ function BundleMembership({
               </div>
               {showPricing ? (
                 <Link
-                  href="/pricing"
+                  href={renewBundleHref(bundle)}
                   className={cn(buttonVariants({ size: "sm" }), "h-8 px-3")}
                 >
                   Renew bundle
@@ -372,7 +395,18 @@ function BundleMembership({
                     key={server.id}
                     className="flex items-center justify-between gap-3"
                   >
-                    <span className="truncate text-sm">{server.name}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm">
+                        {server.name}
+                      </span>
+                      {server.expiresAt &&
+                      server.expiresAt !== bundle.expiresAt ? (
+                        <span className="text-xs text-muted-foreground">
+                          Extended to{" "}
+                          {formatVipExpiryDateCompact(server.expiresAt)}
+                        </span>
+                      ) : null}
+                    </span>
                     <StatusPill active={bundle.status === "active"} />
                   </li>
                 ))}
@@ -426,26 +460,71 @@ function BundleMembership({
             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Purchase history
             </p>
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-2 divide-y divide-border/60">
               {purchaseHistory.map((record) => (
-                <li
-                  key={`${record.serverId}-${record.purchasedAt}`}
-                  className="flex flex-wrap items-center justify-between gap-2 text-sm"
-                >
-                  <span className="min-w-0">
-                    <span className="truncate">{record.serverName}</span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · purchased separately
-                    </span>
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {record.coveredByBundle
-                      ? "Covered by a bundle"
-                      : record.expiresAt
-                        ? `Expires ${formatVipExpiryDateCompact(record.expiresAt)}`
-                        : "Expired"}
-                  </span>
+                <li key={record.id}>
+                  <details className="group py-2">
+                    <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0">
+                        <span className="truncate">{record.label}</span>
+                        {record.serverNames.length > 0 ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {record.serverNames.join(", ")}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {purchaseStatusLabel(record)}
+                        </span>
+                        <span className="text-muted-foreground text-xs group-open:hidden">
+                          Details
+                        </span>
+                        <span className="text-muted-foreground hidden text-xs group-open:inline">
+                          Hide
+                        </span>
+                      </span>
+                    </summary>
+                    <dl className="mt-2 grid gap-1 pl-1 text-xs text-muted-foreground">
+                      <div className="flex justify-between gap-3">
+                        <dt>Purchased</dt>
+                        <dd className="text-foreground/90">
+                          {formatVipExpiryDate(record.purchasedAt)}
+                        </dd>
+                      </div>
+                      {record.planName ? (
+                        <div className="flex justify-between gap-3">
+                          <dt>Plan</dt>
+                          <dd className="text-foreground/90">{record.planName}</dd>
+                        </div>
+                      ) : null}
+                      {record.amountPaise != null ? (
+                        <div className="flex justify-between gap-3">
+                          <dt>Amount paid</dt>
+                          <dd className="text-foreground/90">
+                            {formatInr(record.amountPaise)}
+                          </dd>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between gap-3">
+                        <dt>Expires</dt>
+                        <dd className="text-foreground/90">
+                          {record.expiresAt
+                            ? formatVipExpiryDate(record.expiresAt)
+                            : "—"}
+                        </dd>
+                      </div>
+                      {record.serverNames.length > 0 ? (
+                        <div className="flex justify-between gap-3">
+                          <dt>Servers</dt>
+                          <dd className="text-right text-foreground/90">
+                            {record.serverNames.join(", ")}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  </details>
                 </li>
               ))}
             </ul>

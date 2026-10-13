@@ -86,6 +86,22 @@ export function serverIdsFromRecord(record: VipHistoryDoc): string[] {
   return [];
 }
 
+/** Display name for a stored plan id (purchase history). */
+function planName(plan: string | undefined): string | null {
+  switch (plan) {
+    case "1_month":
+      return "1 Month";
+    case "3_months":
+      return "3 Months";
+    case "6_months":
+      return "6 Months";
+    case "1_year":
+      return "1 Year";
+    default:
+      return plan?.trim() || null;
+  }
+}
+
 /**
  * Human label for a bundle entitlement: the name captured at purchase time,
  * falling back to the bundle's current name, then to the id.
@@ -470,9 +486,27 @@ export function buildMembershipFromHistory(input: {
       status: "active",
       includedServers: serverIds.flatMap((id) => {
         const server = serversById.get(id);
-        return server
-          ? [{ id: server.id, name: server.shortName || server.name }]
-          : [];
+        if (!server) return [];
+        // Effective end = the later of this bundle and any individual purchase.
+        const individual = computeEntitlementExpiry(
+          input.history.filter(
+            (record) =>
+              !isAllRetakesRecord(record) &&
+              !isCustomBundleRecord(record) &&
+              serverIdsFromRecord(record).includes(id),
+          ),
+        );
+        const effective =
+          individual && individual.getTime() > expiry.getTime()
+            ? individual
+            : expiry;
+        return [
+          {
+            id: server.id,
+            name: server.shortName || server.name,
+            expiresAt: effective.toISOString(),
+          },
+        ];
       }),
     });
     bundleServerIds.set(bundleId, { expiry, serverIds });
@@ -497,13 +531,6 @@ export function buildMembershipFromHistory(input: {
       serverIdsFromRecord(record).length > 0,
   );
 
-  const purchasedAtOf = (records: VipHistoryDoc[]): Date =>
-    records.reduce(
-      (earliest, record) =>
-        record.createdAt.getTime() < earliest.getTime() ? record.createdAt : earliest,
-      records[0]!.createdAt,
-    );
-
   const individuals: VipIndividualEntitlement[] = [];
   const purchaseHistory: VipPurchaseRecord[] = [];
   const individualsByServer = new Map<string, VipHistoryDoc[]>();
@@ -519,25 +546,37 @@ export function buildMembershipFromHistory(input: {
     const expiry = computeEntitlementExpiry(records);
     const bundleCovers = bundleCoverage.get(serverId) ?? null;
     const effective = expiry ?? bundleCovers;
-    const coveredByBundle = Boolean(
-      bundleCovers &&
-        (!expiry ||
-          bundleCovers.getTime() >= expiry.getTime() ||
-          bundleCovers.getTime() > nowMs),
-    );
+    for (const record of records) {
+      const singleExpiry = computeEntitlementExpiry([record]);
+      const covered = Boolean(
+        bundleCovers && singleExpiry && bundleCovers.getTime() >= singleExpiry.getTime(),
+      );
+      purchaseHistory.push({
+        id: record._id,
+        kind: "individual",
+        label: "Individual Server Access",
+        plan: record.plan ?? null,
+        planName: planName(record.plan),
+        serverIds: serverIdsFromRecord(record),
+        serverNames: serverIdsFromRecord(record).map((id) =>
+          serverName(id, serversById),
+        ),
+        purchasedAt: record.createdAt.toISOString(),
+        expiresAt: singleExpiry ? singleExpiry.toISOString() : null,
+        amountPaise: Number.isFinite(record.amount) ? record.amount : null,
+        status: covered
+          ? "covered"
+          : singleExpiry && singleExpiry.getTime() > nowMs
+            ? "active"
+            : "expired",
+      });
+    }
 
-    purchaseHistory.push({
-      serverId,
-      serverName: serverName(serverId, serversById),
-      purchasedAt: purchasedAtOf(records).toISOString(),
-      expiresAt: expiry ? expiry.toISOString() : null,
-      coveredByBundle,
-    });
-
-    // Only surface an individual row when it is what actually grants access:
-    // no bundle covers the server, or the individual term outlasts the bundle.
-    const bundleLonger = bundleCovers && (!expiry || bundleCovers.getTime() >= expiry.getTime());
-    if (bundleLonger || !effective || effective.getTime() <= nowMs) continue;
+    // One row per server in the current access list: servers covered by a
+    // bundle are listed on the bundle card (with their effective end), so they
+    // are never repeated as individual rows.
+    if (bundleCovers) continue;
+    if (!effective || effective.getTime() <= nowMs) continue;
 
     individuals.push({
       kind: "individual",
@@ -546,6 +585,30 @@ export function buildMembershipFromHistory(input: {
       expiresAt: effective.toISOString(),
       status: "active",
     });
+  }
+
+  for (const [bundleId, records] of customByBundle) {
+    const label = bundleLabelFromRecord(records[0]!, input.bundleLabels);
+    for (const record of records) {
+      const singleExpiry = computeEntitlementExpiry([record]);
+      purchaseHistory.push({
+        id: record._id,
+        kind: "bundle",
+        label,
+        plan: record.plan ?? null,
+        planName: planName(record.plan),
+        serverIds: serverIdsFromRecord(record),
+        serverNames: serverIdsFromRecord(record).map((id) =>
+          serverName(id, serversById),
+        ),
+        purchasedAt: record.createdAt.toISOString(),
+        expiresAt: singleExpiry ? singleExpiry.toISOString() : null,
+        amountPaise: Number.isFinite(record.amount) ? record.amount : null,
+        status:
+          singleExpiry && singleExpiry.getTime() > nowMs ? "active" : "expired",
+      });
+    }
+    void bundleId;
   }
 
   purchaseHistory.sort(

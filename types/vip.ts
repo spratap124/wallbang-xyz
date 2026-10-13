@@ -122,6 +122,8 @@ export type VipEntitlementStatus = "active" | "expired";
 export type VipServerRef = {
   id: string;
   name: string;
+  /** Effective access end for this server (bundle or individual, whichever lasts longer). */
+  expiresAt?: string | null;
 };
 
 export type VipIndividualEntitlement = {
@@ -168,14 +170,25 @@ export type VipMembershipSummary = {
   subline: string | null;
 };
 
-/** An individual server purchase kept for the purchase-history section. */
+export type VipPurchaseStatus = "active" | "expired" | "covered";
+
+/** One purchase row for the VIP dashboard's purchase history. */
 export type VipPurchaseRecord = {
-  serverId: string;
-  serverName: string;
+  id: string;
+  kind: "individual" | "bundle";
+  /** "Individual Server Access" or the bundle name. */
+  label: string;
+  /** Plan duration id and its display name, when recorded. */
+  plan: string | null;
+  planName: string | null;
+  serverIds: string[];
+  serverNames: string[];
   purchasedAt: string;
   expiresAt: string | null;
-  /** True when a bundle already covers this server for at least as long. */
-  coveredByBundle: boolean;
+  /** Amount in paise, when recorded on the purchase. */
+  amountPaise: number | null;
+  /** "covered" = an active bundle already grants this access. */
+  status: VipPurchaseStatus;
 };
 
 export type VipMembershipView = {
