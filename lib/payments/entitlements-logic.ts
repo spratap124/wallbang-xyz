@@ -86,6 +86,72 @@ export function serverIdsFromRecord(record: VipHistoryDoc): string[] {
   return [];
 }
 
+export type AdminVipEntitlementRow = {
+  key: string;
+  label: string;
+  purchaseCount: number;
+  expiresAt: string | null;
+};
+
+/**
+ * Rows for the admin "VIP entitlements" list.
+ *
+ * Grouping is by the purchase's entitlement key, so a multi-server purchase
+ * (e.g. "a+b") resolves to its own record set. Matching server ids against a
+ * combined key finds nothing and wrongly reports "never expires".
+ */
+export function buildAdminVipEntitlementRows(input: {
+  history: VipHistoryDoc[];
+  eligibleServers: VipMembershipServer[];
+  bundleLabels?: Record<string, string | undefined> | null;
+  now?: Date;
+}): AdminVipEntitlementRow[] {
+  const now = input.now ?? new Date();
+  const serversById = new Map(
+    input.eligibleServers.map((server) => [server.id, server]),
+  );
+  const serverLabel = (id: string) =>
+    serversById.get(id)?.shortName || serversById.get(id)?.name || id;
+
+  const recordsByKey = new Map<string, VipHistoryDoc[]>();
+  for (const record of input.history) {
+    const key = entitlementKeyFromRecord(record);
+    if (!key) continue;
+    const list = recordsByKey.get(key) ?? [];
+    list.push(record);
+    recordsByKey.set(key, list);
+  }
+
+  const rows: AdminVipEntitlementRow[] = [];
+  for (const [key, records] of recordsByKey) {
+    const expiry = computeEntitlementExpiry(records);
+    if (expiry && expiry.getTime() <= now.getTime()) continue;
+
+    const serverIds = [...new Set(records.flatMap((r) => serverIdsFromRecord(r)))];
+    const label0 = bundleLabelFromRecord(records[0]!, input.bundleLabels);
+    let label: string;
+    if (key === "all_retakes") {
+      label = "All Retakes Bundle";
+    } else if (serverIds.length > 1 && label0 === records[0]!.bundleId) {
+      // No bundle label captured yet: show the covered servers instead of an id.
+      label = serverIds.map(serverLabel).join(" + ");
+    } else if (serverIds.length > 1) {
+      label = label0;
+    } else {
+      label = serverLabel(serverIds[0] ?? key);
+    }
+
+    rows.push({
+      key,
+      label,
+      purchaseCount: records.length,
+      expiresAt: expiry ? expiry.toISOString() : null,
+    });
+  }
+
+  return rows.sort((a, b) => a.label.localeCompare(b.label));
+}
+
 /** Display name for a stored plan id (purchase history). */
 function planName(plan: string | undefined): string | null {
   switch (plan) {

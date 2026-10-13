@@ -1,13 +1,11 @@
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
 import {
-  entitlementKeyFromRecord,
-  computeEntitlementExpiry,
+  buildAdminVipEntitlementRows,
   hasActiveVipEntitlementForServer,
-  isAllRetakesRecord,
-  serverIdsFromRecord,
 } from "@/lib/payments/entitlements-logic";
 import { vipHistoryCollection } from "@/lib/payments/collections";
+import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { findUserById, findUserBySteamId } from "@/lib/auth/users";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getGameServers } from "@/lib/servers/registry";
@@ -68,53 +66,22 @@ export async function GET(request: Request): Promise<Response> {
   });
 
   const historyCol = await vipHistoryCollection();
-  const history = await historyCol
-    .find({ userId: user._id })
-    .sort({ createdAt: 1 })
-    .toArray();
-
-  const byKey = new Map<
-    string,
-    { label: string; purchaseCount: number; expiresAt: string | null }
-  >();
-
-  for (const record of history) {
-    const key = entitlementKeyFromRecord(record);
-    if (!key) continue;
-    const existing = byKey.get(key);
-    const label =
-      key === "all_retakes"
-        ? "All Retakes Bundle"
-        : eligibleServers.find((s) => s.id === key)?.shortName ?? key;
-    byKey.set(key, {
-      label,
-      purchaseCount: (existing?.purchaseCount ?? 0) + 1,
-      expiresAt: null,
-    });
-  }
-
-  for (const [key, entry] of byKey) {
-    const records =
-      key === "all_retakes"
-        ? history.filter(isAllRetakesRecord)
-        : history.filter((item) => serverIdsFromRecord(item).includes(key));
-    const expiry = computeEntitlementExpiry(records);
-    entry.expiresAt = expiry?.toISOString() ?? null;
+  const [history, bundleDocs] = await Promise.all([
+    historyCol.find({ userId: user._id }).sort({ createdAt: 1 }).toArray(),
+    listVipBundleDocs().catch(() => []),
+  ]);
+  const bundleLabels: Record<string, string> = {};
+  for (const bundle of bundleDocs) {
+    bundleLabels[bundle.id] = bundle.name;
   }
 
   const now = new Date();
-  const entitlements = [...byKey.entries()]
-    .map(([key, entry]) => ({
-      key,
-      label: entry.label,
-      purchaseCount: entry.purchaseCount,
-      expiresAt: entry.expiresAt,
-    }))
-    .filter((row) => {
-      if (!row.expiresAt) return true;
-      return new Date(row.expiresAt).getTime() > now.getTime();
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const entitlements = buildAdminVipEntitlementRows({
+    history,
+    eligibleServers,
+    bundleLabels,
+    now,
+  });
   const serverOptions = eligibleServers.map((server) => ({
     id: server.id,
     label: server.shortName || server.name,

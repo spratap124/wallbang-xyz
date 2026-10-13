@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   ALL_RETAKES_ENTITLEMENT_KEY,
   buildEntitlementsFromHistory,
+  buildAdminVipEntitlementRows,
   buildMembershipFromHistory,
   buildGrantedEntitlementRecord,
   computeEntitlementExpiry,
@@ -753,5 +754,104 @@ describe("VIP access matrix", () => {
       assert.equal(seen.has(id), false, `duplicate server row: ${id}`);
       seen.add(id);
     }
+  });
+});
+
+describe("admin VIP entitlement rows", () => {
+  const SERVERS = [
+    { id: "retake-1-mumbai", shortName: "Retake #1 Mumbai", name: "Retake #1 Mumbai" },
+    { id: "retake-2-mumbai", shortName: "Retake #2 Mumbai", name: "Retake #2 Mumbai" },
+  ];
+  const NOW = new Date("2026-10-13T00:00:00.000Z");
+  const days = (n: number) => n * 24 * 60 * 60 * 1000;
+
+  it("multi-server purchase reports its real expiry, not 'never expires'", () => {
+    const multi = history({
+      accessType: "BUNDLE",
+      bundleKind: "custom",
+      bundleId: "all-retake-servers-mumbai",
+      bundleName: "All Retake Servers Mumbai",
+      serverIds: ["retake-1-mumbai", "retake-2-mumbai"],
+      durationDays: 90,
+      createdAt: new Date(NOW.getTime() - days(5)),
+    });
+    const rows = buildAdminVipEntitlementRows({
+      history: [multi],
+      eligibleServers: SERVERS,
+      now: NOW,
+    });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]!.key, "retake-1-mumbai+retake-2-mumbai");
+    assert.equal(rows[0]!.label, "All Retake Servers Mumbai");
+    assert.ok(rows[0]!.expiresAt, "expiry is set");
+    const expiry = new Date(rows[0]!.expiresAt!);
+    assert.ok(
+      expiry.getTime() > NOW.getTime() + days(80),
+      "expiry matches the purchase term",
+    );
+  });
+
+  it("falls back to server names when no bundle label was captured", () => {
+    const multi = history({
+      accessType: "BUNDLE",
+      bundleKind: "custom",
+      bundleId: "mumbai-pair",
+      serverIds: ["retake-1-mumbai", "retake-2-mumbai"],
+      durationDays: 90,
+      createdAt: new Date(NOW.getTime() - days(5)),
+    });
+    const rows = buildAdminVipEntitlementRows({
+      history: [multi],
+      eligibleServers: SERVERS,
+      now: NOW,
+    });
+    assert.equal(rows[0]!.label, "Retake #1 Mumbai + Retake #2 Mumbai");
+  });
+
+  it("uses the bundle's current name when no snapshot and no label is derivable", () => {
+    const multi = history({
+      accessType: "BUNDLE",
+      bundleKind: "custom",
+      bundleId: "mumbai-pair",
+      serverIds: ["retake-1-mumbai", "retake-2-mumbai"],
+      durationDays: 90,
+      createdAt: new Date(NOW.getTime() - days(5)),
+    });
+    const rows = buildAdminVipEntitlementRows({
+      history: [multi],
+      eligibleServers: SERVERS,
+      bundleLabels: { "mumbai-pair": "Mumbai Pair" },
+      now: NOW,
+    });
+    assert.equal(rows[0]!.label, "Mumbai Pair");
+  });
+
+  it("drops expired entitlements and keeps single-server labels", () => {
+    const expired = history({
+      accessType: "INDIVIDUAL_SERVER",
+      bundleKind: "server",
+      bundleId: "retake-1-mumbai",
+      serverId: "retake-1-mumbai",
+      serverIds: ["retake-1-mumbai"],
+      durationDays: 30,
+      createdAt: new Date(NOW.getTime() - days(90)),
+    });
+    const active = history({
+      accessType: "INDIVIDUAL_SERVER",
+      bundleKind: "server",
+      bundleId: "retake-2-mumbai",
+      serverId: "retake-2-mumbai",
+      serverIds: ["retake-2-mumbai"],
+      durationDays: 90,
+      createdAt: new Date(NOW.getTime() - days(5)),
+    });
+    const rows = buildAdminVipEntitlementRows({
+      history: [expired, active],
+      eligibleServers: SERVERS,
+      now: NOW,
+    });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]!.label, "Retake #2 Mumbai");
+    assert.equal(rows[0]!.key, "retake-2-mumbai");
   });
 });
