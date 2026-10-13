@@ -439,12 +439,16 @@ describe("bundle-aware membership view", () => {
     });
   }
 
-  const build = (records: VipHistoryDoc[]) =>
+  const build = (
+    records: VipHistoryDoc[],
+    bundleLabels?: Record<string, string>,
+  ) =>
     buildMembershipFromHistory({
       history: records,
       lifetime: false,
       overallExpiresAt: null,
       eligibleServers: SERVERS,
+      bundleLabels,
       now: NOW,
     });
 
@@ -527,6 +531,63 @@ describe("bundle-aware membership view", () => {
     assert.equal(
       individuals[0]?.kind === "individual" && individuals[0].serverId,
       "retake-2-mumbai",
+    );
+  });
+});
+
+describe("bundle labels", () => {
+  const SERVERS = [
+    { id: "retake-1-mumbai", shortName: "Retake #1 Mumbai", name: "Retake #1 Mumbai" },
+  ];
+  const NOW = new Date("2026-10-13T00:00:00.000Z");
+
+  function legacyBundlePurchase(overrides: Record<string, unknown> = {}) {
+    return history({
+      accessType: "BUNDLE",
+      bundleKind: "custom",
+      bundleId: "mumbai-retake-bundle-all",
+      serverIds: ["retake-1-mumbai"],
+      durationDays: 95,
+      createdAt: new Date(NOW.getTime() - 5 * 24 * 60 * 60 * 1000),
+      ...overrides,
+    });
+  }
+
+  it("falls back to the current bundle name when no snapshot exists", () => {
+    const { entitlements } = buildMembershipFromHistory({
+      history: [legacyBundlePurchase()],
+      lifetime: false,
+      overallExpiresAt: null,
+      eligibleServers: SERVERS,
+      bundleLabels: { "mumbai-retake-bundle-all": "Mumbai Retake Bundle All" },
+      now: NOW,
+    });
+    assert.equal(entitlements[0]?.kind === "bundle" && entitlements[0].label, "Mumbai Retake Bundle All");
+  });
+
+  it("prefers the purchase-time snapshot over the current name", () => {
+    const { entitlements } = buildMembershipFromHistory({
+      history: [legacyBundlePurchase({ bundleName: "Original Name" })],
+      lifetime: false,
+      overallExpiresAt: null,
+      eligibleServers: SERVERS,
+      bundleLabels: { "mumbai-retake-bundle-all": "Renamed Later" },
+      now: NOW,
+    });
+    assert.equal(entitlements[0]?.kind === "bundle" && entitlements[0].label, "Original Name");
+  });
+
+  it("falls back to the id when the bundle was deleted", () => {
+    const { entitlements } = buildMembershipFromHistory({
+      history: [legacyBundlePurchase()],
+      lifetime: false,
+      overallExpiresAt: null,
+      eligibleServers: SERVERS,
+      now: NOW,
+    });
+    assert.equal(
+      entitlements[0]?.kind === "bundle" && entitlements[0].label,
+      "mumbai-retake-bundle-all",
     );
   });
 });

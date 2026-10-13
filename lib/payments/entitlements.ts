@@ -17,6 +17,7 @@ import {
   ensurePaymentIndexes,
   vipHistoryCollection,
 } from "@/lib/payments/collections";
+import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { durationDaysToMs } from "@/lib/payments/expiry";
 import { getVipAccessStatus } from "@/lib/payments/service";
 import type { VipMembershipView } from "@/types/vip";
@@ -124,10 +125,16 @@ export async function getUserVipMembership(input: {
   userId: string;
   eligibleServers: VipMembershipServer[];
 }): Promise<VipMembershipView> {
-  const [status, historyCol] = await Promise.all([
+  const [status, historyCol, bundleDocs] = await Promise.all([
     getVipAccessStatus(input.userId),
     vipHistoryCollection(),
+    listVipBundleDocs().catch(() => []),
   ]);
+
+  const bundleLabels: Record<string, string> = {};
+  for (const bundle of bundleDocs) {
+    bundleLabels[bundle.id] = bundle.name;
+  }
 
   const history = await historyCol
     .find({ userId: input.userId })
@@ -140,6 +147,7 @@ export async function getUserVipMembership(input: {
     lifetime: status.lifetime,
     overallExpiresAt: status.expiresAt,
     eligibleServers: input.eligibleServers,
+    bundleLabels,
     now,
   });
 

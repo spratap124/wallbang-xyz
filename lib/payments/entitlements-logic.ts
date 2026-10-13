@@ -86,10 +86,17 @@ export function serverIdsFromRecord(record: VipHistoryDoc): string[] {
   return [];
 }
 
-/** Bundle label captured at purchase time when available. */
-export function bundleLabelFromRecord(record: VipHistoryDoc): string {
-  const label = (record as VipHistoryDoc & { bundleName?: string | null }).bundleName;
-  return label?.trim() || record.bundleId || "Bundle";
+/**
+ * Human label for a bundle entitlement: the name captured at purchase time,
+ * falling back to the bundle's current name, then to the id.
+ */
+export function bundleLabelFromRecord(
+  record: VipHistoryDoc,
+  bundleLabels?: Record<string, string | undefined> | null,
+): string {
+  const snapshot = (record as VipHistoryDoc & { bundleName?: string | null }).bundleName;
+  const current = bundleLabels?.[record.bundleId];
+  return snapshot?.trim() || current?.trim() || record.bundleId || "Bundle";
 }
 
 /** Stable key: one individual server, or All Retakes. Keys do not stack with each other. */
@@ -353,6 +360,8 @@ export function buildMembershipFromHistory(input: {
   lifetime: boolean;
   overallExpiresAt: Date | null;
   eligibleServers: VipMembershipServer[];
+  /** id → display name, used when a purchase predates the label snapshot. */
+  bundleLabels?: Record<string, string | undefined>;
   now?: Date;
 }): VipMembershipAggregate {
   const now = input.now ?? new Date();
@@ -456,7 +465,7 @@ export function buildMembershipFromHistory(input: {
     bundles.push({
       kind: "bundle",
       bundleId,
-      label: bundleLabelFromRecord(records[0]!),
+      label: bundleLabelFromRecord(records[0]!, input.bundleLabels),
       expiresAt: expiry.toISOString(),
       status: "active",
       includedServers: serverIds.flatMap((id) => {
