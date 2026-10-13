@@ -168,11 +168,23 @@ export type VipMembershipSummary = {
   subline: string | null;
 };
 
+/** An individual server purchase kept for the purchase-history section. */
+export type VipPurchaseRecord = {
+  serverId: string;
+  serverName: string;
+  purchasedAt: string;
+  expiresAt: string | null;
+  /** True when a bundle already covers this server for at least as long. */
+  coveredByBundle: boolean;
+};
+
 export type VipMembershipView = {
   hasActiveVip: boolean;
   lifetime: boolean;
   overallExpiresAt: string | null;
   lastExpiredAt: string | null;
   entitlements: VipEntitlement[];
+  /** Individual purchases, newest first — informational. */
+  purchaseHistory?: VipPurchaseRecord[];
   summary: VipMembershipSummary | null;
 };

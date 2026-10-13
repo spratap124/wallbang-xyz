@@ -160,6 +160,9 @@ export async function createVipOrder(input: {
 
   const bundleId = quote.bundleId;
   const bundleKind = quote.bundleKind;
+  const bundleName = bundleId
+    ? (bundles.find((bundle) => bundle.id === bundleId)?.name ?? null)
+    : null;
   const serverId = quote.serverId;
   const serverIds = quote.serverIds;
   const checkoutDescription = checkoutProductDescription({
@@ -233,6 +236,7 @@ export async function createVipOrder(input: {
     gaClientId: input.gaClientId ?? null,
     bundleId,
     bundleKind,
+    bundleName,
     accessType: quote.accessType,
     serverId,
     serverIds,
@@ -419,6 +423,7 @@ export async function fulfillCapturedPayment(input: {
     steamId: claimed.steamId,
     bundleId,
     bundleKind,
+    bundleName: claimed.bundleName ?? null,
     accessType,
     serverId,
     serverIds,

@@ -1,7 +1,7 @@
 import "server-only";
 
 import {
-  buildEntitlementsFromHistory,
+  buildMembershipFromHistory,
   buildGrantedEntitlementRecord,
   buildSummary,
   COMPLIMENTARY_LIFETIME_DURATION_DAYS,
@@ -106,6 +106,9 @@ export type { VipMembershipServer };
 export {
   ALL_RETAKES_ENTITLEMENT_KEY,
   buildEntitlementsFromHistory,
+  buildMembershipFromHistory,
+  bundleLabelFromRecord,
+  isCustomBundleRecord,
   COMPLIMENTARY_VIP_SERVER_ID,
   normalizeAdminEntitlementKeys,
   computeEntitlementExpiry,
@@ -132,7 +135,7 @@ export async function getUserVipMembership(input: {
     .toArray();
 
   const now = new Date();
-  const entitlements = buildEntitlementsFromHistory({
+  const { entitlements, purchaseHistory } = buildMembershipFromHistory({
     history,
     lifetime: status.lifetime,
     overallExpiresAt: status.expiresAt,
@@ -193,6 +196,7 @@ export async function getUserVipMembership(input: {
       (latestEntitlementExpiry ?? status.expiresAt)?.toISOString() ?? null,
     lastExpiredAt: lastExpiredAt?.toISOString() ?? null,
     entitlements,
+    purchaseHistory,
     summary,
   };
 }

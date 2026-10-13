@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   ALL_RETAKES_ENTITLEMENT_KEY,
   buildEntitlementsFromHistory,
+  buildMembershipFromHistory,
   buildGrantedEntitlementRecord,
   computeEntitlementExpiry,
   durationDaysToCoverUntil,
@@ -26,6 +27,7 @@ function history(
     steamId: partial.steamId ?? "steam",
     bundleId: partial.bundleId,
     bundleKind: partial.bundleKind ?? "server",
+    bundleName: partial.bundleName ?? null,
     accessType: partial.accessType,
     serverId: partial.serverId ?? null,
     serverIds: partial.serverIds ?? [],
@@ -400,5 +402,131 @@ describe("admin-granted entitlements", () => {
       ["retake-1-mumbai"],
     );
     assert.deepEqual(normalized.unknown, ["retake-9-nowhere"]);
+  });
+});
+
+describe("bundle-aware membership view", () => {
+  const SERVERS = [
+    { id: "retake-1-mumbai", shortName: "Retake #1 Mumbai", name: "Retake #1 Mumbai" },
+    { id: "retake-2-mumbai", shortName: "Retake #2 Mumbai", name: "Retake #2 Mumbai" },
+  ];
+  const NOW = new Date("2026-10-13T00:00:00.000Z");
+  const days = (n: number) => n * 24 * 60 * 60 * 1000;
+
+  function bundlePurchase(expiresInDays: number, label = "Mumbai Starter") {
+    return history({
+      accessType: "BUNDLE",
+      bundleKind: "custom",
+      bundleId: "mumbai-starter",
+      bundleName: label,
+      serverIds: SERVERS.map((server) => server.id),
+      durationDays: 5 + expiresInDays,
+      createdAt: new Date(NOW.getTime() - days(5)),
+      endDate: new Date(NOW.getTime() + days(expiresInDays)),
+    });
+  }
+
+  function individualPurchase(serverId: string, expiresInDays: number) {
+    return history({
+      accessType: "INDIVIDUAL_SERVER",
+      bundleKind: "server",
+      bundleId: serverId,
+      serverId,
+      serverIds: [serverId],
+      durationDays: 10 + expiresInDays,
+      createdAt: new Date(NOW.getTime() - days(10)),
+      endDate: new Date(NOW.getTime() + days(expiresInDays)),
+    });
+  }
+
+  const build = (records: VipHistoryDoc[]) =>
+    buildMembershipFromHistory({
+      history: records,
+      lifetime: false,
+      overallExpiresAt: null,
+      eligibleServers: SERVERS,
+      now: NOW,
+    });
+
+  it("bundle only → one bundle card with its servers, no individual rows", () => {
+    const { entitlements, purchaseHistory } = build([bundlePurchase(120)]);
+    assert.equal(entitlements.length, 1);
+    const bundle = entitlements[0]!;
+    assert.equal(bundle.kind, "bundle");
+    assert.equal(bundle.kind === "bundle" && bundle.label, "Mumbai Starter");
+    assert.equal(
+      bundle.kind === "bundle" && bundle.includedServers.length,
+      2,
+      "lists both included servers",
+    );
+    assert.equal(purchaseHistory.length, 0);
+  });
+
+  it("individual + longer bundle → bundle only, purchase kept in history", () => {
+    const { entitlements, purchaseHistory } = build([
+      individualPurchase("retake-1-mumbai", 30),
+      bundlePurchase(120),
+    ]);
+    assert.equal(entitlements.length, 1, "no duplicate individual row");
+    assert.equal(entitlements[0]!.kind, "bundle");
+    assert.equal(purchaseHistory.length, 1);
+    assert.equal(purchaseHistory[0]!.coveredByBundle, true);
+    assert.equal(purchaseHistory[0]!.serverId, "retake-1-mumbai");
+  });
+
+  it("bundle expires but individual VIP remains active → individual row survives", () => {
+    const { entitlements } = build([
+      individualPurchase("retake-1-mumbai", 200),
+      bundlePurchase(30),
+    ]);
+    const bundle = entitlements.find((item) => item.kind === "bundle");
+    const individual = entitlements.find((item) => item.kind === "individual");
+    assert.ok(bundle, "bundle card kept");
+    assert.ok(individual, "individual access still shown");
+    assert.equal(
+      individual?.kind === "individual" && individual.serverId,
+      "retake-1-mumbai",
+    );
+  });
+
+  it("never shortens valid purchased time (individual outlasts bundle)", () => {
+    const { entitlements } = build([
+      individualPurchase("retake-2-mumbai", 400),
+      bundlePurchase(60),
+    ]);
+    const individual = entitlements.find(
+      (item) => item.kind === "individual" && item.serverId === "retake-2-mumbai",
+    );
+    assert.ok(individual);
+    const expiry = new Date(
+      individual?.kind === "individual" ? individual.expiresAt! : 0,
+    );
+    assert.ok(
+      expiry.getTime() > NOW.getTime() + 399 * 24 * 60 * 60 * 1000,
+      "expiry reflects the individual purchase, not the shorter bundle",
+    );
+  });
+
+  it("bundle covers one server while another is bought individually", () => {
+    const { entitlements } = build([
+      history({
+        accessType: "BUNDLE",
+        bundleKind: "custom",
+        bundleId: "solo-bundle",
+        serverIds: ["retake-1-mumbai"],
+        durationDays: 92,
+        createdAt: new Date(NOW.getTime() - days(2)),
+        endDate: new Date(NOW.getTime() + days(90)),
+      }),
+      individualPurchase("retake-2-mumbai", 60),
+    ]);
+    const bundles = entitlements.filter((item) => item.kind === "bundle");
+    const individuals = entitlements.filter((item) => item.kind === "individual");
+    assert.equal(bundles.length, 1);
+    assert.equal(individuals.length, 1);
+    assert.equal(
+      individuals[0]?.kind === "individual" && individuals[0].serverId,
+      "retake-2-mumbai",
+    );
   });
 });
