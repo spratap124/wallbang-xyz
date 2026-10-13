@@ -32,7 +32,6 @@ export const featureFlags = {
    * Runtime-overridable via admin Settings (wins) or FEATURE_VIP_CHECKOUT.
    */
   vipCheckout: process.env.NODE_ENV !== "production",
-  vipAllRetakes: false,
   /**
    * Public loadout page (`/loadout`) and nav entry.
    * Runtime-overridable via admin Settings / FEATURE_LOADOUT_PAGE.
@@ -63,7 +62,6 @@ export type FeatureFlags = {
 /** Flags writable at runtime via admin Settings / env overrides. */
 export type WritableFeatureFlag =
   | "vipPage"
-  | "vipAllRetakes"
   | "vipCheckout"
   | "loadoutPage"
   | "featuresPage"
@@ -73,7 +71,6 @@ export type WritableFeatureFlag =
 
 export const writableFeatureFlags: readonly WritableFeatureFlag[] = [
   "vipPage",
-  "vipAllRetakes",
   "vipCheckout",
   "loadoutPage",
   "featuresPage",

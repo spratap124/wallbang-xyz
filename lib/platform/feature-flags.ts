@@ -15,7 +15,6 @@ const DOC_ID = "feature_flags";
 
 const ENV_NAMES: Record<WritableFeatureFlag, string> = {
   vipPage: "FEATURE_VIP_PAGE",
-  vipAllRetakes: "FEATURE_VIP_ALL_RETAKES",
   vipCheckout: "FEATURE_VIP_CHECKOUT",
   loadoutPage: "FEATURE_LOADOUT_PAGE",
   featuresPage: "FEATURE_FEATURES_PAGE",
@@ -27,7 +26,6 @@ const ENV_NAMES: Record<WritableFeatureFlag, string> = {
 type FeatureFlagDoc = {
   _id: string;
   vipPage?: boolean;
-  vipAllRetakes?: boolean;
   vipCheckout?: boolean;
   loadoutPage?: boolean;
   featuresPage?: boolean;
@@ -102,11 +100,6 @@ export async function isVipPageEnabled(): Promise<boolean> {
   return flags.vipPage;
 }
 
-export async function isVipAllRetakesEnabled(): Promise<boolean> {
-  const flags = await getRuntimeFeatureFlags();
-  return flags.vipAllRetakes;
-}
-
 export async function isVipCheckoutEnabled(): Promise<boolean> {
   const flags = await getRuntimeFeatureFlags();
   return flags.vipCheckout;
@@ -142,13 +135,6 @@ export async function setVipPageEnabled(
   updatedBy: string,
 ): Promise<boolean> {
   return setFeatureFlag("vipPage", enabled, updatedBy);
-}
-
-export async function setVipAllRetakesEnabled(
-  enabled: boolean,
-  updatedBy: string,
-): Promise<boolean> {
-  return setFeatureFlag("vipAllRetakes", enabled, updatedBy);
 }
 
 export async function setVipCheckoutEnabled(

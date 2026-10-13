@@ -1,6 +1,5 @@
 export { formatInrFromPaise } from "@/lib/payments/format";
 export {
-  buildAllRetakesDurationOptions,
   buildServerDurationOptions,
   buildVipShopQuote,
   getVipShopCatalog,

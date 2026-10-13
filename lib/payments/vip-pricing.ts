@@ -37,7 +37,6 @@ export type VipPricingBundle = Pick<
 
 type PricingEnv = {
   individualDefaultPaise: Record<VipPlanId, number>;
-  allRetakesPaise: Record<VipPlanId, number>;
 };
 
 function parsePaise(raw: string | undefined, fallback: number): number {
@@ -55,12 +54,6 @@ export function readPricingEnv(
       "3_months": parsePaise(env.VIP_SERVER_PRICE_3M_PAISE, 27_900),
       "6_months": parsePaise(env.VIP_SERVER_PRICE_6M_PAISE, 54_900),
       "1_year": parsePaise(env.VIP_SERVER_PRICE_1Y_PAISE, 99_900),
-    },
-    allRetakesPaise: {
-      "1_month": parsePaise(env.VIP_ALL_RETAKES_1M_PAISE, 14_900),
-      "3_months": parsePaise(env.VIP_ALL_RETAKES_3M_PAISE, 39_900),
-      "6_months": parsePaise(env.VIP_ALL_RETAKES_6M_PAISE, 79_900),
-      "1_year": parsePaise(env.VIP_ALL_RETAKES_1Y_PAISE, 169_900),
     },
   };
 }
@@ -161,12 +154,6 @@ export function buildServerDurationOptions(
   return toDurationOptions(prices);
 }
 
-export function buildAllRetakesDurationOptions(
-  env: PricingEnv = readPricingEnv(),
-): VipDurationOption[] {
-  return toDurationOptions(env.allRetakesPaise);
-}
-
 function bundlePaise(bundle: VipPricingBundle, planId: VipPlanId): number {
   const amount = bundle.pricingByPlan?.[planId];
   if (!Number.isFinite(amount) || (amount ?? 0) <= 0) {
@@ -220,12 +207,8 @@ export function buildVipShopQuote(input: {
   const env = input.env ?? readPricingEnv();
 
   if (input.accessType === "ALL_RETAKES") {
-    return {
-      accessType: "ALL_RETAKES",
-      serverId: null,
-      bundleId: null,
-      durations: buildAllRetakesDurationOptions(env),
-    };
+    // Retired: kept only so historical records remain readable.
+    throw new Error("All Retakes is no longer available.");
   }
 
   if (input.accessType === "BUNDLE") {
@@ -285,19 +268,8 @@ export function quoteVipOrder(input: {
   }
 
   if (input.accessType === "ALL_RETAKES") {
-    if (input.serverId) {
-      throw new Error("All Retakes purchases must not include a server.");
-    }
-    return {
-      accessType: "ALL_RETAKES",
-      amountPaise: env.allRetakesPaise[meta.id],
-      durationId: meta.id,
-      durationDays: meta.durationDays,
-      serverId: null,
-      serverIds: [],
-      bundleKind: "all",
-      bundleId: "all_retakes",
-    };
+    // Retired: existing purchases keep their entitlements, nothing new is sold.
+    throw new Error("All Retakes is no longer available.");
   }
 
   if (input.accessType === "BUNDLE") {
@@ -395,9 +367,6 @@ export function getVipShopCatalog(
 
   return {
     servers: shopServers,
-    allRetakes: {
-      durations: buildAllRetakesDurationOptions(env),
-    },
     bundles: enabledBundles.map((bundle) => toShopBundle(bundle, shopServers)),
     quote: buildVipShopQuote({
       accessType: "INDIVIDUAL_SERVER",

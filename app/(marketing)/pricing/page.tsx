@@ -34,7 +34,6 @@ import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { isPaymentConfigured, isPayuActive } from "@/lib/payments/provider";
 import {
   isPricingPageEnabled,
-  isVipAllRetakesEnabled,
   isVipCheckoutEnabled,
 } from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
@@ -97,10 +96,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
   const session = await getSession();
   const purchasesEnabled = isPaymentConfigured();
   const paymentProvider = isPayuActive() ? "payu" : "razorpay";
-  const [allRetakesEnabled, checkoutEnabled] = await Promise.all([
-    isVipAllRetakesEnabled(),
-    isVipCheckoutEnabled(),
-  ]);
+  const checkoutEnabled = await isVipCheckoutEnabled();
 
   let lifetime = false;
   if (session && isMongoConfigured()) {
@@ -129,11 +125,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
           }
         : null;
 
-  const defaultOffers = (
-    allRetakesEnabled
-      ? catalog.allRetakes.durations
-      : (catalog.servers[0]?.durationOptions ?? [])
-  )
+  const defaultOffers = (catalog.servers[0]?.durationOptions ?? [])
     .filter((option) => option.amountPaise > 0)
     .map((option) => ({
       name: hostedAccessPlanLabel(option.name),
@@ -211,7 +203,6 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               purchasesEnabled={purchasesEnabled}
               paymentProvider={paymentProvider}
               checkoutEnabled={checkoutEnabled}
-              allRetakesEnabled={allRetakesEnabled}
               hideBuy={lifetime}
               renewTarget={renewTarget}
             />

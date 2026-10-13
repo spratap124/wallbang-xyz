@@ -94,7 +94,8 @@ function entitlementKindLabel(entitlement: VipEntitlement): string {
 
 function renewHref(entitlement: VipEntitlement): string {
   if (entitlement.kind === "bundle") {
-    return pricingCheckoutHref({ accessType: "ALL_RETAKES", serverId: null });
+    // All Retakes is retired: renew via the current bundles/individual offer.
+    return "/pricing";
   }
   if (entitlement.kind === "individual") {
     return pricingCheckoutHref({

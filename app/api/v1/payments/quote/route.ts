@@ -4,13 +4,12 @@ import { buildVipShopQuote } from "@/config/vip-plans";
 import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { jsonError, jsonOk } from "@/lib/permissions/authz";
 import {
-  isVipAllRetakesEnabled,
   isVipPageEnabled,
 } from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
 import type { VipShopQuote } from "@/types/vip";
 
-const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "ALL_RETAKES", "BUNDLE"]);
+const accessTypeSchema = z.enum(["INDIVIDUAL_SERVER", "BUNDLE"]);
 
 const bodySchema = z
   .object({
@@ -32,14 +31,6 @@ const bodySchema = z
       ctx.addIssue({
         code: "custom",
         message: "Select a server.",
-        path: ["serverId"],
-      });
-    }
-
-    if (value.accessType === "ALL_RETAKES" && value.serverId) {
-      ctx.addIssue({
-        code: "custom",
-        message: "All Retakes purchases must not include a server.",
         path: ["serverId"],
       });
     }
@@ -86,13 +77,6 @@ export async function POST(request: Request): Promise<Response> {
     const message =
       parsed.error.issues[0]?.message ?? "Invalid request body.";
     return jsonError(message, 400);
-  }
-
-  if (
-    parsed.data.accessType === "ALL_RETAKES" &&
-    !(await isVipAllRetakesEnabled())
-  ) {
-    return jsonError("All Retakes purchases are not available yet.", 400);
   }
 
   const servers = await getGameServers();

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  buildAllRetakesDurationOptions,
   buildServerDurationOptions,
   buildVipShopQuote,
   getVipShopCatalog,
@@ -17,10 +16,6 @@ const testEnv = readPricingEnv({
   VIP_SERVER_PRICE_3M_PAISE: "27900",
   VIP_SERVER_PRICE_6M_PAISE: "54900",
   VIP_SERVER_PRICE_1Y_PAISE: "99900",
-  VIP_ALL_RETAKES_1M_PAISE: "14900",
-  VIP_ALL_RETAKES_3M_PAISE: "39900",
-  VIP_ALL_RETAKES_6M_PAISE: "79900",
-  VIP_ALL_RETAKES_1Y_PAISE: "169900",
 });
 
 const serverA: VipPricingServer = {
@@ -178,47 +173,6 @@ describe("individual server pricing", () => {
   });
 });
 
-describe("all retakes pricing", () => {
-  it("charges ₹149 for 1 month", () => {
-    const quote = quoteVipOrder({
-      accessType: "ALL_RETAKES",
-      planId: "1_month",
-      servers: [serverA, serverB],
-      env: testEnv,
-    });
-    assert.equal(quote.amountPaise, 14_900);
-  });
-
-  it("charges ₹399 for 3 months", () => {
-    const quote = quoteVipOrder({
-      accessType: "ALL_RETAKES",
-      planId: "3_months",
-      servers: [serverA, serverB],
-      env: testEnv,
-    });
-    assert.equal(quote.amountPaise, 39_900);
-  });
-
-  it("charges ₹799 for 6 months", () => {
-    const quote = quoteVipOrder({
-      accessType: "ALL_RETAKES",
-      planId: "6_months",
-      servers: [serverA, serverB],
-      env: testEnv,
-    });
-    assert.equal(quote.amountPaise, 79_900);
-  });
-
-  it("charges ₹1,699 for 1 year", () => {
-    const quote = quoteVipOrder({
-      accessType: "ALL_RETAKES",
-      planId: "1_year",
-      servers: [serverA, serverB],
-      env: testEnv,
-    });
-    assert.equal(quote.amountPaise, 169_900);
-  });
-});
 
 describe("validation and entitlements", () => {
   it("requires serverId for individual purchases", () => {
@@ -232,17 +186,6 @@ describe("validation and entitlements", () => {
     );
   });
 
-  it("rejects serverId for all retakes purchases", () => {
-    assert.throws(() =>
-      quoteVipOrder({
-        accessType: "ALL_RETAKES",
-        serverId: serverA.id,
-        planId: "1_month",
-        servers: [serverA],
-        env: testEnv,
-      }),
-    );
-  });
 
   it("rejects unknown server ids", () => {
     assert.throws(() =>
@@ -259,7 +202,8 @@ describe("validation and entitlements", () => {
   it("rejects unknown durations", () => {
     assert.throws(() =>
       quoteVipOrder({
-        accessType: "ALL_RETAKES",
+        accessType: "INDIVIDUAL_SERVER",
+        serverId: serverA.id,
         planId: "2_months",
         servers: [serverA],
         env: testEnv,
@@ -279,17 +223,6 @@ describe("validation and entitlements", () => {
     assert.deepEqual(entitled, [serverA.id]);
   });
 
-  it("resolves all retakes entitlement to all eligible servers", () => {
-    const entitled = resolveVipEntitledServerIds({
-      accessType: "ALL_RETAKES",
-      bundleKind: "all",
-      bundleId: "all_retakes",
-      serverId: null,
-      serverIds: [],
-      eligibleServerIds: [serverA.id, serverB.id, "retake-3-mumbai"],
-    });
-    assert.equal(entitled, "all");
-  });
 
   it("keeps legacy multi-server purchases readable", () => {
     const entitled = resolveVipEntitledServerIds({
@@ -308,11 +241,6 @@ describe("validation and entitlements", () => {
     assert.equal(options[3]?.amountPaise, 109_900);
   });
 
-  it("builds all retakes duration cards from global pricing", () => {
-    const options = buildAllRetakesDurationOptions(testEnv);
-    assert.equal(options[0]?.amountPaise, 14_900);
-    assert.equal(options[3]?.amountPaise, 169_900);
-  });
 });
 
 describe("custom server bundles", () => {

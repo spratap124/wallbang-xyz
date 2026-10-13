@@ -99,9 +99,7 @@ export type VipShopServer = {
 
 export type VipShopCatalog = {
   servers: VipShopServer[];
-  allRetakes: {
-    durations: VipDurationOption[];
-  };
+  /** Custom admin-managed bundles are the only multi-server offering. */
   bundles: VipShopBundle[];
   quote: VipShopQuote;
 };
