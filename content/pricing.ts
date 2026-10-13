@@ -5,7 +5,7 @@ export const pricingFaqs: FaqItem[] = [
     id: "what-am-i-buying",
     question: "What am I paying for?",
     answer:
-      "You are paying for Hosted Server Access — fixed-duration access to WallBang's independently operated Counter-Strike 2 community servers, including reserved access and the server/community privileges listed on this page. WallBang does not sell the game, licenses, or in-game items.",
+      "You are paying for VIP Access — fixed-duration access to WallBang's independently operated Counter-Strike 2 community servers, including reserved access and the server/community privileges listed on this page. WallBang does not sell the game, licenses, or in-game items.",
   },
   {
     id: "auto-renew",
