@@ -1,7 +1,11 @@
 import type { FaqItem } from "@/types/content";
 
-/** Customer-facing name of the paid product. */
-export const hostedAccessProduct = "Hosted Server Access";
+/**
+ * Customer-facing name of the paid product. Shown on pricing cards, checkout
+ * descriptions, and invoices as "VIP Access"; the legal terms still define the
+ * entitlement as prepaid hosted server access.
+ */
+export const hostedAccessProduct = "VIP Access";
 
 export const valveDisclaimer =
   "Counter-Strike 2 is a trademark of Valve Corporation. WallBang is an independent community server operator and is not affiliated with, endorsed by, or sponsored by Valve Corporation.";
@@ -86,12 +90,14 @@ export function hostedAccessPlanBlurb(durationDays: number): string {
 
 export function checkoutProductDescription(input: {
   durationDays: number;
-  accessType: "ALL_RETAKES" | "INDIVIDUAL_SERVER";
+  accessType: "ALL_RETAKES" | "INDIVIDUAL_SERVER" | "BUNDLE";
 }): string {
   const scope =
     input.accessType === "ALL_RETAKES"
       ? "all WallBang CS2 community servers"
-      : "selected WallBang CS2 community server";
+      : input.accessType === "BUNDLE"
+        ? "your selected WallBang CS2 community servers"
+        : "selected WallBang CS2 community server";
   return `${hostedAccessDaysLabel(input.durationDays)} (${scope})`;
 }
 

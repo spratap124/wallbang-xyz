@@ -23,6 +23,16 @@ function stringField(
 
 function auditDetailLabel(entry: AuditLogDoc): string {
   switch (entry.action) {
+    case "CREATE_BUNDLE":
+    case "UPDATE_BUNDLE":
+    case "DELETE_BUNDLE": {
+      const name =
+        stringField(entry.newValue, "name") ??
+        stringField(entry.oldValue, "name") ??
+        stringField(entry.oldValue, "bundleId") ??
+        "bundle";
+      return `Bundle ${entry.action.split("_")[0]?.toLowerCase()} · ${name}`;
+    }
     case "CREATE_BAN":
       return `Ban created · ${stringField(entry.newValue, "banId") ?? "unknown"}`;
     case "REVOKE_BAN":

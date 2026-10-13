@@ -13,6 +13,7 @@ import {
   isPayuConfigured,
   type PayuCheckoutParams,
 } from "@/lib/payments/payu";
+import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { rateLimit } from "@/lib/rate-limit";
 import { getGameServers } from "@/lib/servers/registry";
 import {
@@ -64,6 +65,8 @@ export async function createPayuVipOrder(input: {
   accessType: VipAccessType;
   planId: string;
   serverId: string | null;
+  /** Required when accessType is BUNDLE. */
+  bundleId?: string | null;
   email: string;
   phone: string;
   /** Attribution context from the checkout page (GA4 client id). */
@@ -90,11 +93,21 @@ export async function createPayuVipOrder(input: {
     vipPricingByPlan: server.vipPricingByPlan ?? undefined,
   }));
 
+  const bundles = (await listVipBundleDocs()).map((bundle) => ({
+    id: bundle.id,
+    name: bundle.name,
+    serverIds: bundle.serverIds,
+    pricingByPlan: bundle.pricingByPlan,
+    enabled: bundle.enabled,
+  }));
+
   const quote = quoteVipOrder({
     accessType: input.accessType,
     serverId: input.serverId,
+    bundleId: input.bundleId ?? null,
     planId: input.planId,
     servers: shopServers,
+    bundles,
   });
 
   const limited = rateLimit(`vip-order:${input.userId}`, 8, 60_000);
@@ -104,9 +117,11 @@ export async function createPayuVipOrder(input: {
 
   const bundleId = quote.bundleId;
   const bundleKind = quote.bundleKind;
+  const bundleName = bundleId
+    ? (bundles.find((bundle) => bundle.id === bundleId)?.name ?? null)
+    : null;
   const serverId = quote.serverId;
-  const serverIds =
-    quote.accessType === "INDIVIDUAL_SERVER" && serverId ? [serverId] : [];
+  const serverIds = quote.serverIds;
   const checkoutDescription = checkoutProductDescription({
     durationDays: quote.durationDays,
     accessType: quote.accessType,
@@ -200,6 +215,7 @@ export async function createPayuVipOrder(input: {
     gaClientId: input.gaClientId ?? null,
     bundleId,
     bundleKind,
+    bundleName,
     accessType: quote.accessType,
     serverId,
     serverIds,

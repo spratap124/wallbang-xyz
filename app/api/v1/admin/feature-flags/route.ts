@@ -11,7 +11,6 @@ import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 const patchSchema = z
   .object({
     vipPage: z.boolean().optional(),
-    vipAllRetakes: z.boolean().optional(),
     vipCheckout: z.boolean().optional(),
     loadoutPage: z.boolean().optional(),
     featuresPage: z.boolean().optional(),

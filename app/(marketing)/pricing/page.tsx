@@ -30,10 +30,10 @@ import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
 import { isVipAccessType } from "@/lib/payments/quote";
+import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { isPaymentConfigured, isPayuActive } from "@/lib/payments/provider";
 import {
   isPricingPageEnabled,
-  isVipAllRetakesEnabled,
   isVipCheckoutEnabled,
 } from "@/lib/platform/feature-flags";
 import { getGameServers } from "@/lib/servers/registry";
@@ -49,7 +49,11 @@ export const metadata = createPageMetadata({
 });
 
 type PricingPageProps = {
-  searchParams: Promise<{ access?: string; serverId?: string }>;
+  searchParams: Promise<{
+    access?: string;
+    serverId?: string;
+    bundle?: string;
+  }>;
 };
 
 const howItWorks = [
@@ -90,14 +94,13 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
 
   const params = await searchParams;
   const servers = await getGameServers();
-  const catalog = getVipShopCatalog(servers);
+  const catalog = getVipShopCatalog(servers, {
+    bundles: await listVipBundleDocs(),
+  });
   const session = await getSession();
   const purchasesEnabled = isPaymentConfigured();
   const paymentProvider = isPayuActive() ? "payu" : "razorpay";
-  const [allRetakesEnabled, checkoutEnabled] = await Promise.all([
-    isVipAllRetakesEnabled(),
-    isVipCheckoutEnabled(),
-  ]);
+  const checkoutEnabled = await isVipCheckoutEnabled();
 
   let lifetime = false;
   if (session && isMongoConfigured()) {
@@ -118,19 +121,17 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
       ? {
           accessType: accessParam,
           serverId: params.serverId ?? null,
+          bundleId: params.bundle ?? null,
         }
       : params.serverId
         ? {
             accessType: "INDIVIDUAL_SERVER",
             serverId: params.serverId,
+            bundleId: null,
           }
         : null;
 
-  const defaultOffers = (
-    allRetakesEnabled
-      ? catalog.allRetakes.durations
-      : (catalog.servers[0]?.durationOptions ?? [])
-  )
+  const defaultOffers = (catalog.servers[0]?.durationOptions ?? [])
     .filter((option) => option.amountPaise > 0)
     .map((option) => ({
       name: hostedAccessPlanLabel(option.name),
@@ -208,7 +209,6 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               purchasesEnabled={purchasesEnabled}
               paymentProvider={paymentProvider}
               checkoutEnabled={checkoutEnabled}
-              allRetakesEnabled={allRetakesEnabled}
               hideBuy={lifetime}
               renewTarget={renewTarget}
             />

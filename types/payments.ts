@@ -26,6 +26,8 @@ export type PaymentDoc = {
   phone?: string | null;
   bundleId: string;
   bundleKind: VipBundleKind;
+  /** Bundle display name at purchase time (snapshot). */
+  bundleName?: string | null;
   accessType?: VipAccessType;
   serverId: string | null;
   serverIds: string[];
@@ -55,6 +57,8 @@ export type VipHistoryDoc = {
   steamId: string;
   bundleId: string;
   bundleKind: VipBundleKind;
+  /** Bundle display name at purchase time (snapshot). */
+  bundleName?: string | null;
   accessType?: VipAccessType;
   serverId: string | null;
   serverIds: string[];

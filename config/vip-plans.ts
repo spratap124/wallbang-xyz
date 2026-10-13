@@ -3,7 +3,6 @@ import "server-only";
 import { durationMetas } from "@/lib/payments/vip-pricing";
 
 export {
-  buildAllRetakesDurationOptions,
   buildServerDurationOptions,
   buildVipShopQuote,
   durationMetas,

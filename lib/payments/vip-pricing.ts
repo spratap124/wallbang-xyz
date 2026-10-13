@@ -1,10 +1,12 @@
 import type {
   VipAccessType,
+  VipBundleDoc,
   VipDurationMeta,
   VipDurationOption,
   VipPlanId,
   VipPricingByPlan,
   VipQuote,
+  VipShopBundle,
   VipShopCatalog,
   VipShopQuote,
   VipShopServer,
@@ -24,9 +26,17 @@ export type VipPricingServer = {
   vipPricingByPlan?: VipPricingByPlan;
 };
 
+/** Minimal bundle shape needed for pricing/quotes. */
+export type VipPricingBundle = Pick<
+  VipBundleDoc,
+  "id" | "name" | "serverIds" | "pricingByPlan" | "enabled"
+> & {
+  /** Optional: marks the bundle as the shop's "Recommended" option. */
+  featured?: boolean;
+};
+
 type PricingEnv = {
   individualDefaultPaise: Record<VipPlanId, number>;
-  allRetakesPaise: Record<VipPlanId, number>;
 };
 
 function parsePaise(raw: string | undefined, fallback: number): number {
@@ -44,12 +54,6 @@ export function readPricingEnv(
       "3_months": parsePaise(env.VIP_SERVER_PRICE_3M_PAISE, 27_900),
       "6_months": parsePaise(env.VIP_SERVER_PRICE_6M_PAISE, 54_900),
       "1_year": parsePaise(env.VIP_SERVER_PRICE_1Y_PAISE, 99_900),
-    },
-    allRetakesPaise: {
-      "1_month": parsePaise(env.VIP_ALL_RETAKES_1M_PAISE, 14_900),
-      "3_months": parsePaise(env.VIP_ALL_RETAKES_3M_PAISE, 39_900),
-      "6_months": parsePaise(env.VIP_ALL_RETAKES_6M_PAISE, 79_900),
-      "1_year": parsePaise(env.VIP_ALL_RETAKES_1Y_PAISE, 169_900),
     },
   };
 }
@@ -99,7 +103,11 @@ export function isVipPlanId(value: string): value is VipPlanId {
 }
 
 export function isVipAccessType(value: string): value is VipAccessType {
-  return value === "INDIVIDUAL_SERVER" || value === "ALL_RETAKES";
+  return (
+    value === "INDIVIDUAL_SERVER" ||
+    value === "ALL_RETAKES" ||
+    value === "BUNDLE"
+  );
 }
 
 function individualServerPaise(
@@ -146,25 +154,76 @@ export function buildServerDurationOptions(
   return toDurationOptions(prices);
 }
 
-export function buildAllRetakesDurationOptions(
-  env: PricingEnv = readPricingEnv(),
+function bundlePaise(bundle: VipPricingBundle, planId: VipPlanId): number {
+  const amount = bundle.pricingByPlan?.[planId];
+  if (!Number.isFinite(amount) || (amount ?? 0) <= 0) {
+    throw new Error("Bundle pricing is incomplete for this duration.");
+  }
+  return amount as number;
+}
+
+export function buildBundleDurationOptions(
+  bundle: VipPricingBundle,
 ): VipDurationOption[] {
-  return toDurationOptions(env.allRetakesPaise);
+  const prices = durationMetas().reduce(
+    (acc, meta) => {
+      acc[meta.id] = bundlePaise(bundle, meta.id);
+      return acc;
+    },
+    {} as Record<VipPlanId, number>,
+  );
+  return toDurationOptions(prices);
+}
+
+function toShopBundle(
+  bundle: VipPricingBundle,
+  servers: VipPricingServer[],
+): VipShopBundle {
+  const serverIds = bundle.serverIds.filter((id) =>
+    servers.some((server) => server.id === id),
+  );
+  return {
+    id: bundle.id,
+    name: bundle.name,
+    description: (bundle as VipBundleDoc).description ?? null,
+    serverIds,
+    servers: serverIds.map((id) => {
+      const server = servers.find((row) => row.id === id)!;
+      return { id: server.id, name: server.shortName || server.name };
+    }),
+    durations: buildBundleDurationOptions(bundle),
+    featured: bundle.featured ?? false,
+  };
 }
 
 export function buildVipShopQuote(input: {
   accessType: VipAccessType;
   serverId?: string | null;
+  bundleId?: string | null;
   servers: VipPricingServer[];
+  bundles?: VipPricingBundle[];
   env?: PricingEnv;
 }): VipShopQuote {
   const env = input.env ?? readPricingEnv();
 
   if (input.accessType === "ALL_RETAKES") {
+    // Retired: kept only so historical records remain readable.
+    throw new Error("All Retakes is no longer available.");
+  }
+
+  if (input.accessType === "BUNDLE") {
+    const bundle =
+      input.bundles?.find((row) => row.id === input.bundleId && row.enabled) ??
+      input.bundles?.find((row) => row.enabled) ??
+      null;
+    if (!bundle) {
+      throw new Error("No VIP bundles are available.");
+    }
     return {
-      accessType: "ALL_RETAKES",
+      accessType: "BUNDLE",
       serverId: null,
-      durations: buildAllRetakesDurationOptions(env),
+      bundleId: bundle.id,
+      durations: buildBundleDurationOptions(bundle),
     };
   }
 
@@ -178,6 +237,7 @@ export function buildVipShopQuote(input: {
   return {
     accessType: "INDIVIDUAL_SERVER",
     serverId,
+    bundleId: null,
     durations: server
       ? buildServerDurationOptions(server, env)
       : durationMetas().map((meta) => ({
@@ -195,8 +255,10 @@ export function buildVipShopQuote(input: {
 export function quoteVipOrder(input: {
   accessType: VipAccessType;
   serverId?: string | null;
+  bundleId?: string | null;
   planId: string;
   servers: VipPricingServer[];
+  bundles?: VipPricingBundle[];
   env?: PricingEnv;
 }): VipQuote {
   const env = input.env ?? readPricingEnv();
@@ -206,17 +268,36 @@ export function quoteVipOrder(input: {
   }
 
   if (input.accessType === "ALL_RETAKES") {
-    if (input.serverId) {
-      throw new Error("All Retakes purchases must not include a server.");
+    // Retired: existing purchases keep their entitlements, nothing new is sold.
+    throw new Error("All Retakes is no longer available.");
+  }
+
+  if (input.accessType === "BUNDLE") {
+    if (!input.bundleId) {
+      throw new Error("Select a bundle.");
+    }
+    const bundle = input.bundles?.find((row) => row.id === input.bundleId);
+    if (!bundle) {
+      throw new Error("Unknown bundle.");
+    }
+    if (!bundle.enabled) {
+      throw new Error("This bundle is not available.");
+    }
+    const serverIds = bundle.serverIds.filter((id) =>
+      input.servers.some((server) => server.id === id),
+    );
+    if (serverIds.length === 0) {
+      throw new Error("This bundle has no available servers.");
     }
     return {
-      accessType: "ALL_RETAKES",
-      amountPaise: env.allRetakesPaise[meta.id],
+      accessType: "BUNDLE",
+      amountPaise: bundlePaise(bundle, meta.id),
       durationId: meta.id,
       durationDays: meta.durationDays,
       serverId: null,
-      bundleKind: "all",
-      bundleId: "all_retakes",
+      serverIds,
+      bundleKind: "custom",
+      bundleId: bundle.id,
     };
   }
 
@@ -235,6 +316,7 @@ export function quoteVipOrder(input: {
     durationId: meta.id,
     durationDays: meta.durationDays,
     serverId: server.id,
+    serverIds: [server.id],
     bundleKind: "server",
     bundleId: server.id,
   };
@@ -255,8 +337,9 @@ export function getVipShopCatalog(
     status: "live" | "offline" | "maintenance";
     vipPricingByPlan?: VipPricingByPlan | null;
   }>,
-  env: PricingEnv = readPricingEnv(),
+  options: { bundles?: VipPricingBundle[]; env?: PricingEnv } = {},
 ): VipShopCatalog {
+  const env = options.env ?? readPricingEnv();
   const shopServers: VipShopServer[] = servers.map((server) => {
     const pricingServer: VipPricingServer = {
       id: server.id,
@@ -278,16 +361,18 @@ export function getVipShopCatalog(
   });
 
   const firstServerId = shopServers[0]?.id ?? null;
+  const enabledBundles = (options.bundles ?? []).filter(
+    (bundle) => bundle.enabled,
+  );
 
   return {
     servers: shopServers,
-    allRetakes: {
-      durations: buildAllRetakesDurationOptions(env),
-    },
+    bundles: enabledBundles.map((bundle) => toShopBundle(bundle, shopServers)),
     quote: buildVipShopQuote({
       accessType: "INDIVIDUAL_SERVER",
       serverId: firstServerId,
       servers: shopServers,
+      bundles: enabledBundles,
       env,
     }),
   };

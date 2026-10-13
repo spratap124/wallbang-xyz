@@ -28,22 +28,32 @@ export function vipGaItem(input: {
   amountPaise: number;
   serverId?: string | null;
   serverShortName?: string | null;
+  /** Display name for a custom bundle purchase. */
+  bundleName?: string | null;
 }): GaEcommerceItem {
   const plan = PLAN_LABELS[input.plan] ?? input.plan;
+  const isBundle = input.accessType === "BUNDLE" || input.bundleKind === "custom";
   const isAllRetakes =
-    input.accessType !== "INDIVIDUAL_SERVER" ||
-    input.bundleKind === "all" ||
-    input.serverId == null;
+    !isBundle &&
+    (input.accessType === "ALL_RETAKES" ||
+      input.bundleKind === "all" ||
+      input.serverId == null);
   return {
-    item_id: `${input.bundleKind ?? (isAllRetakes ? "all" : "server")}:${
-      input.serverId ?? "all_retakes"
-    }:${input.plan}`,
+    item_id: `${
+      isBundle ? "custom" : (input.bundleKind ?? (isAllRetakes ? "all" : "server"))
+    }:${isBundle ? (input.bundleName ?? "bundle") : (input.serverId ?? "all_retakes")}:${input.plan}`,
     item_name: `${plan} — ${hostedAccessProduct}`,
     item_brand: "WallBang",
-    item_category: isAllRetakes ? "All Retakes" : "Individual Server",
-    item_variant: isAllRetakes
-      ? "All Retakes"
-      : input.serverShortName || input.serverId || "server",
+    item_category: isBundle
+      ? "Server Bundle"
+      : isAllRetakes
+        ? "All Retakes"
+        : "Individual Server",
+    item_variant: isBundle
+      ? (input.bundleName ?? "Bundle")
+      : isAllRetakes
+        ? "All Retakes"
+        : input.serverShortName || input.serverId || "server",
     affiliation: GA_AFFILIATION,
     price: Math.round(input.amountPaise) / 100,
     quantity: 1,

@@ -10,6 +10,7 @@ import {
   Plus,
   Server,
   Settings,
+  Tags,
   Shield,
   Users,
   X,
@@ -56,6 +57,13 @@ const NAV: NavItem[] = [
     icon: Server,
     match: (path) => path.startsWith("/admin/servers"),
     permission: "admin_panel",
+  },
+  {
+    href: "/admin/vip-bundles",
+    label: "VIP Bundles",
+    icon: Tags,
+    match: (path) => path.startsWith("/admin/vip-bundles"),
+    permission: "manage_servers",
   },
   {
     href: "/admin/players",
@@ -107,6 +115,9 @@ function pageMeta(pathname: string): { title: string; subtitle: string } {
   }
   if (pathname.startsWith("/admin/servers")) {
     return { title: "Servers", subtitle: "Fleet registry" };
+  }
+  if (pathname.startsWith("/admin/vip-bundles")) {
+    return { title: "VIP Bundles", subtitle: "Server bundles" };
   }
   if (pathname.startsWith("/admin/players")) {
     return { title: "Players", subtitle: "Directory" };

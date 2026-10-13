@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   Crown,
+  Layers,
   Headset,
   MessageCircle,
   MessageSquare,
@@ -20,7 +21,13 @@ import {
   formatVipExpiryDateCompact,
 } from "@/lib/payments/vip-display";
 import { cn } from "@/lib/utils";
-import type { VipEntitlement, VipMembershipView } from "@/types/vip";
+import type {
+  VipBundleEntitlement,
+  VipEntitlement,
+  VipIndividualEntitlement,
+  VipMembershipView,
+  VipPurchaseRecord,
+} from "@/types/vip";
 
 type VipPageUser = {
   personaName: string;
@@ -94,7 +101,8 @@ function entitlementKindLabel(entitlement: VipEntitlement): string {
 
 function renewHref(entitlement: VipEntitlement): string {
   if (entitlement.kind === "bundle") {
-    return pricingCheckoutHref({ accessType: "ALL_RETAKES", serverId: null });
+    // All Retakes is retired: renew via the current bundles/individual offer.
+    return "/pricing";
   }
   if (entitlement.kind === "individual") {
     return pricingCheckoutHref({
@@ -103,6 +111,29 @@ function renewHref(entitlement: VipEntitlement): string {
     });
   }
   return pricingCheckoutHref({ accessType: "INDIVIDUAL_SERVER", serverId: null });
+}
+
+function purchaseStatusLabel(record: VipPurchaseRecord): string {
+  if (record.status === "covered") return "Covered by a bundle";
+  if (record.status === "expired") return "Expired";
+  return "Active";
+}
+
+function formatInr(paise: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: paise % 100 === 0 ? 0 : 2,
+  }).format(paise / 100);
+}
+
+/** Opens the pricing page with this exact bundle preselected. */
+function renewBundleHref(bundle: VipBundleEntitlement): string {
+  if (bundle.bundleId === "all_retakes") return "/pricing";
+  return pricingCheckoutHref({
+    accessType: "BUNDLE",
+    bundleId: bundle.bundleId,
+  });
 }
 
 function canRenew(entitlement: VipEntitlement, showPricing: boolean): boolean {
@@ -278,6 +309,232 @@ function AccessList({
   );
 }
 
+
+/** Bundle-first membership rendering (bundles cover servers; individual rows add time). */
+function BundleMembership({
+  bundles,
+  individuals,
+  purchaseHistory,
+  showPricing,
+}: {
+  bundles: VipBundleEntitlement[];
+  individuals: VipIndividualEntitlement[];
+  purchaseHistory: VipPurchaseRecord[];
+  showPricing: boolean;
+}) {
+  const activeServerIds = new Set<string>();
+  for (const bundle of bundles) {
+    for (const server of bundle.includedServers) activeServerIds.add(server.id);
+  }
+  for (const item of individuals) activeServerIds.add(item.serverId);
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Crown className="size-6 text-primary" aria-hidden />
+        <p className="text-2xl font-bold tracking-tight">VIP Access</p>
+        <StatusPill
+          active={bundles.some((bundle) => bundle.status === "active")}
+        />
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {activeServerIds.size} server
+        {activeServerIds.size === 1 ? "" : "s"} with VIP access
+      </p>
+
+      <ul className="mt-5 divide-y divide-white/10">
+        {bundles.map((bundle) => (
+          <li key={bundle.bundleId} className="py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <Layers className="size-5 shrink-0 text-primary" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{bundle.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {bundle.includedServers.length} server
+                    {bundle.includedServers.length === 1 ? "" : "s"} included
+                  </p>
+                </div>
+              </div>
+              <StatusPill active={bundle.status === "active"} />
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-3 rounded-lg border border-border/60 px-3 py-3">
+              <div>
+                <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
+                  Bundle expiry
+                </p>
+                <p className="text-sm font-medium">
+                  {bundle.expiresAt
+                    ? formatVipExpiryDate(bundle.expiresAt)
+                    : "Does not expire"}
+                </p>
+                {bundle.expiresAt ? (
+                  <p className="text-xs text-muted-foreground">
+                    {formatDaysRemaining(bundle.expiresAt)}
+                  </p>
+                ) : null}
+              </div>
+              {showPricing ? (
+                <Link
+                  href={renewBundleHref(bundle)}
+                  className={cn(buttonVariants({ size: "sm" }), "h-8 px-3")}
+                >
+                  Renew bundle
+                </Link>
+              ) : null}
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Included servers
+              </p>
+              <ul className="mt-2 space-y-2">
+                {bundle.includedServers.map((server) => (
+                  <li
+                    key={server.id}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm">
+                        {server.name}
+                      </span>
+                      {server.expiresAt &&
+                      server.expiresAt !== bundle.expiresAt ? (
+                        <span className="text-xs text-muted-foreground">
+                          Extended to{" "}
+                          {formatVipExpiryDateCompact(server.expiresAt)}
+                        </span>
+                      ) : null}
+                    </span>
+                    <StatusPill active={bundle.status === "active"} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </li>
+        ))}
+
+        {individuals.length > 0 ? (
+          <li className="py-4">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Your server access
+            </p>
+            <ul className="mt-2 space-y-3">
+              {individuals.map((item) => (
+                <li
+                  key={item.serverId}
+                  className="flex flex-wrap items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{item.serverName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Individual access
+                      {item.expiresAt
+                        ? ` · expires ${formatVipExpiryDateCompact(item.expiresAt)}`
+                        : " · does not expire"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <StatusPill active={item.status === "active"} />
+                    {showPricing ? (
+                      <Link
+                        href="/pricing"
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                          "h-8 px-3",
+                        )}
+                      >
+                        Renew
+                      </Link>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ) : null}
+
+        {purchaseHistory.length > 0 ? (
+          <li className="py-4">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Purchase history
+            </p>
+            <ul className="mt-2 divide-y divide-border/60">
+              {purchaseHistory.map((record) => (
+                <li key={record.id}>
+                  <details className="group py-2">
+                    <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0">
+                        <span className="truncate">{record.label}</span>
+                        {record.serverNames.length > 0 ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {record.serverNames.join(", ")}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {purchaseStatusLabel(record)}
+                        </span>
+                        <span className="text-muted-foreground text-xs group-open:hidden">
+                          Details
+                        </span>
+                        <span className="text-muted-foreground hidden text-xs group-open:inline">
+                          Hide
+                        </span>
+                      </span>
+                    </summary>
+                    <dl className="mt-2 grid gap-1 pl-1 text-xs text-muted-foreground">
+                      <div className="flex justify-between gap-3">
+                        <dt>Purchased</dt>
+                        <dd className="text-foreground/90">
+                          {formatVipExpiryDate(record.purchasedAt)}
+                        </dd>
+                      </div>
+                      {record.planName ? (
+                        <div className="flex justify-between gap-3">
+                          <dt>Plan</dt>
+                          <dd className="text-foreground/90">{record.planName}</dd>
+                        </div>
+                      ) : null}
+                      {record.amountPaise != null ? (
+                        <div className="flex justify-between gap-3">
+                          <dt>Amount paid</dt>
+                          <dd className="text-foreground/90">
+                            {formatInr(record.amountPaise)}
+                          </dd>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between gap-3">
+                        <dt>Expires</dt>
+                        <dd className="text-foreground/90">
+                          {record.expiresAt
+                            ? formatVipExpiryDate(record.expiresAt)
+                            : "—"}
+                        </dd>
+                      </div>
+                      {record.serverNames.length > 0 ? (
+                        <div className="flex justify-between gap-3">
+                          <dt>Servers</dt>
+                          <dd className="text-right text-foreground/90">
+                            {record.serverNames.join(", ")}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}
+
 function MembershipDetails({
   loggedIn,
   membership,
@@ -316,6 +573,24 @@ function MembershipDetails({
           We couldn&apos;t load your VIP access. Refresh the page and try again.
         </p>
       </div>
+    );
+  }
+
+  const bundles = membership.entitlements.filter(
+    (item): item is VipBundleEntitlement => item.kind === "bundle",
+  );
+  const individuals = membership.entitlements.filter(
+    (item): item is VipIndividualEntitlement => item.kind === "individual",
+  );
+
+  if (bundles.length > 0) {
+    return (
+      <BundleMembership
+        bundles={bundles}
+        individuals={individuals}
+        purchaseHistory={membership.purchaseHistory ?? []}
+        showPricing={showPricing}
+      />
     );
   }
 
