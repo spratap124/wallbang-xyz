@@ -26,6 +26,20 @@ export function isValidSteamId64(value: string): boolean {
   return STEAM_ID64_PATTERN.test(value.trim());
 }
 
+/**
+ * Staff-facing label for a Steam player. Registered players are shown by their
+ * WallBang persona name; anyone without an account falls back to the raw
+ * SteamID64 so moderators always have a stable identifier.
+ */
+export function getPlayerDisplayName(input: {
+  steamId: string;
+  personaName?: string | null;
+}): { label: string; registered: boolean } {
+  const personaName = input.personaName?.trim();
+  if (personaName) return { label: personaName, registered: true };
+  return { label: input.steamId.trim(), registered: false };
+}
+
 export function getBanDisplayStatus(
   ban: Pick<BanView, "status" | "permanent" | "startsAt" | "expiresAt">,
   now = Date.now(),

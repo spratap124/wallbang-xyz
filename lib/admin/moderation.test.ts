@@ -11,6 +11,7 @@ import {
   filterReports,
   getBanDisplayStatus,
   getModerationCapabilities,
+  getPlayerDisplayName,
   isValidSteamId64,
   orderReportsPendingFirst,
 } from "./moderation";
@@ -49,6 +50,7 @@ const report = (overrides: Partial<ReportView> = {}): ReportView => ({
   assignedAt: null,
   resolvedBy: null,
   resolution: null,
+  targetPersonaName: null,
   createdAt: "2026-10-10T10:00:00.000Z",
   updatedAt: "2026-10-10T10:00:00.000Z",
   ...overrides,
@@ -59,6 +61,30 @@ describe("moderation dashboard helpers", () => {
     assert.equal(isValidSteamId64("76561198000000000"), true);
     assert.equal(isValidSteamId64("7656119800000000"), false);
     assert.equal(isValidSteamId64("76561198000000000x"), false);
+  });
+
+  it("shows a registered player's persona name and falls back to the SteamID64", () => {
+    assert.deepEqual(
+      getPlayerDisplayName({
+        steamId: "76561198000000001",
+        personaName: "ShadowStrike",
+      }),
+      { label: "ShadowStrike", registered: true },
+    );
+    assert.deepEqual(
+      getPlayerDisplayName({
+        steamId: "76561198000000002",
+        personaName: null,
+      }),
+      { label: "76561198000000002", registered: false },
+    );
+    assert.deepEqual(
+      getPlayerDisplayName({
+        steamId: "76561198000000003",
+        personaName: "   ",
+      }),
+      { label: "76561198000000003", registered: false },
+    );
   });
 
   it("distinguishes active, expired, scheduled, and revoked bans", () => {
