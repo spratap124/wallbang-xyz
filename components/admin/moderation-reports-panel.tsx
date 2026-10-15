@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/admin/format";
 import {
   filterReports,
+  getPlayerDisplayName,
   isValidSteamId64,
   orderReportsPendingFirst,
 } from "@/lib/admin/moderation";
@@ -371,6 +372,11 @@ function ReportCard({
     resolution?: string | null;
   }) => void;
 }) {
+  const reportedPlayer = getPlayerDisplayName({
+    steamId: report.targetSteamId,
+    personaName: report.targetPersonaName,
+  });
+
   return (
     <Card>
       <CardHeader className="border-border gap-3 border-b sm:flex-row sm:items-start sm:justify-between">
@@ -391,7 +397,18 @@ function ReportCard({
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground text-xs">Reported player</dt>
-            <dd className="font-mono break-all">{report.targetSteamId}</dd>
+            <dd className="break-all">
+              {reportedPlayer.registered ? (
+                <>
+                  <span>{reportedPlayer.label}</span>
+                  <span className="text-muted-foreground block font-mono text-xs">
+                    {report.targetSteamId}
+                  </span>
+                </>
+              ) : (
+                <span className="font-mono">{report.targetSteamId}</span>
+              )}
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground text-xs">Reporter (staff only)</dt>

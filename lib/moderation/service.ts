@@ -8,6 +8,7 @@ import {
   reportsCollection,
 } from "@/lib/moderation/collections";
 import { getGameServerById } from "@/lib/servers/registry";
+import { findUsersBySteamIds } from "@/lib/auth/users";
 import { isBanCurrentlyActive, isValidSteamId64 } from "@/lib/moderation/validation";
 import type {
   BanDoc,
@@ -198,7 +199,20 @@ export async function listReports(input: {
     .sort({ createdAt: -1 })
     .limit(input.limit)
     .toArray();
-  return docs.map(reportView);
+
+  // Staff need to recognise the reported player: show their WallBang persona
+  // when they have an account, and fall back to the raw SteamID64 otherwise.
+  const users = await findUsersBySteamIds(
+    docs.map((doc) => doc.targetSteamId),
+  ).catch(() => []);
+  const personaBySteamId = new Map(
+    users.map((user) => [user.steamId, user.personaName]),
+  );
+
+  return docs.map((doc) => ({
+    ...reportView(doc),
+    targetPersonaName: personaBySteamId.get(doc.targetSteamId) ?? null,
+  }));
 }
 
 export async function updateReport(input: {

@@ -58,4 +58,9 @@ export type ReportView = Omit<
   createdAt: string;
   updatedAt: string;
   assignedAt: string | null;
+  /**
+   * Persona name of the reported player when they are registered on WallBang;
+   * null means the report target has no account on the site.
+   */
+  targetPersonaName: string | null;
 };
