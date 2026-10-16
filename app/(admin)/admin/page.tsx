@@ -29,6 +29,7 @@ export default async function AdminOverviewPage() {
       user={user}
       displayRole={resolved?.displayRole ?? "ADMIN"}
       canManageServers={resolved?.permissions.includes("manage_servers") ?? false}
+      canManageUsers={resolved?.permissions.includes("manage_users") ?? false}
     />
   );
 }
