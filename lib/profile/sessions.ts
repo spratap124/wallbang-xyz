@@ -9,6 +9,7 @@ import {
 } from "@/lib/profile/collections";
 import { getGameServerById, getGameServers } from "@/lib/servers/registry";
 import { getLiveServers } from "@/lib/servers/status";
+import { getDb } from "@/lib/mongo";
 import {
   recordLifetimePlayTime,
   recordLifetimeSessionStart,
@@ -16,9 +17,18 @@ import {
 } from "@/lib/profile/session-stats";
 import { istDayBounds, istDayKey, listRecentIstDayKeys } from "@/lib/time/ist";
 import { playerSessionRetentionSeconds } from "@/lib/profile/collections";
+import {
+  completedIstPeriod,
+  computeOverviewConcurrency,
+  retentionRate,
+  type AnalyticsSession,
+} from "@/lib/profile/overview-analytics";
 import type {
   FleetOverviewRecentSession,
   FleetOverviewResponse,
+  FleetAnalyticsComparison,
+  FleetMonetizationAnalytics,
+  FleetRetentionAnalytics,
   PlayerServerActivity,
   PlayerSessionDoc,
   ServerStatsDayBucket,
@@ -135,10 +145,7 @@ async function closeOpenSessions(
 
   let playTimeMs = 0;
   for (const session of open) {
-    playTimeMs += Math.max(
-      0,
-      leftAt.getTime() - session.joinedAt.getTime(),
-    );
+    playTimeMs += Math.max(0, leftAt.getTime() - session.joinedAt.getTime());
   }
 
   await col.updateMany(
@@ -149,10 +156,7 @@ async function closeOpenSessions(
 }
 
 /** Close any open session whose last heartbeat is older than the presence TTL window. */
-async function closeStaleOpenSession(
-  steamId: string,
-  serverId: string,
-): Promise<void> {
+async function closeStaleOpenSession(steamId: string, serverId: string): Promise<void> {
   const col = await playerSessionsCollection();
   const staleBefore = new Date(Date.now() - presenceStaleMs() * 2);
   const stale = await col.findOne({
@@ -162,11 +166,7 @@ async function closeStaleOpenSession(
     lastSeenAt: { $lt: staleBefore },
   });
   if (!stale) return;
-  await closeOpenSessions(
-    { _id: stale._id },
-    stale.lastSeenAt,
-    stale.lastSeenAt,
-  );
+  await closeOpenSessions({ _id: stale._id }, stale.lastSeenAt, stale.lastSeenAt);
 }
 
 /**
@@ -237,9 +237,7 @@ export async function endPlayerSession(
 ): Promise<void> {
   await ensureProfileIndexes();
   const now = new Date();
-  const filter: Filter<PlayerSessionDoc> = serverId
-    ? { steamId, serverId }
-    : { steamId };
+  const filter: Filter<PlayerSessionDoc> = serverId ? { steamId, serverId } : { steamId };
   await closeOpenSessions(filter, now);
 }
 
@@ -270,14 +268,8 @@ function wasOnlineAt(session: PlayerSessionDoc, atMs: number): boolean {
  * Unique players on the same server at `target.joinedAt`.
  * Prefer stored `playersOnlineAtJoin` when present (true live snapshot).
  */
-function concurrentAtJoin(
-  target: PlayerSessionDoc,
-  pool: PlayerSessionDoc[],
-): number {
-  if (
-    typeof target.playersOnlineAtJoin === "number" &&
-    target.playersOnlineAtJoin >= 1
-  ) {
+function concurrentAtJoin(target: PlayerSessionDoc, pool: PlayerSessionDoc[]): number {
+  if (typeof target.playersOnlineAtJoin === "number" && target.playersOnlineAtJoin >= 1) {
     return target.playersOnlineAtJoin;
   }
 
@@ -312,6 +304,16 @@ function sessionsOverlappingRangeFilter(start: Date): Filter<PlayerSessionDoc> {
         $or: [{ leftAt: null }, { leftAt: { $gte: start } }],
       },
     ],
+  };
+}
+
+function sessionsOverlappingWindowFilter(
+  start: Date,
+  end: Date,
+): Filter<PlayerSessionDoc> {
+  return {
+    joinedAt: { $lt: end },
+    $or: [{ leftAt: null }, { leftAt: { $gte: start } }],
   };
 }
 
@@ -411,12 +413,7 @@ function buildDailyBuckets(
       return joined >= windowStartMs && joined < windowEndMs;
     });
     const unique = new Set(inDay.map((s) => s.steamId));
-    const sweepPeak = peakConcurrentInWindow(
-      sessions,
-      windowStartMs,
-      windowEndMs,
-      nowMs,
-    );
+    const sweepPeak = peakConcurrentInWindow(sessions, windowStartMs, windowEndMs, nowMs);
     const joinPeak = peakConcurrentAtJoinInWindow(
       sessions,
       sessions,
@@ -425,8 +422,12 @@ function buildDailyBuckets(
     );
     buckets.push({
       date: dayKey,
+      complete: true,
       uniquePlayers: unique.size,
       sessions: inDay.length,
+      newPlayers: 0,
+      returningPlayers: 0,
+      unclassifiedPlayers: unique.size,
       // Match Sessions "Online" column (max at join) and true overlap peak.
       peakConcurrent: Math.max(sweepPeak, joinPeak),
       avgConcurrent: avgConcurrentAtJoinInWindow(
@@ -435,6 +436,7 @@ function buildDailyBuckets(
         windowStartMs,
         windowEndMs,
       ),
+      primeTimeAvgConcurrent: 0,
     });
   }
   return buckets;
@@ -502,9 +504,7 @@ export async function getServerConnectionStats(input: {
 
   const recentLimit = input.recentLimit ?? 40;
   const recentSessions = sessions.slice(0, recentLimit);
-  const users = await findUsersBySteamIds(
-    recentSessions.map((s) => s.steamId),
-  );
+  const users = await findUsersBySteamIds(recentSessions.map((s) => s.steamId));
   const userBySteam = new Map(users.map((u) => [u.steamId, u]));
 
   const recent: ServerStatsRecentSession[] = recentSessions.map((s) => {
@@ -532,6 +532,271 @@ export async function getServerConnectionStats(input: {
   };
 }
 
+function sessionEndForAnalytics(session: PlayerSessionDoc, nowMs: number): number {
+  if (session.leftAt) return session.leftAt.getTime();
+  return nowMs - session.lastSeenAt.getTime() <= presenceStaleMs() * 2
+    ? nowMs
+    : session.lastSeenAt.getTime();
+}
+
+function summarizePlayers(input: {
+  sessions: PlayerSessionDoc[];
+  firstSeenBySteam: Map<string, Date>;
+  start: Date;
+  end: Date;
+}): {
+  players: Set<string>;
+  newPlayers: number;
+  returningPlayers: number;
+  unclassifiedPlayers: number;
+  sessions: PlayerSessionDoc[];
+} {
+  const sessions = input.sessions.filter(
+    (session) => session.joinedAt >= input.start && session.joinedAt < input.end,
+  );
+  const players = new Set(sessions.map((session) => session.steamId));
+  let newPlayers = 0;
+  let returningPlayers = 0;
+  let unclassifiedPlayers = 0;
+  for (const steamId of players) {
+    const firstSeen = input.firstSeenBySteam.get(steamId);
+    if (!firstSeen) {
+      unclassifiedPlayers += 1;
+    } else if (firstSeen >= input.start && firstSeen < input.end) {
+      newPlayers += 1;
+    } else {
+      returningPlayers += 1;
+    }
+  }
+  return {
+    players,
+    newPlayers,
+    returningPlayers,
+    unclassifiedPlayers,
+    sessions,
+  };
+}
+
+function calculateRetention(input: {
+  firstSeenBySteam: Map<string, Date>;
+  activityByPlayer: Map<string, Set<string>>;
+  window: { start: Date; end: Date };
+  todayStart: Date;
+  coverageStart: Date;
+  multiDayPlayers: number;
+}): FleetRetentionAnalytics {
+  const cohorts = [...input.firstSeenBySteam.entries()].filter(
+    ([, firstSeen]) => firstSeen >= input.window.start && firstSeen < input.window.end,
+  );
+  const rate = (offset: 1 | 7) => {
+    const mature = cohorts.filter(([, firstSeen]) => {
+      const cohortDay = istDayBounds(istDayKey(firstSeen)).start;
+      const returnDay = new Date(cohortDay.getTime() + offset * 86_400_000);
+      return (
+        returnDay.getTime() + 86_400_000 <= input.todayStart.getTime() &&
+        returnDay >= input.coverageStart
+      );
+    });
+    if (mature.length === 0) return { percent: null, count: 0 };
+    const retained = mature.filter(([steamId, firstSeen]) =>
+      retentionRate({
+        firstSeenAt: firstSeen,
+        activityByPlayer: input.activityByPlayer,
+        steamId,
+        dayOffset: offset,
+      }),
+    ).length;
+    return {
+      percent: Math.round((retained / mature.length) * 1000) / 10,
+      count: mature.length,
+    };
+  };
+  const d1 = rate(1);
+  const d7 = rate(7);
+  const cohortsByDay = new Map<string, Array<[string, Date]>>();
+  for (const [steamId, firstSeen] of cohorts) {
+    const date = istDayKey(firstSeen);
+    const rows = cohortsByDay.get(date) ?? [];
+    rows.push([steamId, firstSeen]);
+    cohortsByDay.set(date, rows);
+  }
+  const cohortRows = [...cohortsByDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, players]) => {
+      const cohortDay = istDayBounds(date).start;
+      const retainedCount = (offset: 1 | 7) => {
+        const returnDay = new Date(cohortDay.getTime() + offset * 86_400_000);
+        const mature =
+          returnDay.getTime() + 86_400_000 <= input.todayStart.getTime() &&
+          returnDay >= input.coverageStart;
+        if (!mature) return null;
+        return players.filter(([steamId, firstSeen]) =>
+          retentionRate({
+            firstSeenAt: firstSeen,
+            activityByPlayer: input.activityByPlayer,
+            steamId,
+            dayOffset: offset,
+          }),
+        ).length;
+      };
+      const d1Retained = retainedCount(1);
+      const d7Retained = retainedCount(7);
+      return {
+        date,
+        players: players.length,
+        d1Retained,
+        d1Percent:
+          d1Retained == null
+            ? null
+            : Math.round((d1Retained / players.length) * 1000) / 10,
+        d7Retained,
+        d7Percent:
+          d7Retained == null
+            ? null
+            : Math.round((d7Retained / players.length) * 1000) / 10,
+      };
+    });
+  const now = new Date();
+  const coverageDays = Math.max(
+    0,
+    Math.floor((now.getTime() - input.coverageStart.getTime()) / 86_400_000),
+  );
+  return {
+    d1Percent: d1.percent,
+    d1CohortPlayers: d1.count,
+    d7Percent: d7.percent,
+    d7CohortPlayers: d7.count,
+    multiDayPlayers: input.multiDayPlayers,
+    coverageStart: input.coverageStart.toISOString(),
+    coverageDays,
+    incompleteHistory: input.window.start < input.coverageStart,
+    cohorts: cohortRows,
+  };
+}
+
+type AnalyticsPayment = {
+  userId: string;
+  status: string;
+  amount: number;
+  durationDays: number;
+  plan: string;
+  accessType?: string;
+  serverId?: string | null;
+  paidAt?: Date | null;
+  refundedAt?: Date | null;
+  createdAt: Date;
+};
+
+function summarizeMonetization(input: {
+  payments: AnalyticsPayment[];
+  start: Date;
+  end: Date;
+  now: Date;
+  freeVipUsers: number;
+}): FleetMonetizationAnalytics {
+  const captured = input.payments.filter(
+    (payment) =>
+      (payment.status === "captured" || payment.status === "refunded") &&
+      payment.paidAt != null &&
+      payment.paidAt >= input.start &&
+      payment.paidAt < input.end,
+  );
+  const refunds = input.payments.filter(
+    (payment) =>
+      payment.status === "refunded" &&
+      payment.refundedAt != null &&
+      payment.refundedAt >= input.start &&
+      payment.refundedAt < input.end,
+  );
+  const grossCapturedPaise = captured.reduce((sum, payment) => sum + payment.amount, 0);
+  const refundsPaise = refunds.reduce((sum, payment) => sum + payment.amount, 0);
+  const monthlyEquivalentPaise =
+    captured.reduce(
+      (sum, payment) => sum + (payment.amount * 30) / Math.max(1, payment.durationDays),
+      0,
+    ) -
+    refunds.reduce(
+      (sum, payment) => sum + (payment.amount * 30) / Math.max(1, payment.durationDays),
+      0,
+    );
+  const payingCustomers = new Set(captured.map((payment) => payment.userId));
+  const checkoutPayments = input.payments.filter(
+    (payment) => payment.createdAt >= input.start && payment.createdAt < input.end,
+  );
+  const checkoutUsers = new Set(checkoutPayments.map((payment) => payment.userId));
+  const convertedUsers = new Set(
+    checkoutPayments
+      .filter(
+        (payment) =>
+          (payment.status === "captured" || payment.status === "refunded") &&
+          payment.paidAt != null,
+      )
+      .map((payment) => payment.userId),
+  );
+  const abandonedCheckouts = input.payments.filter(
+    (payment) =>
+      payment.status === "created" &&
+      payment.createdAt >= input.start &&
+      payment.createdAt < input.end &&
+      input.now.getTime() - payment.createdAt.getTime() >= 30 * 60_000,
+  ).length;
+
+  const plans = new Map<
+    string,
+    {
+      plan: string;
+      accessType: string;
+      purchases: number;
+      grossPaise: number;
+      monthlyEquivalentPaise: number;
+    }
+  >();
+  for (const payment of captured) {
+    const accessType =
+      payment.accessType ?? (payment.serverId ? "INDIVIDUAL_SERVER" : "ALL_RETAKES");
+    const key = `${payment.plan}:${accessType}`;
+    const row = plans.get(key) ?? {
+      plan: payment.plan,
+      accessType,
+      purchases: 0,
+      grossPaise: 0,
+      monthlyEquivalentPaise: 0,
+    };
+    row.purchases += 1;
+    row.grossPaise += payment.amount;
+    row.monthlyEquivalentPaise +=
+      (payment.amount * 30) / Math.max(1, payment.durationDays);
+    plans.set(key, row);
+  }
+  for (const payment of refunds) {
+    const accessType =
+      payment.accessType ?? (payment.serverId ? "INDIVIDUAL_SERVER" : "ALL_RETAKES");
+    const row = plans.get(`${payment.plan}:${accessType}`);
+    if (row) {
+      row.monthlyEquivalentPaise -=
+        (payment.amount * 30) / Math.max(1, payment.durationDays);
+    }
+  }
+
+  return {
+    grossCapturedPaise,
+    refundsPaise,
+    netRevenuePaise: grossCapturedPaise - refundsPaise,
+    monthlyEquivalentPaise,
+    payingCustomers: payingCustomers.size,
+    successfulPurchases: captured.length,
+    abandonedCheckouts,
+    checkoutUsers: checkoutUsers.size,
+    checkoutConversionPercent:
+      checkoutUsers.size > 0
+        ? Math.round((convertedUsers.size / checkoutUsers.size) * 1000) / 10
+        : null,
+    freeVipUsers: input.freeVipUsers,
+    feesPaise: null,
+    revenueByPlan: [...plans.values()],
+  };
+}
+
 export async function getFleetConnectionStats(input: {
   range: ServerStatsRange;
   recentLimit?: number;
@@ -539,30 +804,133 @@ export async function getFleetConnectionStats(input: {
   await ensureProfileIndexes();
 
   const now = new Date();
-  const start = rangeStart(input.range, now);
+  const todayStart = istDayBounds(istDayKey(now)).start;
+  const periods = completedIstPeriod(input.range, now);
+  const coverageStart = new Date(now.getTime() - playerSessionRetentionSeconds() * 1000);
   const col = await playerSessionsCollection();
-  const filter = sessionsOverlappingRangeFilter(start);
-
-  const [fleet, allSessions, presenceCol, live, lifetime] = await Promise.all([
+  const db = await getDb();
+  const sessionsStart = new Date(
+    Math.min(periods.previous.start.getTime(), periods.current.start.getTime()),
+  );
+  const [
+    fleet,
+    allSessions,
+    presenceCol,
+    live,
+    lifetime,
+    firstSeenRows,
+    payments,
+    freeVipRows,
+  ] = await Promise.all([
     getGameServers({ includeDisabled: true }),
-    col.find(filter).sort({ joinedAt: -1 }).toArray(),
+    col
+      .find(sessionsOverlappingWindowFilter(sessionsStart, now))
+      .sort({ joinedAt: -1 })
+      .toArray(),
     playerPresenceCollection(),
     getLiveServers().catch(() => []),
     getLifetimeSessionStats(),
+    db
+      .collection<{ steamId: string; firstSeenAt: Date }>("session_unique_players")
+      .find({}, { projection: { _id: 0, steamId: 1, firstSeenAt: 1 } })
+      .toArray(),
+    db
+      .collection<AnalyticsPayment>("payments")
+      .find(
+        {
+          $or: [
+            { paidAt: { $gte: sessionsStart, $lt: now } },
+            { refundedAt: { $gte: sessionsStart, $lt: now } },
+            { createdAt: { $gte: sessionsStart, $lt: now } },
+          ],
+        },
+        {
+          projection: {
+            userId: 1,
+            status: 1,
+            amount: 1,
+            durationDays: 1,
+            plan: 1,
+            accessType: 1,
+            serverId: 1,
+            paidAt: 1,
+            refundedAt: 1,
+            createdAt: 1,
+          },
+        },
+      )
+      .toArray(),
+    db
+      .collection<{ userId: string }>("user_roles")
+      .find(
+        {
+          roleCode: { $in: ["VIP", "FOUNDING_MEMBER"] },
+          active: true,
+          source: { $ne: "PURCHASE" },
+          $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+        },
+        { projection: { _id: 0, userId: 1 } },
+      )
+      .toArray(),
   ]);
 
-  const sessions = allSessions.filter(
-    (s) => s.joinedAt.getTime() >= start.getTime(),
+  const firstSeenBySteam = new Map(
+    firstSeenRows.map((row) => [row.steamId, row.firstSeenAt]),
   );
-
-  const unique = new Set(sessions.map((s) => s.steamId));
-  const totalPlayTimeMs = sessions.reduce(
-    (sum, s) => sum + sessionDurationMs(s, now.getTime()),
-    0,
+  const currentPlayers = summarizePlayers({
+    sessions: allSessions,
+    firstSeenBySteam,
+    start: periods.current.start,
+    end: periods.current.end,
+  });
+  const previousPlayers = summarizePlayers({
+    sessions: allSessions,
+    firstSeenBySteam,
+    start: periods.previous.start,
+    end: periods.previous.end,
+  });
+  const capacities = new Map(
+    fleet.map((server) => [
+      server.id,
+      server.maxPlayersOverride ?? server.maxPlayers ?? null,
+    ]),
   );
-  const totalSessions = sessions.length;
-  const avgSessionMs =
-    totalSessions > 0 ? Math.round(totalPlayTimeMs / totalSessions) : 0;
+  const sessionInputs = allSessions as AnalyticsSession[];
+  const currentConcurrency = computeOverviewConcurrency({
+    sessions: sessionInputs,
+    capacities,
+    window: periods.current,
+    now,
+    staleAfterMs: presenceStaleMs() * 2,
+    coverageStart,
+  });
+  const previousConcurrency = computeOverviewConcurrency({
+    sessions: sessionInputs,
+    capacities,
+    window: periods.previous,
+    now,
+    staleAfterMs: presenceStaleMs() * 2,
+    coverageStart,
+  });
+  const totalAttributedPlayTime = (concurrency: typeof currentConcurrency) =>
+    [...concurrency.servers.values()].reduce((sum, server) => sum + server.playTimeMs, 0);
+  const currentPlayTimeMs = totalAttributedPlayTime(currentConcurrency);
+  const previousPlayTimeMs = totalAttributedPlayTime(previousConcurrency);
+  const currentTotalSessions = currentPlayers.sessions.length;
+  const previousTotalSessions = previousPlayers.sessions.length;
+  const currentAvgSessionMs = currentTotalSessions
+    ? Math.round(
+        currentPlayTimeMs /
+          Math.max(
+            1,
+            currentPlayers.sessions.filter(
+              (session) =>
+                sessionEndForAnalytics(session, now.getTime()) >
+                periods.current.start.getTime(),
+            ).length,
+          ),
+      )
+    : 0;
 
   const staleBefore = new Date(now.getTime() - presenceStaleMs());
   const currentlyOnline = await presenceCol.countDocuments({
@@ -575,13 +943,213 @@ export async function getFleetConnectionStats(input: {
   const liveMaxPlayers = live.reduce((sum, s) => sum + (s.maxPlayers ?? 0), 0);
   const liveById = new Map(live.map((s) => [s.id, s]));
 
-  const recentLimit = input.recentLimit ?? 12;
-  const recentSessions = sessions.slice(0, recentLimit);
-  const users = await findUsersBySteamIds(
-    recentSessions.map((s) => s.steamId),
-  );
+  const recentLimit = Math.min(Math.max(input.recentLimit ?? 100, 1), 200);
+  const recentSessions = currentPlayers.sessions.slice(0, recentLimit);
+  const users = await findUsersBySteamIds(recentSessions.map((s) => s.steamId));
   const userBySteam = new Map(users.map((u) => [u.steamId, u]));
   const serverNameById = new Map(fleet.map((s) => [s.id, s.name]));
+  const currentActivityByPlayer = new Map<string, Set<string>>();
+  for (const session of allSessions) {
+    if (session.joinedAt < periods.current.start || session.joinedAt >= now) continue;
+    const activity = currentActivityByPlayer.get(session.steamId) ?? new Set<string>();
+    activity.add(istDayKey(session.joinedAt));
+    currentActivityByPlayer.set(session.steamId, activity);
+  }
+  const sessionsByDay = new Map<string, PlayerSessionDoc[]>();
+  for (const session of currentPlayers.sessions) {
+    const day = istDayKey(session.joinedAt);
+    const items = sessionsByDay.get(day) ?? [];
+    items.push(session);
+    sessionsByDay.set(day, items);
+  }
+  const dayBuckets = listRecentIstDayKeys(
+    input.range === "1d" ? 1 : input.range === "7d" ? 7 : 30,
+    new Date(periods.current.end.getTime() - 1),
+  ).map((date) => {
+    const dayStart = istDayBounds(date).start;
+    const daySessions = sessionsByDay.get(date) ?? [];
+    const uniquePlayers = new Set(daySessions.map((session) => session.steamId));
+    let newPlayers = 0;
+    let returningPlayers = 0;
+    let unclassifiedPlayers = 0;
+    for (const steamId of uniquePlayers) {
+      const firstSeen = firstSeenBySteam.get(steamId);
+      if (!firstSeen) {
+        unclassifiedPlayers += 1;
+        continue;
+      }
+      if (
+        firstSeen >= dayStart &&
+        firstSeen < new Date(dayStart.getTime() + 86_400_000)
+      ) {
+        newPlayers += 1;
+      } else {
+        returningPlayers += 1;
+      }
+    }
+    const concurrency = currentConcurrency.daily.get(date);
+    return {
+      date,
+      complete: dayStart >= coverageStart,
+      uniquePlayers: uniquePlayers.size,
+      sessions: daySessions.length,
+      newPlayers,
+      returningPlayers,
+      unclassifiedPlayers,
+      peakConcurrent: concurrency?.peakConcurrent ?? 0,
+      avgConcurrent: concurrency?.avgConcurrent ?? 0,
+      primeTimeAvgConcurrent: concurrency?.primeTimeAvgConcurrent ?? 0,
+    };
+  });
+
+  const multiDayPlayers = [...currentActivityByPlayer.values()].filter(
+    (days) => days.size > 1,
+  ).length;
+  const retention = calculateRetention({
+    firstSeenBySteam,
+    activityByPlayer: currentActivityByPlayer,
+    window: periods.current,
+    todayStart,
+    coverageStart,
+    multiDayPlayers,
+  });
+  const freeVipUsers = new Set(freeVipRows.map((row) => row.userId)).size;
+  const monetization = summarizeMonetization({
+    payments,
+    start: periods.current.start,
+    end: periods.current.end,
+    now,
+    freeVipUsers,
+  });
+  const previousMonetization = summarizeMonetization({
+    payments,
+    start: periods.previous.start,
+    end: periods.previous.end,
+    now,
+    freeVipUsers,
+  });
+  const currentJoinedUnique = currentPlayers.players.size;
+  const previousJoinedUnique = previousPlayers.players.size;
+  const previousPeriod: FleetAnalyticsComparison = {
+    available: periods.previous.start >= coverageStart,
+    uniquePlayers: previousJoinedUnique,
+    newPlayers: previousPlayers.newPlayers,
+    returningPlayers: previousPlayers.returningPlayers,
+    totalSessions: previousTotalSessions,
+    totalPlayTimeMs: previousPlayTimeMs,
+    avgConcurrent: previousConcurrency.avgConcurrent,
+    payingCustomers: previousMonetization.payingCustomers,
+    netRevenuePaise: previousMonetization.netRevenuePaise,
+  };
+
+  const sessionsByPlayer = new Map<string, PlayerSessionDoc[]>();
+  for (const session of allSessions) {
+    const rows = sessionsByPlayer.get(session.steamId) ?? [];
+    rows.push(session);
+    sessionsByPlayer.set(session.steamId, rows);
+  }
+  const acquiredByServer = new Map<string, Set<string>>();
+  for (const [steamId, firstSeen] of firstSeenBySteam) {
+    if (firstSeen < periods.current.start || firstSeen >= periods.current.end) continue;
+    const cohortDate = istDayKey(firstSeen);
+    const cohortStart = istDayBounds(cohortDate).start;
+    const firstSession = (sessionsByPlayer.get(steamId) ?? [])
+      .filter(
+        (session) =>
+          istDayKey(session.joinedAt) === cohortDate && session.joinedAt >= cohortStart,
+      )
+      .sort((a, b) => a.joinedAt.getTime() - b.joinedAt.getTime())[0];
+    if (!firstSession) continue;
+    const players = acquiredByServer.get(firstSession.serverId) ?? new Set<string>();
+    players.add(steamId);
+    acquiredByServer.set(firstSession.serverId, players);
+  }
+  const retentionForServerCohort = (serverId: string, dayOffset: 1 | 7) => {
+    const cohortPlayers = [...(acquiredByServer.get(serverId) ?? [])].filter(
+      (steamId) => {
+        const firstSeen = firstSeenBySteam.get(steamId);
+        if (!firstSeen) return false;
+        const targetDay = new Date(
+          istDayBounds(istDayKey(firstSeen)).start.getTime() + dayOffset * 86_400_000,
+        );
+        return (
+          targetDay.getTime() + 86_400_000 <= todayStart.getTime() &&
+          targetDay >= coverageStart
+        );
+      },
+    );
+    if (cohortPlayers.length === 0) return { count: 0, percent: null };
+    const returned = cohortPlayers.filter((steamId) => {
+      const firstSeen = firstSeenBySteam.get(steamId)!;
+      return retentionRate({
+        firstSeenAt: firstSeen,
+        activityByPlayer: currentActivityByPlayer,
+        steamId,
+        dayOffset,
+      });
+    }).length;
+    return {
+      count: cohortPlayers.length,
+      percent: Math.round((returned / cohortPlayers.length) * 1000) / 10,
+    };
+  };
+
+  const serverAnalytics = fleet.map((server) => {
+    const serverSessions = currentPlayers.sessions.filter(
+      (session) => session.serverId === server.id,
+    );
+    const serverUnique = new Set(serverSessions.map((session) => session.steamId));
+    const serverNewPlayers = [...serverUnique].filter((steamId) => {
+      const firstSeen = firstSeenBySteam.get(steamId);
+      return (
+        firstSeen && firstSeen >= periods.current.start && firstSeen < periods.current.end
+      );
+    }).length;
+    const serverReturningPlayers = [...serverUnique].filter((steamId) => {
+      const firstSeen = firstSeenBySteam.get(steamId);
+      return firstSeen && firstSeen < periods.current.start;
+    }).length;
+    const serverD1 = retentionForServerCohort(server.id, 1);
+    const serverD7 = retentionForServerCohort(server.id, 7);
+    const concurrent = currentConcurrency.servers.get(server.id);
+    return {
+      id: server.id,
+      sessions: serverSessions.length,
+      uniquePlayers: serverUnique.size,
+      newPlayers: serverNewPlayers,
+      returningPlayers: serverReturningPlayers,
+      unclassifiedPlayers: serverUnique.size - serverNewPlayers - serverReturningPlayers,
+      d1RetentionPercent: serverD1.percent,
+      d1CohortPlayers: serverD1.count,
+      d7RetentionPercent: serverD7.percent,
+      d7CohortPlayers: serverD7.count,
+      totalPlayTimeMs: concurrent?.playTimeMs ?? 0,
+      avgConcurrent: concurrent?.avgConcurrent ?? 0,
+      primeTimeAvgConcurrent: concurrent?.primeTimeAvgConcurrent ?? 0,
+      peakConcurrent: concurrent?.peakConcurrent ?? 0,
+      utilization: concurrent?.utilization ?? {
+        emptyPercent: 100,
+        oneToFourPercent: 0,
+        fiveToNinePercent: 0,
+        tenPlusPercent: 0,
+      },
+      capacity: server.maxPlayersOverride ?? server.maxPlayers ?? null,
+      overCapacityMinutes: Math.round((concurrent?.overCapacityMs ?? 0) / 60_000),
+    };
+  });
+  const activityHeatmap = Array.from({ length: 7 * 24 }, (_, index) => {
+    const dayOfWeek = Math.floor(index / 24);
+    const hour = index % 24;
+    const sums = currentConcurrency.hourly.get(`${dayOfWeek}:${hour}`);
+    return {
+      dayOfWeek,
+      hour,
+      avgConcurrent:
+        sums && sums.elapsedMs > 0
+          ? Math.round((sums.playerMs / sums.elapsedMs) * 10) / 10
+          : 0,
+    };
+  });
 
   const recent: FleetOverviewRecentSession[] = recentSessions.map((s) => {
     const user = userBySteam.get(s.steamId);
@@ -595,23 +1163,39 @@ export async function getFleetConnectionStats(input: {
       joinedAt: s.joinedAt.toISOString(),
       leftAt: s.leftAt?.toISOString() ?? null,
       lastSeenAt: s.lastSeenAt.toISOString(),
-      durationMs: sessionDurationMs(s, now.getTime()),
+      durationMs: Math.max(
+        0,
+        Math.min(
+          sessionEndForAnalytics(s, now.getTime()),
+          periods.current.end.getTime(),
+        ) - s.joinedAt.getTime(),
+      ),
       active,
       concurrentAtJoin: concurrentAtJoin(s, allSessions),
       serverId: s.serverId,
-      serverName:
-        s.serverName || serverNameById.get(s.serverId) || s.serverId,
+      serverName: s.serverName || serverNameById.get(s.serverId) || s.serverId,
       role: user?.role ?? null,
+      firstEverPlayer: firstSeenBySteam.has(s.steamId)
+        ? firstSeenBySteam.get(s.steamId)! >= periods.current.start &&
+          firstSeenBySteam.get(s.steamId)! < periods.current.end
+        : null,
     };
   });
 
   return {
     summary: {
       range: input.range,
-      uniquePlayers: unique.size,
-      totalSessions,
-      totalPlayTimeMs,
-      avgSessionMs,
+      uniquePlayers: currentJoinedUnique,
+      newPlayers: currentPlayers.newPlayers,
+      returningPlayers: currentPlayers.returningPlayers,
+      unclassifiedPlayers: currentPlayers.unclassifiedPlayers,
+      totalSessions: currentTotalSessions,
+      totalPlayTimeMs: currentPlayTimeMs,
+      avgSessionMs: currentAvgSessionMs,
+      avgConcurrent: currentConcurrency.avgConcurrent,
+      primeTimeAvgConcurrent: currentConcurrency.primeTimeAvgConcurrent,
+      peakConcurrent: currentConcurrency.peakConcurrent,
+      overCapacityMinutes: Math.round(currentConcurrency.overCapacityMs / 60_000),
       currentlyOnline,
       livePlayers,
       liveMaxPlayers,
@@ -620,8 +1204,43 @@ export async function getFleetConnectionStats(input: {
       enabledServers: enabled.length,
     },
     lifetime,
+    period: {
+      start: periods.current.start.toISOString(),
+      endExclusive: periods.current.end.toISOString(),
+      label: periods.label,
+      includesCurrentDay: false,
+    },
+    previousPeriod,
+    retention,
+    monetization,
+    activityHeatmap,
+    utilization: currentConcurrency.utilization,
+    serverAnalytics,
+    dataQuality: {
+      concurrencyExact: currentConcurrency.exact,
+      overCapacityIntervals: currentConcurrency.overCapacityIntervals,
+      overlappingSessions: currentConcurrency.overlappingSessions,
+      excludedLongSessions: currentConcurrency.excludedLongSessions,
+      unknownCapacityServers: currentConcurrency.unknownCapacityServers,
+      sessionRetentionDays: Math.round(playerSessionRetentionSeconds() / 86_400),
+      sessionCoverageStart: coverageStart.toISOString(),
+      sessionCoverageDays: Math.min(
+        input.range === "1d" ? 1 : input.range === "7d" ? 7 : 30,
+        Math.max(
+          0,
+          Math.floor(
+            (periods.current.end.getTime() -
+              Math.max(periods.current.start.getTime(), coverageStart.getTime())) /
+              86_400_000,
+          ),
+        ),
+      ),
+      sessionCoverageComplete: periods.current.start >= coverageStart,
+      attributionAvailable: false,
+      operatingCostsConfigured: false,
+    },
     recent,
-    daily: buildDailyBuckets(allSessions, input.range, now),
+    daily: dayBuckets,
     servers: fleet.map((s) => {
       const match = liveById.get(s.id);
       return {
@@ -667,11 +1286,7 @@ export async function listAdminSessions(input: {
     };
   }
 
-  const sessions = await col
-    .find(filter)
-    .sort({ joinedAt: -1 })
-    .limit(limit)
-    .toArray();
+  const sessions = await col.find(filter).sort({ joinedAt: -1 }).limit(limit).toArray();
 
   let overlapPool = sessions;
   if (sessions.length > 0) {
@@ -708,8 +1323,7 @@ export async function listAdminSessions(input: {
       active,
       concurrentAtJoin: concurrentAtJoin(s, overlapPool),
       serverId: s.serverId,
-      serverName:
-        s.serverName || serverNameById.get(s.serverId) || s.serverId,
+      serverName: s.serverName || serverNameById.get(s.serverId) || s.serverId,
       role: user?.role ?? null,
     };
   });
