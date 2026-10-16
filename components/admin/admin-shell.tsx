@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  BarChart3,
   ClipboardList,
   LayoutDashboard,
+  Megaphone,
   Menu,
   Plus,
   Server,
@@ -13,6 +15,7 @@ import {
   Tags,
   Shield,
   Users,
+  Wallet,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -52,6 +55,13 @@ const NAV: NavItem[] = [
     permission: "admin_panel",
   },
   {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    match: (path) => path.startsWith("/admin/analytics"),
+    permission: "admin_panel",
+  },
+  {
     href: "/admin/servers",
     label: "Servers",
     icon: Server,
@@ -60,7 +70,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/admin/vip-bundles",
-    label: "VIP Bundles",
+    label: "VIP & Subscriptions",
     icon: Tags,
     match: (path) => path.startsWith("/admin/vip-bundles"),
     permission: "manage_servers",
@@ -80,11 +90,18 @@ const NAV: NavItem[] = [
     permission: "admin_panel",
   },
   {
-    href: "/admin/permissions",
-    label: "Permissions",
-    icon: Shield,
-    match: (path) => path.startsWith("/admin/permissions"),
-    permission: "manage_users",
+    href: "/admin/analytics#revenue",
+    label: "Revenue",
+    icon: Wallet,
+    match: () => false,
+    permission: "admin_panel",
+  },
+  {
+    href: "/admin/analytics#acquisition",
+    label: "Marketing",
+    icon: Megaphone,
+    match: () => false,
+    permission: "admin_panel",
   },
   {
     href: "/admin/moderation",
@@ -107,17 +124,30 @@ const NAV: NavItem[] = [
     match: (path) => path.startsWith("/admin/settings"),
     permission: "admin_panel",
   },
+  {
+    href: "/admin/permissions",
+    label: "Permissions",
+    icon: Shield,
+    match: (path) => path.startsWith("/admin/permissions"),
+    permission: "manage_users",
+  },
 ];
 
 function pageMeta(pathname: string): { title: string; subtitle: string } {
   if (pathname.startsWith("/admin/moderation")) {
     return { title: "Moderation", subtitle: "Global bans and player reports" };
   }
+  if (pathname.startsWith("/admin/analytics")) {
+    return {
+      title: "Analytics",
+      subtitle: "Player activity, retention, servers & revenue",
+    };
+  }
   if (pathname.startsWith("/admin/servers")) {
     return { title: "Servers", subtitle: "Fleet registry" };
   }
   if (pathname.startsWith("/admin/vip-bundles")) {
-    return { title: "VIP Bundles", subtitle: "Server bundles" };
+    return { title: "VIP & Subscriptions", subtitle: "Plans & server bundles" };
   }
   if (pathname.startsWith("/admin/players")) {
     return { title: "Players", subtitle: "Directory" };
@@ -169,6 +199,7 @@ export function AdminShell({
   showSettings = false,
 }: AdminShellProps) {
   const pathname = usePathname();
+  const analyticsPage = pathname.startsWith("/admin/analytics");
   const [mobileOpen, setMobileOpen] = useState(false);
   const meta = pageMeta(pathname);
   const canManageServers = permissions.includes("manage_servers");
@@ -201,7 +232,9 @@ export function AdminShell({
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 active
-                  ? "bg-primary/15 text-foreground"
+                  ? analyticsPage
+                    ? "bg-primary/20 text-foreground shadow-[inset_2px_0_0_var(--primary)]"
+                    : "bg-primary/15 text-foreground"
                   : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               )}
             >
@@ -251,15 +284,27 @@ export function AdminShell({
   return (
     <div className="bg-background flex min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="border-sidebar-border bg-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r md:flex">
+      <aside
+        className={cn(
+          "border-sidebar-border bg-sidebar sticky top-0 hidden h-screen shrink-0 flex-col overflow-y-auto border-r md:flex",
+          analyticsPage ? "w-48" : "w-60",
+        )}
+      >
         <div className="flex items-center gap-2.5 px-5 py-5">
           <BrandLogo alt="" className="size-8" />
-          <Link
-            href={canAccessAdminPanel ? "/admin" : "/admin/moderation"}
-            className="text-base font-semibold tracking-tight"
-          >
-            WallBang
-          </Link>
+          <div className="min-w-0">
+            <Link
+              href={canAccessAdminPanel ? "/admin" : "/admin/moderation"}
+              className="block truncate text-base font-semibold tracking-tight"
+            >
+              WallBang
+            </Link>
+            {analyticsPage ? (
+              <span className="text-muted-foreground block truncate text-[10px]">
+                CS2 Retake Servers
+              </span>
+            ) : null}
+          </div>
         </div>
         <NavLinks />
         <UserChip />
@@ -318,7 +363,12 @@ export function AdminShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border bg-background/90 sticky top-0 z-40 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-md sm:px-6">
+        <header
+          className={cn(
+            "border-border bg-background/90 sticky top-0 z-40 items-center gap-3 border-b px-4 backdrop-blur-md sm:px-6",
+            analyticsPage ? "flex h-12 md:hidden" : "flex h-14",
+          )}
+        >
           <Button
             type="button"
             variant="ghost"
@@ -330,7 +380,7 @@ export function AdminShell({
             <span className="sr-only">Open menu</span>
           </Button>
 
-          <div className="min-w-0 shrink-0">
+          <div className={cn("min-w-0 shrink-0", analyticsPage && "md:hidden")}>
             <p className="truncate text-sm font-semibold">{meta.title}</p>
             <p className="text-muted-foreground truncate text-xs">{meta.subtitle}</p>
           </div>

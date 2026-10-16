@@ -5,6 +5,7 @@ import {
   completedIstPeriod,
   computeOverviewConcurrency,
   istDayOfWeekAndHour,
+  overviewIstPeriod,
   retentionRate,
   type AnalyticsSession,
 } from "./overview-analytics";
@@ -45,6 +46,43 @@ describe("completed IST reporting periods", () => {
       dayOfWeek: 6,
       hour: 0,
     });
+  });
+
+  it("supports 90 completed days with a same-length previous period", () => {
+    const period = overviewIstPeriod(
+      "90d",
+      undefined,
+      undefined,
+      new Date("2026-10-16T12:00:00.000Z"),
+    );
+    assert.equal(period.dayCount, 90);
+    assert.equal(period.current.end.toISOString(), "2026-10-15T18:30:00.000Z");
+    assert.equal(period.previous.end.toISOString(), period.current.start.toISOString());
+    assert.equal(
+      period.previous.start.getTime(),
+      period.current.start.getTime() - 90 * 86_400_000,
+    );
+  });
+
+  it("accepts inclusive custom IST dates only when complete and within 90 days", () => {
+    const period = overviewIstPeriod(
+      "custom",
+      "2026-10-10",
+      "2026-10-16",
+      new Date("2026-10-17T00:00:00.000Z"), // 05:30 IST, Oct 17
+    );
+    assert.equal(period.dayCount, 7);
+    assert.equal(period.label, "2026-10-10 – 2026-10-16 IST");
+    assert.throws(
+      () =>
+        overviewIstPeriod(
+          "custom",
+          "2026-10-10",
+          "2026-10-17",
+          new Date("2026-10-17T00:00:00.000Z"),
+        ),
+      /completed IST date range/,
+    );
   });
 });
 
@@ -214,6 +252,28 @@ describe("session-interval concurrency", () => {
     assert.equal(result.avgConcurrent, 1);
     assert.equal(result.utilization.emptyPercent, 0);
   });
+
+  it("starts per-server utilization at its configured creation time", () => {
+    const result = computeOverviewConcurrency({
+      sessions: [
+        session(
+          "after-create",
+          "p1",
+          "a",
+          "2026-10-16T02:00:00.000Z",
+          "2026-10-16T03:00:00.000Z",
+        ),
+      ],
+      capacities: new Map([["a", 10]]),
+      serverAvailableFrom: new Map([["a", new Date("2026-10-16T02:00:00.000Z")]]),
+      window,
+      now,
+      staleAfterMs: 180_000,
+    });
+    assert.equal(result.servers.get("a")?.avgConcurrent, 0.5);
+    assert.equal(result.servers.get("a")?.utilization.emptyPercent, 50);
+    assert.equal(result.servers.get("a")?.utilization.oneToFourPercent, 50);
+  });
 });
 
 describe("retention day assignment", () => {
@@ -227,6 +287,15 @@ describe("retention day assignment", () => {
     assert.equal(
       retentionRate({ firstSeenAt, activityByPlayer, steamId: "p1", dayOffset: 7 }),
       false,
+    );
+  });
+
+  it("assigns D30 returns to the exact thirtieth IST day", () => {
+    const firstSeenAt = new Date("2026-10-01T18:30:00.000Z"); // Oct 2 IST
+    const activityByPlayer = new Map([["p1", new Set(["2026-10-02", "2026-11-01"])]]);
+    assert.equal(
+      retentionRate({ firstSeenAt, activityByPlayer, steamId: "p1", dayOffset: 30 }),
+      true,
     );
   });
 });

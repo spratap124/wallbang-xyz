@@ -1,5 +1,9 @@
 import { istDayBounds, istDayKey, IST_UTC_OFFSET } from "@/lib/time/ist";
-import type { ConcurrencyBands, ServerStatsRange } from "@/types/profile";
+import type {
+  AdminAnalyticsRange,
+  ConcurrencyBands,
+  ServerStatsRange,
+} from "@/types/profile";
 
 export const MAX_ANALYTICS_SESSION_MS = 12 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -23,6 +27,7 @@ export type PeriodWindows = {
   current: AnalyticsWindow;
   previous: AnalyticsWindow;
   label: string;
+  dayCount: number;
 };
 
 export type ConcurrencyPoint = {
@@ -30,9 +35,11 @@ export type ConcurrencyPoint = {
   peakConcurrent: number;
   avgConcurrent: number;
   primeTimeAvgConcurrent: number;
+  playTimeMs: number;
 };
 
 export type ServerConcurrencyPoint = {
+  observedMs: number;
   avgConcurrent: number;
   primeTimeAvgConcurrent: number;
   peakConcurrent: number;
@@ -61,15 +68,54 @@ export function completedIstPeriod(
   range: ServerStatsRange,
   now = new Date(),
 ): PeriodWindows {
-  const dayCount = range === "1d" ? 1 : range === "7d" ? 7 : 30;
+  return overviewIstPeriod(range, undefined, undefined, now);
+}
+
+/** Resolves complete IST calendar windows for the Analytics page. */
+export function overviewIstPeriod(
+  range: AdminAnalyticsRange,
+  customStart?: string,
+  customEnd?: string,
+  now = new Date(),
+): PeriodWindows {
   const today = istDayBounds(istDayKey(now)).start;
-  const start = new Date(today.getTime() - dayCount * 86_400_000);
+  let start: Date;
+  let end: Date;
+  let dayCount: number;
+  if (range === "custom") {
+    if (
+      !customStart ||
+      !customEnd ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(customStart) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(customEnd)
+    ) {
+      throw new Error("Custom date range requires valid YYYY-MM-DD start and end dates.");
+    }
+    start = istDayBounds(customStart).start;
+    const customLastDay = istDayBounds(customEnd);
+    end = customLastDay.end;
+    dayCount = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+    if (
+      istDayKey(start) !== customStart ||
+      istDayKey(customLastDay.start) !== customEnd ||
+      start >= end ||
+      end > today ||
+      dayCount > 90
+    ) {
+      throw new Error("Choose a completed IST date range of 1–90 days.");
+    }
+  } else {
+    dayCount = range === "1d" ? 1 : range === "7d" ? 7 : range === "30d" ? 30 : 90;
+    end = today;
+    start = new Date(today.getTime() - dayCount * 86_400_000);
+  }
   const previousStart = new Date(start.getTime() - dayCount * 86_400_000);
-  const label = `${istDayKey(start)} – ${istDayKey(new Date(today.getTime() - 1))} IST`;
+  const label = `${istDayKey(start)} – ${istDayKey(new Date(end.getTime() - 1))} IST`;
   return {
-    current: { start, end: today },
+    current: { start, end },
     previous: { start: previousStart, end: start },
     label,
+    dayCount,
   };
 }
 
@@ -91,11 +137,16 @@ function bandsFromMs(
   totalMs: number,
 ): ConcurrencyBands {
   if (totalMs <= 0) return emptyBands();
+  const emptyPercent = rounded((values.empty / totalMs) * 100);
+  const oneToFourPercent = rounded((values.oneToFour / totalMs) * 100);
+  const fiveToNinePercent = rounded((values.fiveToNine / totalMs) * 100);
   return {
-    emptyPercent: rounded((values.empty / totalMs) * 100),
-    oneToFourPercent: rounded((values.oneToFour / totalMs) * 100),
-    fiveToNinePercent: rounded((values.fiveToNine / totalMs) * 100),
-    tenPlusPercent: rounded((values.tenPlus / totalMs) * 100),
+    emptyPercent,
+    oneToFourPercent,
+    fiveToNinePercent,
+    tenPlusPercent: rounded(
+      Math.max(0, 100 - emptyPercent - oneToFourPercent - fiveToNinePercent),
+    ),
   };
 }
 
@@ -104,6 +155,7 @@ function rangeOf<T extends { start: Date; end: Date }>(
   coverageStart: Date | undefined,
 ): T {
   if (!coverageStart || coverageStart <= range.start) return range;
+  if (coverageStart >= range.end) return { ...range, start: range.end };
   return { ...range, start: coverageStart };
 }
 
@@ -119,6 +171,7 @@ function rangeOf<T extends { start: Date; end: Date }>(
 export function computeOverviewConcurrency(input: {
   sessions: AnalyticsSession[];
   capacities: Map<string, number | null>;
+  serverAvailableFrom?: Map<string, Date>;
   window: AnalyticsWindow;
   now: Date;
   staleAfterMs: number;
@@ -207,6 +260,16 @@ export function computeOverviewConcurrency(input: {
   );
 
   const boundaries = new Set<number>([window.start.getTime(), window.end.getTime()]);
+  for (const serverId of serverIds) {
+    const availableAt = input.serverAvailableFrom?.get(serverId)?.getTime();
+    if (
+      availableAt != null &&
+      availableAt > window.start.getTime() &&
+      availableAt < window.end.getTime()
+    ) {
+      boundaries.add(availableAt);
+    }
+  }
   const events = new Map<number, { starts: typeof intervals; ends: typeof intervals }>();
   const eventAt = (at: number) => {
     let event = events.get(at);
@@ -245,6 +308,7 @@ export function computeOverviewConcurrency(input: {
       peak: number;
       primePlayerMs: number;
       primeElapsedMs: number;
+      playTimeMs: number;
     }
   >();
   const hourly = new Map<string, { playerMs: number; elapsedMs: number }>();
@@ -298,10 +362,13 @@ export function computeOverviewConcurrency(input: {
     const counts = new Map<string, number>();
     for (const interval of latestByPlayer.values()) {
       counts.set(interval.serverId, (counts.get(interval.serverId) ?? 0) + 1);
-      playTimeByServer.set(
-        interval.serverId,
-        (playTimeByServer.get(interval.serverId) ?? 0) + spanMs,
-      );
+      const availableAt = input.serverAvailableFrom?.get(interval.serverId)?.getTime();
+      if (availableAt == null || at >= availableAt) {
+        playTimeByServer.set(
+          interval.serverId,
+          (playTimeByServer.get(interval.serverId) ?? 0) + spanMs,
+        );
+      }
     }
 
     let fleetCount = 0;
@@ -310,22 +377,27 @@ export function computeOverviewConcurrency(input: {
       const observed = counts.get(serverId) ?? 0;
       const capacity = serverCapacity(serverId);
       const over = capacity != null && observed > capacity;
+      const availableAt = input.serverAvailableFrom?.get(serverId)?.getTime();
+      const serverSpanMs =
+        availableAt != null && at < availableAt
+          ? Math.max(0, next - availableAt)
+          : spanMs;
       if (over) {
         hadOverCapacity = true;
-        overCapacityMs += spanMs;
+        overCapacityMs += serverSpanMs;
         const totals = serverTotals.get(serverId)!;
-        totals.overCapacityMs += spanMs;
+        totals.overCapacityMs += serverSpanMs;
       }
       const count = capacity == null ? observed : Math.min(observed, capacity);
       fleetCount += count;
       const totals = serverTotals.get(serverId)!;
-      totals.elapsedMs += spanMs;
-      totals.playerMs += count * spanMs;
+      totals.elapsedMs += serverSpanMs;
+      totals.playerMs += count * serverSpanMs;
       totals.peak = Math.max(totals.peak, count);
-      if (count === 0) totals.bands.empty += spanMs;
-      else if (count <= 4) totals.bands.oneToFour += spanMs;
-      else if (count <= 9) totals.bands.fiveToNine += spanMs;
-      else totals.bands.tenPlus += spanMs;
+      if (count === 0) totals.bands.empty += serverSpanMs;
+      else if (count <= 4) totals.bands.oneToFour += serverSpanMs;
+      else if (count <= 9) totals.bands.fiveToNine += serverSpanMs;
+      else totals.bands.tenPlus += serverSpanMs;
     }
     if (hadOverCapacity) overCapacityIntervals += 1;
     if (allKnownCapacity && fleetCount > fleetCapacity) {
@@ -348,8 +420,10 @@ export function computeOverviewConcurrency(input: {
       peak: 0,
       primePlayerMs: 0,
       primeElapsedMs: 0,
+      playTimeMs: 0,
     };
     dayRow.playerMs += fleetCount * spanMs;
+    dayRow.playTimeMs += latestByPlayer.size * spanMs;
     dayRow.elapsedMs += spanMs;
     dayRow.peak = Math.max(dayRow.peak, fleetCount);
     const isPrime = hour >= 17 && hour < 22;
@@ -362,9 +436,14 @@ export function computeOverviewConcurrency(input: {
         const totals = serverTotals.get(serverId)!;
         const count = counts.get(serverId) ?? 0;
         const capacity = serverCapacity(serverId);
+        const availableAt = input.serverAvailableFrom?.get(serverId)?.getTime();
+        const serverPrimeSpanMs =
+          availableAt != null && at < availableAt
+            ? Math.max(0, next - availableAt)
+            : spanMs;
         totals.primePlayerMs +=
-          (capacity == null ? count : Math.min(count, capacity)) * spanMs;
-        totals.primeElapsedMs += spanMs;
+          (capacity == null ? count : Math.min(count, capacity)) * serverPrimeSpanMs;
+        totals.primeElapsedMs += serverPrimeSpanMs;
       }
     }
     daily.set(day, dayRow);
@@ -385,12 +464,14 @@ export function computeOverviewConcurrency(input: {
       primeTimeAvgConcurrent: row.primeElapsedMs
         ? rounded(row.primePlayerMs / row.primeElapsedMs)
         : 0,
+      playTimeMs: row.playTimeMs,
     });
   }
 
   const serverPoints = new Map<string, ServerConcurrencyPoint>();
   for (const [serverId, row] of serverTotals) {
     serverPoints.set(serverId, {
+      observedMs: row.elapsedMs,
       avgConcurrent: row.elapsedMs ? rounded(row.playerMs / row.elapsedMs) : 0,
       primeTimeAvgConcurrent: row.primeElapsedMs
         ? rounded(row.primePlayerMs / row.primeElapsedMs)
@@ -429,7 +510,7 @@ export function retentionRate(input: {
   firstSeenAt: Date;
   activityByPlayer: Map<string, Set<string>>;
   steamId: string;
-  dayOffset: 1 | 7;
+  dayOffset: 1 | 7 | 30;
 }): boolean {
   const cohortDay = istDayKey(input.firstSeenAt);
   const { start } = istDayBounds(cohortDay);
