@@ -1,15 +1,12 @@
 import { isMongoConfigured } from "@/lib/mongo";
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
-import {
-  getFleetConnectionStats,
-  isServerStatsRange,
-} from "@/lib/profile/sessions";
+import { getFleetConnectionStats, isServerStatsRange } from "@/lib/profile/sessions";
 
 export const runtime = "nodejs";
 
 /**
  * Fleet-wide overview for the admin dashboard.
- * GET /api/v1/admin/overview?range=1d|7d|30d|all
+ * GET /api/v1/admin/overview?range=1d|7d|30d
  */
 export async function GET(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {

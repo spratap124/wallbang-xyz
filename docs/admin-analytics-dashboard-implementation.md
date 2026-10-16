@@ -41,3 +41,16 @@ The deployed code defaults to `PLAYER_SESSION_RETENTION_DAYS=30`. A retention in
 ## Tests
 
 `lib/profile/overview-analytics.test.ts` covers completed IST period boundaries, UTC/IST day transitions, time-weighted averages, cross-server duplicate players, reconnect/restart boundaries, stale open sessions, impossible capacity counts, long-session exclusion, unknown capacity, retained-history cutoffs, and exact-day retention assignment.
+
+## Dedicated Analytics page follow-up
+
+The permission-protected `/admin/analytics` page reuses the interval calculations and supports 1D/7D/30D/90D plus validated custom completed IST windows. It adds player-session duration buckets, daily active-player counts based on interval overlap, and exact D1/D7/D30 cohort returns when the return-day session data remains within the TTL. Historical comparisons are suppressed when the preceding session period is outside retention.
+
+The page intentionally shows unavailable states for:
+
+- **Historical uptime:** `serverStatus` is a short-lived current-status cache (about 120 seconds), not an uptime timeline.
+- **Top-map playtime:** `player_sessions.map` is updated as the map changes and stores only the latest snapshot; it does not contain map-duration segments.
+- **Acquisition source:** server joins have no attribution field or source event. The page does not reuse website visits as a proxy for game joins.
+- **Payment fees and break-even:** payment rows do not include verified fees and there is no operating-cost ledger.
+
+The map, uptime, attribution, and cost panels require separate durable instrumentation to become measurable. No such historical data is inferred or backfilled by the page.

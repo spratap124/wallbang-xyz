@@ -18,12 +18,15 @@ import {
 import { istDayBounds, istDayKey, listRecentIstDayKeys } from "@/lib/time/ist";
 import { playerSessionRetentionSeconds } from "@/lib/profile/collections";
 import {
-  completedIstPeriod,
   computeOverviewConcurrency,
+  istDayOfWeekAndHour,
+  overviewIstPeriod,
   retentionRate,
+  MAX_ANALYTICS_SESSION_MS,
   type AnalyticsSession,
 } from "@/lib/profile/overview-analytics";
 import type {
+  AdminAnalyticsRange,
   FleetOverviewRecentSession,
   FleetOverviewResponse,
   FleetAnalyticsComparison,
@@ -428,6 +431,7 @@ function buildDailyBuckets(
       newPlayers: 0,
       returningPlayers: 0,
       unclassifiedPlayers: unique.size,
+      playTimeMs: 0,
       // Match Sessions "Online" column (max at join) and true overlap peak.
       peakConcurrent: Math.max(sweepPeak, joinPeak),
       avgConcurrent: avgConcurrentAtJoinInWindow(
@@ -544,6 +548,7 @@ function summarizePlayers(input: {
   firstSeenBySteam: Map<string, Date>;
   start: Date;
   end: Date;
+  now: Date;
 }): {
   players: Set<string>;
   newPlayers: number;
@@ -554,7 +559,15 @@ function summarizePlayers(input: {
   const sessions = input.sessions.filter(
     (session) => session.joinedAt >= input.start && session.joinedAt < input.end,
   );
-  const players = new Set(sessions.map((session) => session.steamId));
+  const activeSessions = input.sessions.filter((session) => {
+    const endMs = sessionEndForAnalytics(session, input.now.getTime());
+    return (
+      endMs - session.joinedAt.getTime() <= MAX_ANALYTICS_SESSION_MS &&
+      session.joinedAt < input.end &&
+      endMs > input.start.getTime()
+    );
+  });
+  const players = new Set(activeSessions.map((session) => session.steamId));
   let newPlayers = 0;
   let returningPlayers = 0;
   let unclassifiedPlayers = 0;
@@ -588,7 +601,7 @@ function calculateRetention(input: {
   const cohorts = [...input.firstSeenBySteam.entries()].filter(
     ([, firstSeen]) => firstSeen >= input.window.start && firstSeen < input.window.end,
   );
-  const rate = (offset: 1 | 7) => {
+  const rate = (offset: 1 | 7 | 30) => {
     const mature = cohorts.filter(([, firstSeen]) => {
       const cohortDay = istDayBounds(istDayKey(firstSeen)).start;
       const returnDay = new Date(cohortDay.getTime() + offset * 86_400_000);
@@ -613,6 +626,7 @@ function calculateRetention(input: {
   };
   const d1 = rate(1);
   const d7 = rate(7);
+  const d30 = rate(30);
   const cohortsByDay = new Map<string, Array<[string, Date]>>();
   for (const [steamId, firstSeen] of cohorts) {
     const date = istDayKey(firstSeen);
@@ -624,7 +638,7 @@ function calculateRetention(input: {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, players]) => {
       const cohortDay = istDayBounds(date).start;
-      const retainedCount = (offset: 1 | 7) => {
+      const retainedCount = (offset: 1 | 7 | 30) => {
         const returnDay = new Date(cohortDay.getTime() + offset * 86_400_000);
         const mature =
           returnDay.getTime() + 86_400_000 <= input.todayStart.getTime() &&
@@ -641,6 +655,7 @@ function calculateRetention(input: {
       };
       const d1Retained = retainedCount(1);
       const d7Retained = retainedCount(7);
+      const d30Retained = retainedCount(30);
       return {
         date,
         players: players.length,
@@ -654,6 +669,11 @@ function calculateRetention(input: {
           d7Retained == null
             ? null
             : Math.round((d7Retained / players.length) * 1000) / 10,
+        d30Retained,
+        d30Percent:
+          d30Retained == null
+            ? null
+            : Math.round((d30Retained / players.length) * 1000) / 10,
       };
     });
   const now = new Date();
@@ -666,6 +686,8 @@ function calculateRetention(input: {
     d1CohortPlayers: d1.count,
     d7Percent: d7.percent,
     d7CohortPlayers: d7.count,
+    d30Percent: d30.percent,
+    d30CohortPlayers: d30.count,
     multiDayPlayers: input.multiDayPlayers,
     coverageStart: input.coverageStart.toISOString(),
     coverageDays,
@@ -676,6 +698,7 @@ function calculateRetention(input: {
 
 type AnalyticsPayment = {
   userId: string;
+  steamId: string;
   status: string;
   amount: number;
   durationDays: number;
@@ -693,6 +716,8 @@ function summarizeMonetization(input: {
   end: Date;
   now: Date;
   freeVipUsers: number;
+  activePlayerSteamIds: Set<string>;
+  playerConversionAvailable: boolean;
 }): FleetMonetizationAnalytics {
   const captured = input.payments.filter(
     (payment) =>
@@ -719,18 +744,20 @@ function summarizeMonetization(input: {
       (sum, payment) => sum + (payment.amount * 30) / Math.max(1, payment.durationDays),
       0,
     );
-  const payingCustomers = new Set(captured.map((payment) => payment.userId));
+  const nonRefundedCaptures = captured.filter((payment) => payment.status === "captured");
+  const payingCustomers = new Set(nonRefundedCaptures.map((payment) => payment.userId));
+  const payingActivePlayers = new Set(
+    nonRefundedCaptures
+      .filter((payment) => input.activePlayerSteamIds.has(payment.steamId))
+      .map((payment) => payment.steamId),
+  );
   const checkoutPayments = input.payments.filter(
     (payment) => payment.createdAt >= input.start && payment.createdAt < input.end,
   );
   const checkoutUsers = new Set(checkoutPayments.map((payment) => payment.userId));
   const convertedUsers = new Set(
     checkoutPayments
-      .filter(
-        (payment) =>
-          (payment.status === "captured" || payment.status === "refunded") &&
-          payment.paidAt != null,
-      )
+      .filter((payment) => payment.status === "captured" && payment.paidAt != null)
       .map((payment) => payment.userId),
   );
   const abandonedCheckouts = input.payments.filter(
@@ -791,6 +818,13 @@ function summarizeMonetization(input: {
       checkoutUsers.size > 0
         ? Math.round((convertedUsers.size / checkoutUsers.size) * 1000) / 10
         : null,
+    playerToPayingPercent:
+      input.playerConversionAvailable && input.activePlayerSteamIds.size > 0
+        ? Math.round(
+            (payingActivePlayers.size / input.activePlayerSteamIds.size) * 1000,
+          ) / 10
+        : null,
+    payingActivePlayers: payingActivePlayers.size,
     freeVipUsers: input.freeVipUsers,
     feesPaise: null,
     revenueByPlan: [...plans.values()],
@@ -798,18 +832,26 @@ function summarizeMonetization(input: {
 }
 
 export async function getFleetConnectionStats(input: {
-  range: ServerStatsRange;
+  range: AdminAnalyticsRange;
+  customStart?: string;
+  customEnd?: string;
   recentLimit?: number;
 }): Promise<FleetOverviewResponse> {
   await ensureProfileIndexes();
 
   const now = new Date();
   const todayStart = istDayBounds(istDayKey(now)).start;
-  const periods = completedIstPeriod(input.range, now);
+  const periods = overviewIstPeriod(input.range, input.customStart, input.customEnd, now);
   const coverageStart = new Date(now.getTime() - playerSessionRetentionSeconds() * 1000);
   const col = await playerSessionsCollection();
   const db = await getDb();
   const sessionsStart = new Date(
+    Math.max(
+      coverageStart.getTime(),
+      Math.min(periods.previous.start.getTime(), periods.current.start.getTime()),
+    ),
+  );
+  const paymentsStart = new Date(
     Math.min(periods.previous.start.getTime(), periods.current.start.getTime()),
   );
   const [
@@ -821,6 +863,7 @@ export async function getFleetConnectionStats(input: {
     firstSeenRows,
     payments,
     freeVipRows,
+    serverCreationRows,
   ] = await Promise.all([
     getGameServers({ includeDisabled: true }),
     col
@@ -839,14 +882,15 @@ export async function getFleetConnectionStats(input: {
       .find(
         {
           $or: [
-            { paidAt: { $gte: sessionsStart, $lt: now } },
-            { refundedAt: { $gte: sessionsStart, $lt: now } },
-            { createdAt: { $gte: sessionsStart, $lt: now } },
+            { paidAt: { $gte: paymentsStart, $lt: now } },
+            { refundedAt: { $gte: paymentsStart, $lt: now } },
+            { createdAt: { $gte: paymentsStart, $lt: now } },
           ],
         },
         {
           projection: {
             userId: 1,
+            steamId: 1,
             status: 1,
             amount: 1,
             durationDays: 1,
@@ -872,6 +916,10 @@ export async function getFleetConnectionStats(input: {
         { projection: { _id: 0, userId: 1 } },
       )
       .toArray(),
+    db
+      .collection<{ id: string; createdAt: Date }>("game_servers")
+      .find({}, { projection: { _id: 0, id: 1, createdAt: 1 } })
+      .toArray(),
   ]);
 
   const firstSeenBySteam = new Map(
@@ -882,12 +930,14 @@ export async function getFleetConnectionStats(input: {
     firstSeenBySteam,
     start: periods.current.start,
     end: periods.current.end,
+    now,
   });
   const previousPlayers = summarizePlayers({
     sessions: allSessions,
     firstSeenBySteam,
     start: periods.previous.start,
     end: periods.previous.end,
+    now,
   });
   const capacities = new Map(
     fleet.map((server) => [
@@ -895,10 +945,14 @@ export async function getFleetConnectionStats(input: {
       server.maxPlayersOverride ?? server.maxPlayers ?? null,
     ]),
   );
+  const serverAvailableFrom = new Map(
+    serverCreationRows.map((server) => [server.id, server.createdAt]),
+  );
   const sessionInputs = allSessions as AnalyticsSession[];
   const currentConcurrency = computeOverviewConcurrency({
     sessions: sessionInputs,
     capacities,
+    serverAvailableFrom,
     window: periods.current,
     now,
     staleAfterMs: presenceStaleMs() * 2,
@@ -907,6 +961,7 @@ export async function getFleetConnectionStats(input: {
   const previousConcurrency = computeOverviewConcurrency({
     sessions: sessionInputs,
     capacities,
+    serverAvailableFrom,
     window: periods.previous,
     now,
     staleAfterMs: presenceStaleMs() * 2,
@@ -918,17 +973,56 @@ export async function getFleetConnectionStats(input: {
   const previousPlayTimeMs = totalAttributedPlayTime(previousConcurrency);
   const currentTotalSessions = currentPlayers.sessions.length;
   const previousTotalSessions = previousPlayers.sessions.length;
-  const currentAvgSessionMs = currentTotalSessions
+  const observedDurations: number[] = [];
+  const durationBuckets = [
+    { key: "under-2m", label: "< 2 min", count: 0 },
+    { key: "2-5m", label: "2–5 min", count: 0 },
+    { key: "5-10m", label: "5–10 min", count: 0 },
+    { key: "10-20m", label: "10–20 min", count: 0 },
+    { key: "20-30m", label: "20–30 min", count: 0 },
+    { key: "over-30m", label: "> 30 min", count: 0 },
+  ];
+  for (const session of currentPlayers.sessions) {
+    const endMs = Math.min(
+      sessionEndForAnalytics(session, now.getTime()),
+      periods.current.end.getTime(),
+    );
+    const elapsedMs = endMs - session.joinedAt.getTime();
+    if (elapsedMs < 0 || elapsedMs > MAX_ANALYTICS_SESSION_MS) continue;
+    observedDurations.push(elapsedMs);
+    const bucket =
+      elapsedMs < 2 * 60_000
+        ? durationBuckets[0]
+        : elapsedMs < 5 * 60_000
+          ? durationBuckets[1]
+          : elapsedMs < 10 * 60_000
+            ? durationBuckets[2]
+            : elapsedMs < 20 * 60_000
+              ? durationBuckets[3]
+              : elapsedMs < 30 * 60_000
+                ? durationBuckets[4]
+                : durationBuckets[5];
+    bucket!.count += 1;
+  }
+  const currentAvgSessionMs = observedDurations.length
     ? Math.round(
-        currentPlayTimeMs /
-          Math.max(
-            1,
-            currentPlayers.sessions.filter(
-              (session) =>
-                sessionEndForAnalytics(session, now.getTime()) >
-                periods.current.start.getTime(),
-            ).length,
-          ),
+        observedDurations.reduce((sum, duration) => sum + duration, 0) /
+          observedDurations.length,
+      )
+    : 0;
+  const previousObservedDurations = previousPlayers.sessions
+    .map(
+      (session) =>
+        Math.min(
+          sessionEndForAnalytics(session, now.getTime()),
+          periods.previous.end.getTime(),
+        ) - session.joinedAt.getTime(),
+    )
+    .filter((duration) => duration >= 0 && duration <= MAX_ANALYTICS_SESSION_MS);
+  const previousAvgSessionMs = previousObservedDurations.length
+    ? Math.round(
+        previousObservedDurations.reduce((sum, duration) => sum + duration, 0) /
+          previousObservedDurations.length,
       )
     : 0;
 
@@ -948,13 +1042,18 @@ export async function getFleetConnectionStats(input: {
   const users = await findUsersBySteamIds(recentSessions.map((s) => s.steamId));
   const userBySteam = new Map(users.map((u) => [u.steamId, u]));
   const serverNameById = new Map(fleet.map((s) => [s.id, s.name]));
-  const currentActivityByPlayer = new Map<string, Set<string>>();
-  for (const session of allSessions) {
-    if (session.joinedAt < periods.current.start || session.joinedAt >= now) continue;
-    const activity = currentActivityByPlayer.get(session.steamId) ?? new Set<string>();
-    activity.add(istDayKey(session.joinedAt));
-    currentActivityByPlayer.set(session.steamId, activity);
-  }
+  const activitySince = (start: Date) => {
+    const activity = new Map<string, Set<string>>();
+    for (const session of allSessions) {
+      if (session.joinedAt < start || session.joinedAt >= now) continue;
+      const days = activity.get(session.steamId) ?? new Set<string>();
+      days.add(istDayKey(session.joinedAt));
+      activity.set(session.steamId, days);
+    }
+    return activity;
+  };
+  const currentActivityByPlayer = activitySince(periods.current.start);
+  const previousActivityByPlayer = activitySince(periods.previous.start);
   const sessionsByDay = new Map<string, PlayerSessionDoc[]>();
   for (const session of currentPlayers.sessions) {
     const day = istDayKey(session.joinedAt);
@@ -962,13 +1061,28 @@ export async function getFleetConnectionStats(input: {
     items.push(session);
     sessionsByDay.set(day, items);
   }
+  const currentDailyActiveByPlayer = new Map<string, Set<string>>();
   const dayBuckets = listRecentIstDayKeys(
-    input.range === "1d" ? 1 : input.range === "7d" ? 7 : 30,
+    periods.dayCount,
     new Date(periods.current.end.getTime() - 1),
   ).map((date) => {
-    const dayStart = istDayBounds(date).start;
+    const { start: dayStart, end: dayEnd } = istDayBounds(date);
     const daySessions = sessionsByDay.get(date) ?? [];
-    const uniquePlayers = new Set(daySessions.map((session) => session.steamId));
+    const uniquePlayers = new Set<string>();
+    for (const session of allSessions) {
+      const sessionEnd = sessionEndForAnalytics(session, now.getTime());
+      if (
+        sessionEnd - session.joinedAt.getTime() <= MAX_ANALYTICS_SESSION_MS &&
+        session.joinedAt.getTime() < dayEnd.getTime() &&
+        sessionEnd > dayStart.getTime()
+      ) {
+        uniquePlayers.add(session.steamId);
+        const activeDays =
+          currentDailyActiveByPlayer.get(session.steamId) ?? new Set<string>();
+        activeDays.add(date);
+        currentDailyActiveByPlayer.set(session.steamId, activeDays);
+      }
+    }
     let newPlayers = 0;
     let returningPlayers = 0;
     let unclassifiedPlayers = 0;
@@ -996,13 +1110,17 @@ export async function getFleetConnectionStats(input: {
       newPlayers,
       returningPlayers,
       unclassifiedPlayers,
+      playTimeMs: concurrency?.playTimeMs ?? 0,
       peakConcurrent: concurrency?.peakConcurrent ?? 0,
       avgConcurrent: concurrency?.avgConcurrent ?? 0,
       primeTimeAvgConcurrent: concurrency?.primeTimeAvgConcurrent ?? 0,
     };
   });
 
-  const multiDayPlayers = [...currentActivityByPlayer.values()].filter(
+  const multiDayPlayers = [...currentDailyActiveByPlayer.values()].filter(
+    (days) => days.size > 1,
+  ).length;
+  const previousMultiDayPlayers = [...previousActivityByPlayer.values()].filter(
     (days) => days.size > 1,
   ).length;
   const retention = calculateRetention({
@@ -1013,6 +1131,14 @@ export async function getFleetConnectionStats(input: {
     coverageStart,
     multiDayPlayers,
   });
+  const previousRetention = calculateRetention({
+    firstSeenBySteam,
+    activityByPlayer: previousActivityByPlayer,
+    window: periods.previous,
+    todayStart,
+    coverageStart,
+    multiDayPlayers: previousMultiDayPlayers,
+  });
   const freeVipUsers = new Set(freeVipRows.map((row) => row.userId)).size;
   const monetization = summarizeMonetization({
     payments,
@@ -1020,6 +1146,8 @@ export async function getFleetConnectionStats(input: {
     end: periods.current.end,
     now,
     freeVipUsers,
+    activePlayerSteamIds: currentPlayers.players,
+    playerConversionAvailable: periods.current.start >= coverageStart,
   });
   const previousMonetization = summarizeMonetization({
     payments,
@@ -1027,6 +1155,8 @@ export async function getFleetConnectionStats(input: {
     end: periods.previous.end,
     now,
     freeVipUsers,
+    activePlayerSteamIds: previousPlayers.players,
+    playerConversionAvailable: periods.previous.start >= coverageStart,
   });
   const currentJoinedUnique = currentPlayers.players.size;
   const previousJoinedUnique = previousPlayers.players.size;
@@ -1037,9 +1167,13 @@ export async function getFleetConnectionStats(input: {
     returningPlayers: previousPlayers.returningPlayers,
     totalSessions: previousTotalSessions,
     totalPlayTimeMs: previousPlayTimeMs,
+    avgSessionMs: previousAvgSessionMs,
     avgConcurrent: previousConcurrency.avgConcurrent,
     payingCustomers: previousMonetization.payingCustomers,
     netRevenuePaise: previousMonetization.netRevenuePaise,
+    d1RetentionPercent: previousRetention.d1Percent,
+    d7RetentionPercent: previousRetention.d7Percent,
+    d30RetentionPercent: previousRetention.d30Percent,
   };
 
   const sessionsByPlayer = new Map<string, PlayerSessionDoc[]>();
@@ -1124,6 +1258,7 @@ export async function getFleetConnectionStats(input: {
       d7RetentionPercent: serverD7.percent,
       d7CohortPlayers: serverD7.count,
       totalPlayTimeMs: concurrent?.playTimeMs ?? 0,
+      observedMs: concurrent?.observedMs ?? 0,
       avgConcurrent: concurrent?.avgConcurrent ?? 0,
       primeTimeAvgConcurrent: concurrent?.primeTimeAvgConcurrent ?? 0,
       peakConcurrent: concurrent?.peakConcurrent ?? 0,
@@ -1137,10 +1272,33 @@ export async function getFleetConnectionStats(input: {
       overCapacityMinutes: Math.round((concurrent?.overCapacityMs ?? 0) / 60_000),
     };
   });
+  const sessionStartsByHour = new Map<string, { count: number; players: Set<string> }>();
+  for (const session of currentPlayers.sessions) {
+    const { dayOfWeek, hour } = istDayOfWeekAndHour(session.joinedAt);
+    const key = `${dayOfWeek}:${hour}`;
+    const row = sessionStartsByHour.get(key) ?? { count: 0, players: new Set<string>() };
+    row.count += 1;
+    row.players.add(session.steamId);
+    sessionStartsByHour.set(key, row);
+  }
+  const occurrencesByDayOfWeek = new Map<number, number>();
+  for (const date of listRecentIstDayKeys(
+    periods.dayCount,
+    new Date(periods.current.end.getTime() - 1),
+  )) {
+    const dayStart = istDayBounds(date).start;
+    if (dayStart < coverageStart) continue;
+    const dayOfWeek = istDayOfWeekAndHour(dayStart).dayOfWeek;
+    occurrencesByDayOfWeek.set(
+      dayOfWeek,
+      (occurrencesByDayOfWeek.get(dayOfWeek) ?? 0) + 1,
+    );
+  }
   const activityHeatmap = Array.from({ length: 7 * 24 }, (_, index) => {
     const dayOfWeek = Math.floor(index / 24);
     const hour = index % 24;
     const sums = currentConcurrency.hourly.get(`${dayOfWeek}:${hour}`);
+    const starts = sessionStartsByHour.get(`${dayOfWeek}:${hour}`);
     return {
       dayOfWeek,
       hour,
@@ -1148,6 +1306,9 @@ export async function getFleetConnectionStats(input: {
         sums && sums.elapsedMs > 0
           ? Math.round((sums.playerMs / sums.elapsedMs) * 10) / 10
           : 0,
+      sessionStarts: starts?.count ?? 0,
+      distinctPlayers: starts?.players.size ?? 0,
+      occurrenceDays: occurrencesByDayOfWeek.get(dayOfWeek) ?? 0,
     };
   });
 
@@ -1205,6 +1366,7 @@ export async function getFleetConnectionStats(input: {
     },
     lifetime,
     period: {
+      range: input.range,
       start: periods.current.start.toISOString(),
       endExclusive: periods.current.end.toISOString(),
       label: periods.label,
@@ -1215,6 +1377,7 @@ export async function getFleetConnectionStats(input: {
     monetization,
     activityHeatmap,
     utilization: currentConcurrency.utilization,
+    durationBuckets,
     serverAnalytics,
     dataQuality: {
       concurrencyExact: currentConcurrency.exact,
@@ -1225,7 +1388,7 @@ export async function getFleetConnectionStats(input: {
       sessionRetentionDays: Math.round(playerSessionRetentionSeconds() / 86_400),
       sessionCoverageStart: coverageStart.toISOString(),
       sessionCoverageDays: Math.min(
-        input.range === "1d" ? 1 : input.range === "7d" ? 7 : 30,
+        periods.dayCount,
         Math.max(
           0,
           Math.floor(
@@ -1235,8 +1398,13 @@ export async function getFleetConnectionStats(input: {
           ),
         ),
       ),
+      sessionCoverageAvailable:
+        Math.max(periods.current.start.getTime(), coverageStart.getTime()) <
+        periods.current.end.getTime(),
       sessionCoverageComplete: periods.current.start >= coverageStart,
       attributionAvailable: false,
+      mapPlaytimeAvailable: false,
+      uptimeHistoryAvailable: false,
       operatingCostsConfigured: false,
     },
     recent,

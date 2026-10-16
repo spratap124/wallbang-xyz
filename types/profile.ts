@@ -139,6 +139,7 @@ export type PlayerSessionDoc = {
 };
 
 export type ServerStatsRange = "1d" | "7d" | "30d";
+export type AdminAnalyticsRange = ServerStatsRange | "90d" | "custom";
 
 export type ServerStatsSummary = {
   range: ServerStatsRange;
@@ -178,6 +179,8 @@ export type ServerStatsDayBucket = {
   newPlayers: number;
   returningPlayers: number;
   unclassifiedPlayers: number;
+  /** De-duplicated player-time from retained session intervals. */
+  playTimeMs: number;
   /** Capacity-clamped peak concurrent player count for the fleet. */
   peakConcurrent: number;
   /** Time-weighted average concurrent players for the fleet. */
@@ -205,6 +208,7 @@ export type FleetServerAnalytics = {
   d7RetentionPercent: number | null;
   d7CohortPlayers: number;
   totalPlayTimeMs: number;
+  observedMs: number;
   avgConcurrent: number;
   primeTimeAvgConcurrent: number;
   peakConcurrent: number;
@@ -218,6 +222,8 @@ export type FleetRetentionAnalytics = {
   d1CohortPlayers: number;
   d7Percent: number | null;
   d7CohortPlayers: number;
+  d30Percent: number | null;
+  d30CohortPlayers: number;
   multiDayPlayers: number;
   coverageStart: string | null;
   coverageDays: number;
@@ -229,6 +235,8 @@ export type FleetRetentionAnalytics = {
     d1Percent: number | null;
     d7Retained: number | null;
     d7Percent: number | null;
+    d30Retained: number | null;
+    d30Percent: number | null;
   }>;
 };
 
@@ -242,6 +250,8 @@ export type FleetMonetizationAnalytics = {
   abandonedCheckouts: number;
   checkoutUsers: number;
   checkoutConversionPercent: number | null;
+  playerToPayingPercent: number | null;
+  payingActivePlayers: number;
   freeVipUsers: number;
   feesPaise: null;
   revenueByPlan: Array<{
@@ -260,9 +270,13 @@ export type FleetAnalyticsComparison = {
   returningPlayers: number;
   totalSessions: number;
   totalPlayTimeMs: number;
+  avgSessionMs: number;
   avgConcurrent: number;
   payingCustomers: number;
   netRevenuePaise: number;
+  d1RetentionPercent: number | null;
+  d7RetentionPercent: number | null;
+  d30RetentionPercent: number | null;
 };
 
 export type ServerStatsResponse = {
@@ -273,7 +287,7 @@ export type ServerStatsResponse = {
 
 /** Fleet-wide rollup for the admin Overview dashboard. */
 export type FleetOverviewSummary = {
-  range: ServerStatsRange;
+  range: AdminAnalyticsRange;
   uniquePlayers: number;
   newPlayers: number;
   returningPlayers: number;
@@ -322,6 +336,7 @@ export type FleetOverviewResponse = {
   summary: FleetOverviewSummary;
   lifetime: LifetimeSessionStats;
   period: {
+    range: AdminAnalyticsRange;
     start: string;
     endExclusive: string;
     label: string;
@@ -334,8 +349,16 @@ export type FleetOverviewResponse = {
     dayOfWeek: number;
     hour: number;
     avgConcurrent: number;
+    sessionStarts: number;
+    distinctPlayers: number;
+    occurrenceDays: number;
   }>;
   utilization: ConcurrencyBands;
+  durationBuckets: Array<{
+    key: string;
+    label: string;
+    count: number;
+  }>;
   serverAnalytics: FleetServerAnalytics[];
   dataQuality: {
     concurrencyExact: boolean;
@@ -346,8 +369,11 @@ export type FleetOverviewResponse = {
     sessionRetentionDays: number;
     sessionCoverageStart: string | null;
     sessionCoverageDays: number;
+    sessionCoverageAvailable: boolean;
     sessionCoverageComplete: boolean;
     attributionAvailable: false;
+    mapPlaytimeAvailable: false;
+    uptimeHistoryAvailable: false;
     operatingCostsConfigured: false;
   };
   recent: FleetOverviewRecentSession[];
