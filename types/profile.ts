@@ -171,12 +171,98 @@ export type ServerStatsRecentSession = {
 
 export type ServerStatsDayBucket = {
   date: string;
+  /** False when TTL expiry may have removed part of this IST day. */
+  complete: boolean;
   uniquePlayers: number;
   sessions: number;
-  /** Peak simultaneous players on any single server that day. */
+  newPlayers: number;
+  returningPlayers: number;
+  unclassifiedPlayers: number;
+  /** Capacity-clamped peak concurrent player count for the fleet. */
   peakConcurrent: number;
-  /** Mean concurrent-at-join for sessions that joined that day (0 if none). */
+  /** Time-weighted average concurrent players for the fleet. */
   avgConcurrent: number;
+  /** Time-weighted average between 17:00 and 22:00 IST. */
+  primeTimeAvgConcurrent: number;
+};
+
+export type ConcurrencyBands = {
+  emptyPercent: number;
+  oneToFourPercent: number;
+  fiveToNinePercent: number;
+  tenPlusPercent: number;
+};
+
+export type FleetServerAnalytics = {
+  id: string;
+  sessions: number;
+  uniquePlayers: number;
+  newPlayers: number;
+  returningPlayers: number;
+  unclassifiedPlayers: number;
+  d1RetentionPercent: number | null;
+  d1CohortPlayers: number;
+  d7RetentionPercent: number | null;
+  d7CohortPlayers: number;
+  totalPlayTimeMs: number;
+  avgConcurrent: number;
+  primeTimeAvgConcurrent: number;
+  peakConcurrent: number;
+  utilization: ConcurrencyBands;
+  capacity: number | null;
+  overCapacityMinutes: number;
+};
+
+export type FleetRetentionAnalytics = {
+  d1Percent: number | null;
+  d1CohortPlayers: number;
+  d7Percent: number | null;
+  d7CohortPlayers: number;
+  multiDayPlayers: number;
+  coverageStart: string | null;
+  coverageDays: number;
+  incompleteHistory: boolean;
+  cohorts: Array<{
+    date: string;
+    players: number;
+    d1Retained: number | null;
+    d1Percent: number | null;
+    d7Retained: number | null;
+    d7Percent: number | null;
+  }>;
+};
+
+export type FleetMonetizationAnalytics = {
+  grossCapturedPaise: number;
+  refundsPaise: number;
+  netRevenuePaise: number;
+  monthlyEquivalentPaise: number;
+  payingCustomers: number;
+  successfulPurchases: number;
+  abandonedCheckouts: number;
+  checkoutUsers: number;
+  checkoutConversionPercent: number | null;
+  freeVipUsers: number;
+  feesPaise: null;
+  revenueByPlan: Array<{
+    plan: string;
+    accessType: string;
+    purchases: number;
+    grossPaise: number;
+    monthlyEquivalentPaise: number;
+  }>;
+};
+
+export type FleetAnalyticsComparison = {
+  available: boolean;
+  uniquePlayers: number;
+  newPlayers: number;
+  returningPlayers: number;
+  totalSessions: number;
+  totalPlayTimeMs: number;
+  avgConcurrent: number;
+  payingCustomers: number;
+  netRevenuePaise: number;
 };
 
 export type ServerStatsResponse = {
@@ -189,9 +275,16 @@ export type ServerStatsResponse = {
 export type FleetOverviewSummary = {
   range: ServerStatsRange;
   uniquePlayers: number;
+  newPlayers: number;
+  returningPlayers: number;
+  unclassifiedPlayers: number;
   totalSessions: number;
   totalPlayTimeMs: number;
   avgSessionMs: number;
+  avgConcurrent: number;
+  primeTimeAvgConcurrent: number;
+  peakConcurrent: number;
+  overCapacityMinutes: number;
   currentlyOnline: number;
   livePlayers: number;
   liveMaxPlayers: number;
@@ -205,6 +298,7 @@ export type FleetOverviewRecentSession = ServerStatsRecentSession & {
   serverName: string;
   /** Highest active role, or null if the player has no website account. */
   role: RoleCode | null;
+  firstEverPlayer?: boolean | null;
 };
 
 export type FleetOverviewServerCard = {
@@ -227,6 +321,35 @@ export type FleetOverviewServerCard = {
 export type FleetOverviewResponse = {
   summary: FleetOverviewSummary;
   lifetime: LifetimeSessionStats;
+  period: {
+    start: string;
+    endExclusive: string;
+    label: string;
+    includesCurrentDay: false;
+  };
+  previousPeriod: FleetAnalyticsComparison;
+  retention: FleetRetentionAnalytics;
+  monetization: FleetMonetizationAnalytics;
+  activityHeatmap: Array<{
+    dayOfWeek: number;
+    hour: number;
+    avgConcurrent: number;
+  }>;
+  utilization: ConcurrencyBands;
+  serverAnalytics: FleetServerAnalytics[];
+  dataQuality: {
+    concurrencyExact: boolean;
+    overCapacityIntervals: number;
+    overlappingSessions: number;
+    excludedLongSessions: number;
+    unknownCapacityServers: number;
+    sessionRetentionDays: number;
+    sessionCoverageStart: string | null;
+    sessionCoverageDays: number;
+    sessionCoverageComplete: boolean;
+    attributionAvailable: false;
+    operatingCostsConfigured: false;
+  };
   recent: FleetOverviewRecentSession[];
   daily: ServerStatsDayBucket[];
   servers: FleetOverviewServerCard[];

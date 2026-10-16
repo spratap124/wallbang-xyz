@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Activity, Clock, Plus, Server, Users } from "lucide-react";
+import { Activity, Clock, Plus, Server, Users, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +48,10 @@ export function OverviewDashboard({
   const [health, setHealth] = useState<AdminHealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [serverFilter, setServerFilter] = useState("all");
+  const [mapFilter, setMapFilter] = useState("all");
+  const [durationFilter, setDurationFilter] = useState("all");
+  const [playerTypeFilter, setPlayerTypeFilter] = useState("all");
 
   const load = useCallback((nextRange: ServerStatsRange) => {
     setError(null);
@@ -74,24 +78,9 @@ export function OverviewDashboard({
   }, [load, range]);
 
   const summary = data?.summary;
-  const dailyPeaks =
-    data?.daily.map((d) => {
-      const peak = Number(d.peakConcurrent);
-      return Number.isFinite(peak) ? peak : 0;
-    }) ?? [];
-  const dailyAvgs =
-    data?.daily.map((d) => {
-      const avg = Number(d.avgConcurrent);
-      return Number.isFinite(avg) ? avg : 0;
-    }) ?? [];
+  const dailyPeaks = data?.daily.map((d) => d.peakConcurrent) ?? [];
+  const dailyAvgs = data?.daily.map((d) => d.avgConcurrent) ?? [];
   const peakAcrossDays = dailyPeaks.length > 0 ? Math.max(0, ...dailyPeaks) : 0;
-  const daysWithAvg = dailyAvgs.filter((n) => n > 0);
-  const rangeAvg =
-    daysWithAvg.length > 0
-      ? Math.round(
-          (daysWithAvg.reduce((sum, n) => sum + n, 0) / daysWithAvg.length) * 10,
-        ) / 10
-      : 0;
   const maxDaily = Math.max(1, peakAcrossDays, ...dailyAvgs);
   const liveDenom =
     summary && summary.liveMaxPlayers > 0
@@ -101,6 +90,30 @@ export function OverviewDashboard({
     summary && summary.livePlayers > 0
       ? summary.livePlayers
       : (summary?.currentlyOnline ?? 0);
+  const maps = [
+    ...new Set(data?.recent.map((session) => session.map).filter(Boolean)),
+  ] as string[];
+  const visibleSessions = (data?.recent ?? []).filter((session) => {
+    if (serverFilter !== "all" && session.serverId !== serverFilter) return false;
+    if (mapFilter !== "all" && session.map !== mapFilter) return false;
+    if (playerTypeFilter === "new" && session.firstEverPlayer !== true) return false;
+    if (playerTypeFilter === "returning" && session.firstEverPlayer !== false)
+      return false;
+    if (durationFilter === "under5" && session.durationMs >= 5 * 60_000) return false;
+    if (
+      durationFilter === "5to20" &&
+      (session.durationMs < 5 * 60_000 || session.durationMs >= 20 * 60_000)
+    )
+      return false;
+    if (durationFilter === "20plus" && session.durationMs < 20 * 60_000) return false;
+    return true;
+  });
+  const timeZoneName = "Asia/Kolkata";
+  const heatMax = Math.max(
+    1,
+    ...(data?.activityHeatmap.map((cell) => cell.avgConcurrent) ?? []),
+  );
+  const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
     <div className="space-y-8">
@@ -138,6 +151,38 @@ export function OverviewDashboard({
         </p>
       ) : null}
 
+      <div className="border-border/70 bg-card/30 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-xs">
+        <div>
+          <span className="font-medium">
+            Reporting period · {data?.period.label ?? "Loading…"}
+          </span>
+          <span className="text-muted-foreground ml-2">
+            Complete IST days only · compared with previous equal-length period
+          </span>
+        </div>
+        <span className="text-muted-foreground">
+          Current day excluded · {timeZoneName}
+        </span>
+      </div>
+
+      {data?.dataQuality &&
+      (!data.dataQuality.sessionCoverageComplete ||
+        data.dataQuality.excludedLongSessions > 0 ||
+        !data.dataQuality.concurrencyExact) ? (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-100/90">
+          <strong>Analytics limitations:</strong>{" "}
+          {!data.dataQuality.sessionCoverageComplete
+            ? `Only ${data.dataQuality.sessionCoverageDays} days are within the configured session-retention horizon; ingest gaps cannot be detected. `
+            : ""}
+          {data.dataQuality.excludedLongSessions > 0
+            ? `${data.dataQuality.excludedLongSessions} session(s) over 12 hours were excluded from playtime and concurrency as unreliable. `
+            : ""}
+          {!data.dataQuality.concurrencyExact
+            ? `Concurrency is reconstructed, not an exact presence trace: ${data.dataQuality.overlappingSessions} overlap(s) deduplicated, ${data.dataQuality.overCapacityIntervals} over-capacity interval(s), and unknown capacity for ${data.dataQuality.unknownCapacityServers} server(s).`
+            : ""}
+        </div>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           icon={<Activity className="size-4 text-emerald-400" />}
@@ -149,49 +194,476 @@ export function OverviewDashboard({
         />
         <KpiCard
           icon={<Users className="size-4 text-violet-400" />}
-          label="Unique players"
+          label="Active players"
           value={summary ? String(summary.uniquePlayers) : "—"}
           hint={
-            data?.lifetime
-              ? `${data.lifetime.uniquePlayers} lifetime`
-              : "Distinct SteamIDs"
+            summary
+              ? `${formatDelta(summary.uniquePlayers, data?.previousPeriod.uniquePlayers, data?.previousPeriod.available)} vs prior period`
+              : "Distinct players in period"
           }
           loading={pending && !summary}
           tone="violet"
         />
         <KpiCard
-          icon={<Server className="size-4 text-sky-400" />}
-          label="Sessions"
-          value={summary ? String(summary.totalSessions) : "—"}
+          icon={<Users className="size-4 text-sky-400" />}
+          label="New players"
+          value={summary ? String(summary.newPlayers) : "—"}
           hint={
-            data?.lifetime
-              ? `${data.lifetime.totalSessions} lifetime`
-              : "Join → leave stretches"
+            summary
+              ? `${formatDelta(summary.newPlayers, data?.previousPeriod.newPlayers, data?.previousPeriod.available)} vs prior · first-ever`
+              : "First-ever sessions"
           }
           loading={pending && !summary}
           tone="sky"
+        />
+        <KpiCard
+          icon={<Users className="size-4 text-emerald-400" />}
+          label="Returning players"
+          value={summary ? String(summary.returningPlayers) : "—"}
+          hint={
+            summary
+              ? `${formatDelta(summary.returningPlayers, data?.previousPeriod.returningPlayers, data?.previousPeriod.available)} vs prior · seen before`
+              : "Known first-seen history"
+          }
+          loading={pending && !summary}
+          tone="orange"
+        />
+        <KpiCard
+          icon={<Activity className="size-4 text-fuchsia-400" />}
+          label="D1 / D7 retention"
+          value={
+            data
+              ? `${formatPercent(data.retention.d1Percent)} / ${formatPercent(data.retention.d7Percent)}`
+              : "—"
+          }
+          hint={
+            data
+              ? `Mature cohorts · ${data.retention.d1CohortPlayers} D1 / ${data.retention.d7CohortPlayers} D7 players`
+              : "First-time cohorts only"
+          }
+          loading={pending && !summary}
+          tone="violet"
         />
         <KpiCard
           icon={<Clock className="size-4 text-orange-400" />}
           label="Play time"
           value={summary ? formatDuration(summary.totalPlayTimeMs) : "—"}
           hint={
-            data?.lifetime
-              ? `${formatDuration(data.lifetime.totalPlayTimeMs)} lifetime`
-              : summary
-                ? `Avg session ${formatDuration(summary.avgSessionMs)}`
-                : "Total across sessions"
+            summary
+              ? `${formatDelta(summary.totalPlayTimeMs, data?.previousPeriod.totalPlayTimeMs, data?.previousPeriod.available)} vs prior · outliers excluded`
+              : "Observed session intervals"
           }
           loading={pending && !summary}
           tone="orange"
         />
+        <KpiCard
+          icon={<Activity className="size-4 text-cyan-400" />}
+          label="Avg concurrent"
+          value={summary ? summary.avgConcurrent.toFixed(1) : "—"}
+          hint={
+            summary
+              ? `${formatDelta(summary.avgConcurrent, data?.previousPeriod.avgConcurrent, data?.previousPeriod.available)} vs prior · prime ${summary.primeTimeAvgConcurrent.toFixed(1)} · peak ${summary.peakConcurrent}`
+              : "Time-weighted, capacity-aware"
+          }
+          loading={pending && !summary}
+          tone="sky"
+        />
+        <KpiCard
+          icon={<Server className="size-4 text-lime-400" />}
+          label="Sessions"
+          value={summary ? String(summary.totalSessions) : "—"}
+          hint={
+            summary
+              ? `${formatDelta(summary.totalSessions, data?.previousPeriod.totalSessions, data?.previousPeriod.available)} vs prior · connection stretches`
+              : "Not merged into visits"
+          }
+          loading={pending && !summary}
+          tone="emerald"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border border-b px-4 py-3">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              Retention &amp; player growth
+            </h2>
+            <p className="text-muted-foreground mt-1 text-[10px]">
+              First-ever players use the durable first-seen index; retention is exact
+              calendar-day return.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 p-4">
+            <MetricTile
+              label="D1 retention"
+              value={formatPercent(data?.retention.d1Percent ?? null)}
+              detail={
+                data?.retention.d1CohortPlayers
+                  ? `${data.retention.d1CohortPlayers} mature new players`
+                  : "No mature cohort in this range"
+              }
+            />
+            <MetricTile
+              label="D7 retention"
+              value={formatPercent(data?.retention.d7Percent ?? null)}
+              detail={
+                data?.retention.d7CohortPlayers
+                  ? `${data.retention.d7CohortPlayers} mature new players`
+                  : "No mature cohort in this range"
+              }
+            />
+            <MetricTile
+              label="Active on 2+ days"
+              value={data ? String(data.retention.multiDayPlayers) : "—"}
+              detail="Unique players in selected period"
+            />
+            <MetricTile
+              label="Within retention horizon"
+              value={
+                data
+                  ? `${data.dataQuality.sessionCoverageDays} / ${range === "1d" ? 1 : range === "7d" ? 7 : 30} days`
+                  : "—"
+              }
+              detail={`Configured TTL ${data?.dataQuality.sessionRetentionDays ?? "—"} days; ingest gaps are not detected`}
+            />
+          </div>
+          <div className="space-y-2 px-4 pb-4">
+            <div className="text-muted-foreground flex justify-between text-[10px]">
+              <span>Daily active players · new / returning</span>
+              <span>IST</span>
+            </div>
+            {(data?.daily ?? []).map((day) => {
+              const total = Math.max(
+                1,
+                ...data!.daily
+                  .filter((row) => row.complete)
+                  .map((row) => row.uniquePlayers),
+              );
+              return (
+                <div
+                  key={day.date}
+                  className="grid grid-cols-[3.2rem_1fr_2.7rem] items-center gap-2 text-[10px]"
+                >
+                  <span className="text-muted-foreground">{formatDay(day.date)}</span>
+                  <div
+                    className="bg-secondary/70 flex h-2 overflow-hidden rounded-full"
+                    title={
+                      day.complete
+                        ? `${day.uniquePlayers} active · ${day.newPlayers} new · ${day.returningPlayers} returning`
+                        : "Partial day coverage: session history may have expired"
+                    }
+                  >
+                    {day.complete ? (
+                      <>
+                        <div
+                          className="bg-sky-400"
+                          style={{ width: `${(day.newPlayers / total) * 100}%` }}
+                        />
+                        <div
+                          className="bg-violet-400"
+                          style={{ width: `${(day.returningPlayers / total) * 100}%` }}
+                        />
+                      </>
+                    ) : (
+                      <div className="bg-amber-500/40" style={{ width: "100%" }} />
+                    )}
+                  </div>
+                  <span className="text-right tabular-nums">
+                    {day.complete ? day.uniquePlayers : "—"}
+                  </span>
+                </div>
+              );
+            })}
+            <div className="text-muted-foreground flex gap-4 pt-1 text-[10px]">
+              <span>
+                <i className="mr-1 inline-block size-2 rounded-sm bg-sky-400" />
+                New
+              </span>
+              <span>
+                <i className="mr-1 inline-block size-2 rounded-sm bg-violet-400" />
+                Returning
+              </span>
+              {summary?.unclassifiedPlayers ? (
+                <span>{summary.unclassifiedPlayers} unclassified first-seen</span>
+              ) : null}
+            </div>
+            <div className="border-border/70 mt-3 border-t pt-3">
+              <div className="text-muted-foreground mb-1.5 flex justify-between text-[10px]">
+                <span>First-ever cohort · exact return day</span>
+                <span>Cohort / D1 / D7</span>
+              </div>
+              {(data?.retention.cohorts.slice(-7).reverse() ?? []).map((cohort) => (
+                <div
+                  key={cohort.date}
+                  className="text-muted-foreground flex justify-between py-1 text-[10px] tabular-nums"
+                >
+                  <span>{formatDay(cohort.date)}</span>
+                  <span>
+                    {cohort.players} ·{" "}
+                    {cohort.d1Retained == null
+                      ? "—"
+                      : `${cohort.d1Retained} (${cohort.d1Percent}%)`}{" "}
+                    ·{" "}
+                    {cohort.d7Retained == null
+                      ? "—"
+                      : `${cohort.d7Retained} (${cohort.d7Percent}%)`}
+                  </span>
+                </div>
+              ))}
+              <p className="text-muted-foreground mt-1 text-[9px]">
+                “—” means the return day is not mature or outside retained session
+                history.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border border-b px-4 py-3">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              When players are together
+            </h2>
+            <p className="text-muted-foreground mt-1 text-[10px]">
+              Time-weighted average concurrent players by IST weekday and hour
+            </p>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-[2.3rem_repeat(24,minmax(0,1fr))] gap-1">
+              <span />
+              {Array.from({ length: 24 }, (_, hour) => (
+                <span
+                  key={hour}
+                  className="text-muted-foreground text-center text-[8px] tabular-nums"
+                >
+                  {hour % 3 === 0 ? String(hour).padStart(2, "0") : ""}
+                </span>
+              ))}
+              {weekdayNames.map((dayName, dayOfWeek) => (
+                <div key={dayName} className="contents">
+                  <span className="text-muted-foreground flex items-center text-[9px]">
+                    {dayName}
+                  </span>
+                  {Array.from({ length: 24 }, (_, hour) => {
+                    const value =
+                      data?.activityHeatmap.find(
+                        (cell) => cell.dayOfWeek === dayOfWeek && cell.hour === hour,
+                      )?.avgConcurrent ?? 0;
+                    const intensity = value / heatMax;
+                    return (
+                      <span
+                        key={`${dayName}-${hour}`}
+                        className="aspect-square min-w-0 rounded-[2px] bg-sky-400"
+                        style={{ opacity: value > 0 ? 0.12 + intensity * 0.82 : 0.06 }}
+                        title={`${dayName} ${String(hour).padStart(2, "0")}:00 IST · ${value.toFixed(1)} average players`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            <div className="text-muted-foreground mt-3 flex items-center justify-between text-[10px]">
+              <span>
+                Low <i className="mx-1 inline-block size-2 rounded-sm bg-sky-400/20" />{" "}
+                <i className="inline-block size-2 rounded-sm bg-sky-400" /> High
+              </span>
+              <span>
+                Prime time 17:00–22:00 ·{" "}
+                {summary?.primeTimeAvgConcurrent.toFixed(1) ?? "—"} average players
+              </span>
+            </div>
+          </div>
+          <div className="border-border/70 text-muted-foreground border-t px-4 py-3 text-[10px]">
+            Fleet utilization: empty {data?.utilization.emptyPercent.toFixed(1) ?? "—"}% ·
+            1–4 {data?.utilization.oneToFourPercent.toFixed(1) ?? "—"}% · 5–9{" "}
+            {data?.utilization.fiveToNinePercent.toFixed(1) ?? "—"}% · 10+{" "}
+            {data?.utilization.tenPlusPercent.toFixed(1) ?? "—"}% of observed time
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border border-b px-4 py-3">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              Server density · selected period
+            </h2>
+            <p className="text-muted-foreground mt-1 text-[10px]">
+              Historical session data grouped by server ID; disabled/migrated IDs remain
+              for comparison.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[58rem] text-left text-xs">
+              <thead className="text-muted-foreground border-border/70 border-b text-[10px]">
+                <tr>
+                  <th className="px-3 py-2">Server</th>
+                  <th className="px-3 py-2">Unique</th>
+                  <th className="px-3 py-2">New / return</th>
+                  <th className="px-3 py-2">D1 / D7</th>
+                  <th className="px-3 py-2">Sessions</th>
+                  <th className="px-3 py-2">Playtime</th>
+                  <th className="px-3 py-2">Avg / prime</th>
+                  <th className="px-3 py-2">Peak</th>
+                  <th className="px-3 py-2">Empty</th>
+                  <th className="px-3 py-2">1–4</th>
+                  <th className="px-3 py-2">5–9</th>
+                  <th className="px-3 py-2">10+</th>
+                </tr>
+              </thead>
+              <tbody className="divide-border/60 divide-y">
+                {(data?.serverAnalytics ?? []).map((row) => {
+                  const server = data?.servers.find((item) => item.id === row.id);
+                  return (
+                    <tr key={row.id} className="hover:bg-secondary/20">
+                      <td className="px-3 py-2.5">
+                        <span className="font-medium">{server?.shortName ?? row.id}</span>
+                        <span
+                          className={cn(
+                            "ml-2 text-[9px]",
+                            server?.enabled
+                              ? "text-emerald-400"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {server?.enabled ? "enabled" : "inactive"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">{row.uniquePlayers}</td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {row.newPlayers} / {row.returningPlayers}
+                        {row.unclassifiedPlayers
+                          ? ` (+${row.unclassifiedPlayers} ?)`
+                          : ""}
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {formatPercent(row.d1RetentionPercent)} /{" "}
+                        {formatPercent(row.d7RetentionPercent)}
+                        <span className="text-muted-foreground block text-[9px]">
+                          n={row.d1CohortPlayers} / {row.d7CohortPlayers}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">{row.sessions}</td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {formatDuration(row.totalPlayTimeMs)}
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {row.avgConcurrent.toFixed(1)} /{" "}
+                        {row.primeTimeAvgConcurrent.toFixed(1)}
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {row.peakConcurrent}
+                        {row.capacity ? ` / ${row.capacity}` : ""}
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {row.utilization.emptyPercent.toFixed(0)}%
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {row.utilization.oneToFourPercent.toFixed(0)}%
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {row.utilization.fiveToNinePercent.toFixed(0)}%
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums">
+                        {row.utilization.tenPlusPercent.toFixed(0)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="border-border bg-card/40 rounded-xl border">
+          <div className="border-border flex items-center gap-2 border-b px-4 py-3">
+            <Wallet className="size-4 text-emerald-400" />
+            <div>
+              <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                Paid VIP · verified payments only
+              </h2>
+              <p className="text-muted-foreground mt-1 text-[10px]">
+                Free VIP grants are excluded from revenue.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 p-4">
+            <MetricTile
+              label="Captured revenue"
+              value={formatInr(data?.monetization.grossCapturedPaise ?? 0)}
+              detail={`${formatDelta(data?.monetization.netRevenuePaise ?? 0, data?.previousPeriod.netRevenuePaise, data?.previousPeriod.available)} vs prior net`}
+            />
+            <MetricTile
+              label="Net after refunds"
+              value={formatInr(data?.monetization.netRevenuePaise ?? 0)}
+              detail={`Refunds ${formatInr(data?.monetization.refundsPaise ?? 0)}`}
+            />
+            <MetricTile
+              label="Paying customers"
+              value={String(data?.monetization.payingCustomers ?? 0)}
+              detail={`${data?.monetization.successfulPurchases ?? 0} purchases · ${formatDelta(data?.monetization.payingCustomers ?? 0, data?.previousPeriod.payingCustomers, data?.previousPeriod.available)} vs prior`}
+            />
+            <MetricTile
+              label="Monthly equivalent"
+              value={formatInr(data?.monetization.monthlyEquivalentPaise ?? 0)}
+              detail="Plan duration normalized to 30 days"
+            />
+            <MetricTile
+              label="Abandoned checkouts"
+              value={String(data?.monetization.abandonedCheckouts ?? 0)}
+              detail="Unpaid created orders ≥30 min old"
+            />
+            <MetricTile
+              label="Non-paid VIP users"
+              value={String(data?.monetization.freeVipUsers ?? 0)}
+              detail="Active free/founding entitlements"
+            />
+          </div>
+          <div className="border-border/70 text-muted-foreground space-y-2 border-t px-4 py-3 text-[10px]">
+            <p>
+              Fees: unavailable in payment records · operating costs: not configured ·
+              break-even: unavailable.
+            </p>
+            <p>
+              Checkout conversion:{" "}
+              {formatPercent(data?.monetization.checkoutConversionPercent ?? null)} of
+              recorded checkout users. Captured plan mix:
+            </p>
+            {data?.monetization.revenueByPlan.length ? (
+              data.monetization.revenueByPlan.map((plan) => (
+                <p
+                  key={`${plan.plan}:${plan.accessType}`}
+                  className="flex justify-between gap-2"
+                >
+                  <span>
+                    {plan.accessType === "ALL_RETAKES"
+                      ? "All Retakes"
+                      : "Individual server"}{" "}
+                    · {plan.plan.replaceAll("_", " ")} ({plan.purchases})
+                  </span>
+                  <span>
+                    {formatInr(plan.grossPaise)} ·{" "}
+                    {formatInr(plan.monthlyEquivalentPaise)}/mo equiv.
+                  </span>
+                </p>
+              ))
+            ) : (
+              <p>
+                No captured purchases in this period; unpaid checkouts are not revenue.
+              </p>
+            )}
+            <p>
+              Acquisition source: not tracked for server joins. Existing players cannot be
+              attributed retroactively.
+            </p>
+          </div>
+        </section>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <section className="border-border bg-card/40 rounded-xl border">
           <div className="border-border flex items-center justify-between border-b px-4 py-3">
             <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              Recent connections
+              Recent connection sessions
             </h2>
             <Link
               href="/admin/sessions"
@@ -199,6 +671,59 @@ export function OverviewDashboard({
             >
               View all
             </Link>
+          </div>
+          <div className="border-border flex flex-wrap gap-2 border-b px-3 py-2.5 sm:px-4">
+            <select
+              aria-label="Filter by server"
+              value={serverFilter}
+              onChange={(event) => setServerFilter(event.target.value)}
+              className="border-border bg-background h-8 rounded-md border px-2 text-xs"
+            >
+              <option value="all">All servers</option>
+              {(data?.servers ?? []).map((server) => (
+                <option key={server.id} value={server.id}>
+                  {server.shortName}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Filter by map"
+              value={mapFilter}
+              onChange={(event) => setMapFilter(event.target.value)}
+              className="border-border bg-background h-8 rounded-md border px-2 text-xs"
+            >
+              <option value="all">All maps</option>
+              {maps.map((map) => (
+                <option key={map} value={map!}>
+                  {map}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Filter by session duration"
+              value={durationFilter}
+              onChange={(event) => setDurationFilter(event.target.value)}
+              className="border-border bg-background h-8 rounded-md border px-2 text-xs"
+            >
+              <option value="all">Any duration</option>
+              <option value="under5">Under 5 min</option>
+              <option value="5to20">5–20 min</option>
+              <option value="20plus">20+ min</option>
+            </select>
+            <select
+              aria-label="Filter by player history"
+              value={playerTypeFilter}
+              onChange={(event) => setPlayerTypeFilter(event.target.value)}
+              className="border-border bg-background h-8 rounded-md border px-2 text-xs"
+            >
+              <option value="all">All player types</option>
+              <option value="new">First-time</option>
+              <option value="returning">Returning</option>
+            </select>
+            <span className="text-muted-foreground ml-auto self-center text-[10px]">
+              Latest {data?.recent.length ?? 0} session records · filters apply to this
+              sample
+            </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[30rem] text-left text-sm">
@@ -219,17 +744,21 @@ export function OverviewDashboard({
                 </tr>
               </thead>
               <tbody className="divide-border/60 divide-y">
-                {!data || data.recent.length === 0 ? (
+                {!data || visibleSessions.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
                       className="text-muted-foreground px-3 py-10 text-center sm:px-4"
                     >
-                      {pending ? "Loading…" : "No connections yet for this range."}
+                      {pending
+                        ? "Loading…"
+                        : data?.recent.length
+                          ? "No sessions match these filters."
+                          : "No connection sessions in this range."}
                     </td>
                   </tr>
                 ) : (
-                  data.recent.map((session) => (
+                  visibleSessions.map((session) => (
                     <tr key={session.id} className="hover:bg-secondary/20">
                       <td className="px-3 py-3 sm:px-4">
                         <div className="flex items-center gap-3">
@@ -249,26 +778,34 @@ export function OverviewDashboard({
                           )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <Link
-                                href={`/profile/${session.steamId}`}
-                                title="View WallBang profile"
-                                className="hover:text-primary truncate font-medium transition-colors"
-                              >
-                                {session.personaName ?? "Unknown"}
-                              </Link>
+                              {session.personaName ? (
+                                <Link
+                                  href={`/profile/${session.steamId}`}
+                                  title="View player profile"
+                                  className="hover:text-primary truncate font-medium transition-colors"
+                                >
+                                  {session.personaName}
+                                </Link>
+                              ) : (
+                                <span className="text-muted-foreground truncate font-medium">
+                                  Profile not linked
+                                </span>
+                              )}
+                              {session.firstEverPlayer === true ? (
+                                <span className="rounded bg-sky-500/10 px-1 py-0.5 text-[9px] font-medium text-sky-300">
+                                  New
+                                </span>
+                              ) : session.firstEverPlayer === false ? (
+                                <span className="rounded bg-violet-500/10 px-1 py-0.5 text-[9px] font-medium text-violet-300">
+                                  Returning
+                                </span>
+                              ) : null}
                               {session.active ? (
                                 <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-emerald-400 uppercase">
                                   Live
                                 </span>
                               ) : null}
                             </div>
-                            <Link
-                              href={`/profile/${session.steamId}`}
-                              title="View WallBang profile"
-                              className="text-muted-foreground hover:text-foreground block truncate font-mono text-[11px] transition-colors hover:underline"
-                            >
-                              {session.steamId}
-                            </Link>
                           </div>
                         </div>
                       </td>
@@ -316,10 +853,10 @@ export function OverviewDashboard({
           <div className="border-border flex items-center justify-between border-b px-4 py-3">
             <div>
               <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                Peak &amp; avg players by day
+                Peak &amp; time-weighted average
               </h2>
               <p className="text-muted-foreground mt-0.5 text-[10px]">
-                Max and average concurrent at join per IST day — matches Sessions At join
+                Interval reconstruction · amber marks partial retained-history coverage
               </p>
             </div>
             <Link
@@ -344,16 +881,14 @@ export function OverviewDashboard({
                     </span>
                   </div>
                   <span className="tabular-nums">
-                    High · {peakAcrossDays}
-                    {rangeAvg > 0 ? ` · Avg · ${rangeAvg}` : ""}
+                    Peak · {peakAcrossDays}
+                    {summary ? ` · Period avg · ${summary.avgConcurrent}` : ""}
                   </span>
                 </div>
                 <div className="flex h-44 items-end gap-1 pt-6 sm:gap-1.5">
                   {data.daily.map((day, i) => {
-                    const peak = Number(day.peakConcurrent);
-                    const peakSafe = Number.isFinite(peak) ? peak : 0;
-                    const avg = Number(day.avgConcurrent);
-                    const avgSafe = Number.isFinite(avg) ? avg : 0;
+                    const peakSafe = day.complete ? day.peakConcurrent : 0;
+                    const avgSafe = day.complete ? day.avgConcurrent : 0;
                     const dayLabel = formatDay(day.date);
                     const peakHeightPct =
                       peakSafe <= 0
@@ -379,6 +914,7 @@ export function OverviewDashboard({
                           role="tooltip"
                         >
                           {dayLabel}
+                          {!day.complete ? " · incomplete retained history" : ""}
                           {peakSafe > 0 ? ` · peak ${peakSafe}` : ""}
                           {avgSafe > 0 ? ` · avg ${avgSafe}` : ""}
                         </span>
@@ -398,9 +934,11 @@ export function OverviewDashboard({
                           <div
                             className={cn(
                               "w-full max-w-4 rounded-t-sm transition-colors",
-                              peakSafe > 0
-                                ? "bg-primary/85 group-hover:bg-primary"
-                                : "bg-border/80 group-hover:bg-border",
+                              !day.complete
+                                ? "bg-amber-400/60"
+                                : peakSafe > 0
+                                  ? "bg-primary/85 group-hover:bg-primary"
+                                  : "bg-border/80 group-hover:bg-border",
                             )}
                             style={{
                               height: peakSafe > 0 ? `${peakHeightPct}%` : "3px",
@@ -409,9 +947,11 @@ export function OverviewDashboard({
                           <div
                             className={cn(
                               "w-full max-w-4 rounded-t-sm transition-colors",
-                              avgSafe > 0
-                                ? "bg-sky-400/70 group-hover:bg-sky-400"
-                                : "bg-border/50 group-hover:bg-border/80",
+                              !day.complete
+                                ? "bg-amber-400/30"
+                                : avgSafe > 0
+                                  ? "bg-sky-400/70 group-hover:bg-sky-400"
+                                  : "bg-border/50 group-hover:bg-border/80",
                             )}
                             style={{
                               height: avgSafe > 0 ? `${avgHeightPct}%` : "3px",
@@ -604,6 +1144,52 @@ function KpiCard({
         {value}
       </p>
       <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
+    </div>
+  );
+}
+
+function formatPercent(value: number | null | undefined): string {
+  return typeof value === "number" ? `${value.toFixed(1)}%` : "—";
+}
+
+function formatInr(paise: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(paise / 100);
+}
+
+function formatDelta(
+  value: number,
+  previous: number | undefined,
+  available = true,
+): string {
+  if (!available) return "Unavailable";
+  if (previous == null) return "No comparison";
+  if (previous === 0) return value === 0 ? "No change" : "Up from 0";
+  const change = ((value - previous) / Math.abs(previous)) * 100;
+  const rounded = Math.round(Math.abs(change));
+  if (rounded === 0) return "No change";
+  return `${change > 0 ? "↑" : "↓"} ${rounded}%`;
+}
+
+function MetricTile({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="border-border/70 bg-background/40 rounded-lg border px-3 py-2.5">
+      <p className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
+      <p className="text-muted-foreground mt-0.5 text-[10px]">{detail}</p>
     </div>
   );
 }
