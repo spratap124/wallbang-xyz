@@ -30,6 +30,118 @@ export type PeriodWindows = {
   dayCount: number;
 };
 
+export type IstDayPlayerSummary = {
+  /** Distinct SteamIDs with a session overlapping the day, across all servers. */
+  uniquePlayers: Set<string>;
+  newPlayers: number;
+  returningPlayers: number;
+  unclassifiedPlayers: number;
+};
+
+/**
+ * Effective end instant of a session for analytics windows: an explicit leave
+ * time, or the last presence ping extended through a staleness grace period.
+ */
+export function analyticsSessionEndMs(
+  session: Pick<AnalyticsSession, "leftAt" | "lastSeenAt">,
+  nowMs: number,
+  staleAfterMs: number,
+): number {
+  if (session.leftAt) return session.leftAt.getTime();
+  return nowMs - session.lastSeenAt.getTime() <= staleAfterMs
+    ? nowMs
+    : session.lastSeenAt.getTime();
+}
+
+/**
+ * Distinct players active during one IST calendar day, split into new
+ * (first-ever session inside the day) vs returning (first seen before the
+ * day). Sessions are de-duplicated per SteamID, across servers.
+ */
+export function summarizeIstDayPlayers(input: {
+  sessions: AnalyticsSession[];
+  dayStart: Date;
+  dayEnd: Date;
+  now: Date;
+  /** Staleness grace period for sessions without an explicit leave. */
+  staleAfterMs: number;
+  firstSeenBySteam: Map<string, Date>;
+}): IstDayPlayerSummary {
+  const dayStartMs = input.dayStart.getTime();
+  const dayEndMs = input.dayEnd.getTime();
+  const uniquePlayers = new Set<string>();
+  for (const session of input.sessions) {
+    const sessionEnd = analyticsSessionEndMs(
+      session,
+      input.now.getTime(),
+      input.staleAfterMs,
+    );
+    if (
+      sessionEnd - session.joinedAt.getTime() <= MAX_ANALYTICS_SESSION_MS &&
+      session.joinedAt.getTime() < dayEndMs &&
+      sessionEnd > dayStartMs
+    ) {
+      uniquePlayers.add(session.steamId);
+    }
+  }
+  let newPlayers = 0;
+  let returningPlayers = 0;
+  let unclassifiedPlayers = 0;
+  for (const steamId of uniquePlayers) {
+    const firstSeen = input.firstSeenBySteam.get(steamId);
+    if (!firstSeen) {
+      unclassifiedPlayers += 1;
+    } else if (firstSeen.getTime() >= dayStartMs && firstSeen.getTime() < dayEndMs) {
+      newPlayers += 1;
+    } else {
+      returningPlayers += 1;
+    }
+  }
+  return { uniquePlayers, newPlayers, returningPlayers, unclassifiedPlayers };
+}
+
+/** One IST day's returning-player contribution to the daily average. */
+export type ReturningPlayersDayInput = {
+  date: string;
+  /** False when TTL expiry or missing history may have removed part of this day. */
+  complete: boolean;
+  returningPlayers: number;
+};
+
+export type AverageDailyReturningPlayers = {
+  /** Null when no complete day qualifies — missing data is never treated as zero. */
+  average: number | null;
+  /** Sum of distinct returning players over the included days. */
+  total: number;
+  /** Denominator: number of complete, observed days used for the average. */
+  days: number;
+  observedFromDay: string | null;
+};
+
+/**
+ * Average distinct returning players per complete IST day:
+ * sum of daily distinct returning players / number of complete days.
+ * Days before `observedFromDay` (before tracking existed) are excluded so
+ * missing historical data is not counted as zero; a null `observedFromDay`
+ * means there is no tracking data at all, making the average unavailable.
+ */
+export function averageDailyReturningPlayers(
+  days: ReturningPlayersDayInput[],
+  options: { observedFromDay?: string | null } = {},
+): AverageDailyReturningPlayers {
+  const observedFromDay = options.observedFromDay ?? null;
+  if (!observedFromDay) {
+    return { average: null, total: 0, days: 0, observedFromDay: null };
+  }
+  const included = days.filter((day) => day.complete && day.date >= observedFromDay);
+  if (included.length === 0) {
+    return { average: null, total: 0, days: 0, observedFromDay };
+  }
+  const total = included.reduce((sum, day) => sum + day.returningPlayers, 0);
+  const average = Math.round((total / included.length) * 10) / 10;
+  return { average, total, days: included.length, observedFromDay };
+}
+
 export type ConcurrencyPoint = {
   date: string;
   peakConcurrent: number;

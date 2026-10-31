@@ -15,6 +15,7 @@ import {
   Megaphone,
   RefreshCw,
   Server,
+  TrendingUp,
   Users,
   Wallet,
 } from "lucide-react";
@@ -451,6 +452,29 @@ export function AnalyticsDashboard({ canManageServers }: Props) {
               ? `${data.summary.unclassifiedPlayers} unclassified`
               : "Seen before this period"
           }
+          loading={loading}
+        />
+        <KpiCard
+          icon={<TrendingUp className="size-4" />}
+          accent="violet"
+          label="Avg. Daily Returning Players"
+          value={
+            data && hasSessionCoverage && data.summary.avgDailyReturningPlayers != null
+              ? data.summary.avgDailyReturningPlayers.toFixed(1)
+              : "—"
+          }
+          comparison={
+            data &&
+            data.summary.avgDailyReturningPlayers != null &&
+            data.previousPeriod.avgDailyReturningPlayers != null
+              ? deltaLabel(
+                  data.summary.avgDailyReturningPlayers,
+                  data.previousPeriod.avgDailyReturningPlayers,
+                  metricComparison,
+                )
+              : null
+          }
+          detail="Average distinct returning players per complete day"
           loading={loading}
         />
         <KpiCard

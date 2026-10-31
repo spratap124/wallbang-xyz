@@ -272,6 +272,8 @@ export type FleetAnalyticsComparison = {
   totalPlayTimeMs: number;
   avgSessionMs: number;
   avgConcurrent: number;
+  /** Average distinct returning players per complete day; null when unmeasurable. */
+  avgDailyReturningPlayers: number | null;
   payingCustomers: number;
   netRevenuePaise: number;
   d1RetentionPercent: number | null;
@@ -296,6 +298,10 @@ export type FleetOverviewSummary = {
   totalPlayTimeMs: number;
   avgSessionMs: number;
   avgConcurrent: number;
+  /** Average distinct returning players per complete day; null when unmeasurable. */
+  avgDailyReturningPlayers: number | null;
+  /** Denominator used for the average (complete observed days). */
+  avgDailyReturningDays: number;
   primeTimeAvgConcurrent: number;
   peakConcurrent: number;
   overCapacityMinutes: number;

@@ -18,10 +18,13 @@ import {
 import { istDayBounds, istDayKey, listRecentIstDayKeys } from "@/lib/time/ist";
 import { playerSessionRetentionSeconds } from "@/lib/profile/collections";
 import {
+  analyticsSessionEndMs,
+  averageDailyReturningPlayers,
   computeOverviewConcurrency,
   istDayOfWeekAndHour,
   overviewIstPeriod,
   retentionRate,
+  summarizeIstDayPlayers,
   MAX_ANALYTICS_SESSION_MS,
   type AnalyticsSession,
 } from "@/lib/profile/overview-analytics";
@@ -537,10 +540,7 @@ export async function getServerConnectionStats(input: {
 }
 
 function sessionEndForAnalytics(session: PlayerSessionDoc, nowMs: number): number {
-  if (session.leftAt) return session.leftAt.getTime();
-  return nowMs - session.lastSeenAt.getTime() <= presenceStaleMs() * 2
-    ? nowMs
-    : session.lastSeenAt.getTime();
+  return analyticsSessionEndMs(session, nowMs, presenceStaleMs() * 2);
 }
 
 function summarizePlayers(input: {
@@ -1062,60 +1062,81 @@ export async function getFleetConnectionStats(input: {
     sessionsByDay.set(day, items);
   }
   const currentDailyActiveByPlayer = new Map<string, Set<string>>();
+  const staleAfterMs = presenceStaleMs() * 2;
   const dayBuckets = listRecentIstDayKeys(
     periods.dayCount,
     new Date(periods.current.end.getTime() - 1),
   ).map((date) => {
     const { start: dayStart, end: dayEnd } = istDayBounds(date);
     const daySessions = sessionsByDay.get(date) ?? [];
-    const uniquePlayers = new Set<string>();
-    for (const session of allSessions) {
-      const sessionEnd = sessionEndForAnalytics(session, now.getTime());
-      if (
-        sessionEnd - session.joinedAt.getTime() <= MAX_ANALYTICS_SESSION_MS &&
-        session.joinedAt.getTime() < dayEnd.getTime() &&
-        sessionEnd > dayStart.getTime()
-      ) {
-        uniquePlayers.add(session.steamId);
-        const activeDays =
-          currentDailyActiveByPlayer.get(session.steamId) ?? new Set<string>();
-        activeDays.add(date);
-        currentDailyActiveByPlayer.set(session.steamId, activeDays);
-      }
-    }
-    let newPlayers = 0;
-    let returningPlayers = 0;
-    let unclassifiedPlayers = 0;
-    for (const steamId of uniquePlayers) {
-      const firstSeen = firstSeenBySteam.get(steamId);
-      if (!firstSeen) {
-        unclassifiedPlayers += 1;
-        continue;
-      }
-      if (
-        firstSeen >= dayStart &&
-        firstSeen < new Date(dayStart.getTime() + 86_400_000)
-      ) {
-        newPlayers += 1;
-      } else {
-        returningPlayers += 1;
-      }
+    const daySummary = summarizeIstDayPlayers({
+      sessions: allSessions,
+      dayStart,
+      dayEnd,
+      now,
+      staleAfterMs,
+      firstSeenBySteam,
+    });
+    for (const steamId of daySummary.uniquePlayers) {
+      const activeDays = currentDailyActiveByPlayer.get(steamId) ?? new Set<string>();
+      activeDays.add(date);
+      currentDailyActiveByPlayer.set(steamId, activeDays);
     }
     const concurrency = currentConcurrency.daily.get(date);
     return {
       date,
       complete: dayStart >= coverageStart,
-      uniquePlayers: uniquePlayers.size,
+      uniquePlayers: daySummary.uniquePlayers.size,
       sessions: daySessions.length,
-      newPlayers,
-      returningPlayers,
-      unclassifiedPlayers,
+      newPlayers: daySummary.newPlayers,
+      returningPlayers: daySummary.returningPlayers,
+      unclassifiedPlayers: daySummary.unclassifiedPlayers,
       playTimeMs: concurrency?.playTimeMs ?? 0,
       peakConcurrent: concurrency?.peakConcurrent ?? 0,
       avgConcurrent: concurrency?.avgConcurrent ?? 0,
       primeTimeAvgConcurrent: concurrency?.primeTimeAvgConcurrent ?? 0,
     };
   });
+
+  // Tracking starts at the earliest first-ever session on record; days before
+  // it have no observation history and must not be averaged in as zeros.
+  let earliestFirstSeen: Date | null = null;
+  for (const firstSeen of firstSeenBySteam.values()) {
+    if (!earliestFirstSeen || firstSeen < earliestFirstSeen) {
+      earliestFirstSeen = firstSeen;
+    }
+  }
+  const observedFromDay = earliestFirstSeen ? istDayKey(earliestFirstSeen) : null;
+  const currentDailyReturning = averageDailyReturningPlayers(
+    dayBuckets.map(({ date, complete, returningPlayers }) => ({
+      date,
+      complete,
+      returningPlayers,
+    })),
+    { observedFromDay },
+  );
+  const previousDailyReturning = averageDailyReturningPlayers(
+    listRecentIstDayKeys(
+      periods.dayCount,
+      new Date(periods.previous.end.getTime() - 1),
+    ).map((date) => {
+      const { start: dayStart, end: dayEnd } = istDayBounds(date);
+      const daySummary = summarizeIstDayPlayers({
+        sessions: allSessions,
+        dayStart,
+        dayEnd,
+        now,
+        staleAfterMs,
+        firstSeenBySteam,
+      });
+      return {
+        date,
+        complete: dayStart >= coverageStart,
+        returningPlayers: daySummary.returningPlayers,
+      };
+    }),
+    { observedFromDay },
+  );
 
   const multiDayPlayers = [...currentDailyActiveByPlayer.values()].filter(
     (days) => days.size > 1,
@@ -1169,6 +1190,7 @@ export async function getFleetConnectionStats(input: {
     totalPlayTimeMs: previousPlayTimeMs,
     avgSessionMs: previousAvgSessionMs,
     avgConcurrent: previousConcurrency.avgConcurrent,
+    avgDailyReturningPlayers: previousDailyReturning.average,
     payingCustomers: previousMonetization.payingCustomers,
     netRevenuePaise: previousMonetization.netRevenuePaise,
     d1RetentionPercent: previousRetention.d1Percent,
@@ -1354,6 +1376,8 @@ export async function getFleetConnectionStats(input: {
       totalPlayTimeMs: currentPlayTimeMs,
       avgSessionMs: currentAvgSessionMs,
       avgConcurrent: currentConcurrency.avgConcurrent,
+      avgDailyReturningPlayers: currentDailyReturning.average,
+      avgDailyReturningDays: currentDailyReturning.days,
       primeTimeAvgConcurrent: currentConcurrency.primeTimeAvgConcurrent,
       peakConcurrent: currentConcurrency.peakConcurrent,
       overCapacityMinutes: Math.round(currentConcurrency.overCapacityMs / 60_000),
