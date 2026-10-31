@@ -21,6 +21,7 @@ import type {
   RoleSource,
 } from "@/types/permissions";
 import { BADGE_TYPES, type BadgeType } from "@/types/profile";
+import { PLAYER_TAG_MAX_LENGTH } from "@/lib/permissions/player-tags";
 
 type SearchUser = {
   id: string;
@@ -109,6 +110,8 @@ export function AdminDashboard() {
   const customExpiryInvalid =
     expiryPreset === "custom" && !customExpiryDate(customExpiry);
   const [badgeType, setBadgeType] = useState<BadgeType>("VIP");
+  const [chatTagDraft, setChatTagDraft] = useState("");
+  const [nameTagDraft, setNameTagDraft] = useState("");
   const [vipEntitlements, setVipEntitlements] = useState<
     VipEntitlementAdminRow[]
   >([]);
@@ -151,6 +154,8 @@ export function AdminDashboard() {
           return;
         }
         setSelected(payload.data);
+        setChatTagDraft(payload.data.chatTag ?? "");
+        setNameTagDraft(payload.data.nameTag ?? "");
         loadVipEntitlements(payload.data.userId);
       });
     },
@@ -322,6 +327,32 @@ export function AdminDashboard() {
           payload.data.vipDeactivated ? " · VIP role cleared" : ""
         }.`,
       );
+    });
+  }
+
+  function saveTags() {
+    if (!selected) return;
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const res = await fetch("/api/v1/admin/player-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUserId: selected.userId,
+          chatTag: chatTagDraft,
+          nameTag: nameTagDraft,
+        }),
+      });
+      const payload = await readJson<ResolvedPermissions>(res);
+      if (!payload.ok) {
+        setError(payload.error);
+        return;
+      }
+      setSelected(payload.data);
+      setChatTagDraft(payload.data.chatTag ?? "");
+      setNameTagDraft(payload.data.nameTag ?? "");
+      setMessage("Saved chat and scoreboard tags. Roles were not changed.");
     });
   }
 
@@ -680,6 +711,45 @@ export function AdminDashboard() {
                   }
                 >
                   Grant
+                </Button>
+              </div>
+
+              <div className="space-y-3 border-t border-border pt-4">
+                <h3 className="text-sm font-medium">In-game tags</h3>
+                <p className="text-xs text-muted-foreground">
+                  Chat prefix and scoreboard name. Empty uses the role default
+                  ([OWNER], [ADMIN], [MOD], [VIP], or [WallBang]). Does not
+                  change roles or VIP perks.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="chatTag">Chat tag</Label>
+                    <Input
+                      id="chatTag"
+                      value={chatTagDraft}
+                      maxLength={PLAYER_TAG_MAX_LENGTH}
+                      placeholder="[VIP]"
+                      onChange={(e) => setChatTagDraft(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nameTag">Scoreboard name tag</Label>
+                    <Input
+                      id="nameTag"
+                      value={nameTagDraft}
+                      maxLength={PLAYER_TAG_MAX_LENGTH}
+                      placeholder="VIP"
+                      onChange={(e) => setNameTagDraft(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={saveTags}
+                  disabled={pending}
+                >
+                  Save tags
                 </Button>
               </div>
 

@@ -27,8 +27,10 @@ import {
   searchUsers as searchUserDocs,
   toAuthUser,
   updateUserDisplayRole,
+  updateUserDisplayTags,
   type UserDoc,
 } from "@/lib/auth/users";
+import { parsePlayerTag } from "@/lib/permissions/player-tags";
 import type {
   AuditLogDoc,
   PermissionCode,
@@ -127,6 +129,8 @@ async function resolveFromUser(user: UserDoc): Promise<ResolvedPermissions> {
     avatarUrl: user.avatarUrl,
     profileUrl: user.profileUrl,
     displayRole,
+    chatTag: user.chatTag?.trim() || null,
+    nameTag: user.nameTag?.trim() || null,
     roles: roleCodes.sort(
       (a, b) => ROLE_PRIORITY[b] - ROLE_PRIORITY[a],
     ),
@@ -172,6 +176,50 @@ export async function getUserPermissions(params: {
 
   if (!user) return null;
   return resolveFromUser(user);
+}
+
+export async function setPlayerTags(input: {
+  targetUserId?: string;
+  targetSteamId?: string;
+  chatTag: unknown;
+  nameTag: unknown;
+  grantedBy: { id: string; steamId: string };
+}): Promise<ResolvedPermissions> {
+  await ready();
+
+  let user: UserDoc | null = null;
+  if (input.targetUserId) {
+    user = await findUserById(input.targetUserId);
+  } else if (input.targetSteamId) {
+    user = await findUserBySteamId(input.targetSteamId);
+  }
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  const chatTag = parsePlayerTag(input.chatTag);
+  const nameTag = parsePlayerTag(input.nameTag);
+  const previous = {
+    chatTag: user.chatTag?.trim() || null,
+    nameTag: user.nameTag?.trim() || null,
+  };
+
+  const updated = await updateUserDisplayTags(user._id, { chatTag, nameTag });
+  invalidatePermissionCache(updated.steamId);
+
+  await writeAudit({
+    adminId: input.grantedBy.id,
+    adminSteamId: input.grantedBy.steamId,
+    action: "SET_PLAYER_TAGS",
+    targetUserId: updated._id,
+    targetSteamId: updated.steamId,
+    targetPersonaName: updated.personaName,
+    oldValue: previous,
+    newValue: { chatTag, nameTag },
+    timestamp: new Date(),
+  });
+
+  return resolveFromUser(updated);
 }
 
 export async function hasPermission(params: {
@@ -1208,6 +1256,8 @@ export async function getPlayerPermissions(
       player: { steamId, username: "" },
       roles: [],
       permissions: [],
+      chatTag: null,
+      nameTag: null,
       loadout,
     };
   }
@@ -1223,6 +1273,8 @@ export async function getPlayerPermissions(
     },
     roles: scoped.roles,
     permissions: scoped.permissions,
+    chatTag: scoped.chatTag,
+    nameTag: scoped.nameTag,
     loadout,
   };
 }

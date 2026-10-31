@@ -30,8 +30,9 @@ export default async function AdminPermissionsPage() {
           Permissions
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Search players, grant or revoke roles. Permissions always resolve from
-          active roles — never from payments directly.
+          Search players, grant or revoke roles, and set in-game chat and
+          scoreboard tags. Permissions always resolve from active roles — never
+          from payments directly.
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>

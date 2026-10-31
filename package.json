@@ -22,6 +22,7 @@
     "test:vip-entitlements": "node --import tsx --test lib/payments/entitlements.test.ts",
     "test:payu": "node --import tsx --test lib/payments/payu.test.ts",
     "test:moderation": "node --import tsx --test lib/admin/moderation.test.ts lib/moderation/service.test.ts",
+    "test:player-tags": "node --import tsx --test lib/permissions/player-tags.test.ts",
     "test:loadout": "node --import tsx --test lib/validations/loadout.test.ts lib/loadout/knife-finishes.test.ts lib/loadout/glove-skins.test.ts lib/loadout/images.test.ts"
   },
   "dependencies": {
