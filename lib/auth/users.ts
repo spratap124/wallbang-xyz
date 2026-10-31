@@ -24,6 +24,10 @@ export type UserDoc = {
   discordLinkedAt?: Date | null;
   /** Denormalized highest active role for display. */
   role: RoleCode;
+  /** Admin-set CS2 chat prefix. Null/absent = role default. */
+  chatTag?: string | null;
+  /** Admin-set CS2 scoreboard clan. Null/absent = role default. */
+  nameTag?: string | null;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date;
@@ -153,6 +157,29 @@ export async function updateUserDisplayRole(
     { _id: userId },
     { $set: { role, updatedAt: new Date() } },
   );
+}
+
+export async function updateUserDisplayTags(
+  userId: string,
+  tags: { chatTag: string | null; nameTag: string | null },
+): Promise<UserDoc> {
+  await ensureIndexes();
+  const col = await users();
+  const result = await col.findOneAndUpdate(
+    { _id: userId },
+    {
+      $set: {
+        chatTag: tags.chatTag,
+        nameTag: tags.nameTag,
+        updatedAt: new Date(),
+      },
+    },
+    { returnDocument: "after" },
+  );
+  if (!result) {
+    throw new Error("User not found.");
+  }
+  return result;
 }
 
 export async function searchUsers(

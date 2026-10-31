@@ -11,6 +11,7 @@ export {
   searchUsers,
   getAuditLogs,
   getPlayerPermissions,
+  setPlayerTags,
   onUserAuthenticated,
   ensureOwnerFromEnv,
   ensureBaselineUserRole,

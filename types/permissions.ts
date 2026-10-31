@@ -79,6 +79,7 @@ export type AuditAction =
   | "REVOKE_ROLE"
   | "REVOKE_VIP_ACCESS"
   | "GRANT_BADGE"
+  | "SET_PLAYER_TAGS"
   | "CREATE_SERVER"
   | "UPDATE_SERVER"
   | "DISABLE_SERVER"
@@ -119,6 +120,10 @@ export type ResolvedPermissions = {
   avatarUrl: string;
   profileUrl: string;
   displayRole: RoleCode;
+  /** Admin-set CS2 chat prefix. Null = role default in-game. */
+  chatTag: string | null;
+  /** Admin-set CS2 scoreboard clan. Null = role default in-game. */
+  nameTag: string | null;
   roles: RoleCode[];
   permissions: PermissionCode[];
   activeAssignments: Array<{
@@ -137,6 +142,10 @@ export type PlayerPermissionsResponse = {
   };
   roles: RoleCode[];
   permissions: PermissionCode[];
+  /** Admin-set CS2 chat prefix. Null = role default. */
+  chatTag: string | null;
+  /** Admin-set CS2 scoreboard clan. Null = role default. */
+  nameTag: string | null;
   /** Game-facing loadout for WallBang.Skins / Knife / Gloves plugins. */
   loadout: import("@/types/player-loadout").GameLoadout | null;
 };

@@ -72,6 +72,11 @@ function auditDetailLabel(entry: AuditLogDoc): string {
       if (!type) return "—";
       return BADGE_LABELS[type as BadgeType] ?? type;
     }
+    case "SET_PLAYER_TAGS": {
+      const chat = stringField(entry.newValue, "chatTag") ?? "role default";
+      const name = stringField(entry.newValue, "nameTag") ?? "role default";
+      return `chat ${chat} · scoreboard ${name}`;
+    }
     case "CREATE_SERVER":
     case "UPDATE_SERVER":
     case "DISABLE_SERVER":
