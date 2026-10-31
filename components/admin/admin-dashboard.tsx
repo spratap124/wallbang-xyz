@@ -21,7 +21,17 @@ import type {
   RoleSource,
 } from "@/types/permissions";
 import { BADGE_TYPES, type BadgeType } from "@/types/profile";
-import { PLAYER_TAG_MAX_LENGTH } from "@/lib/permissions/player-tags";
+import {
+  CHAT_TAG_OPTIONS,
+  NAME_TAG_OPTIONS,
+} from "@/lib/permissions/player-tags";
+
+function selectableTag(
+  value: string | null,
+  options: readonly string[],
+): string {
+  return value && options.includes(value) ? value : "";
+}
 
 type SearchUser = {
   id: string;
@@ -154,8 +164,8 @@ export function AdminDashboard() {
           return;
         }
         setSelected(payload.data);
-        setChatTagDraft(payload.data.chatTag ?? "");
-        setNameTagDraft(payload.data.nameTag ?? "");
+        setChatTagDraft(selectableTag(payload.data.chatTag, CHAT_TAG_OPTIONS));
+        setNameTagDraft(selectableTag(payload.data.nameTag, NAME_TAG_OPTIONS));
         loadVipEntitlements(payload.data.userId);
       });
     },
@@ -350,8 +360,8 @@ export function AdminDashboard() {
         return;
       }
       setSelected(payload.data);
-      setChatTagDraft(payload.data.chatTag ?? "");
-      setNameTagDraft(payload.data.nameTag ?? "");
+      setChatTagDraft(selectableTag(payload.data.chatTag, CHAT_TAG_OPTIONS));
+      setNameTagDraft(selectableTag(payload.data.nameTag, NAME_TAG_OPTIONS));
       setMessage("Saved chat and scoreboard tags. Roles were not changed.");
     });
   }
@@ -717,30 +727,42 @@ export function AdminDashboard() {
               <div className="space-y-3 border-t border-border pt-4">
                 <h3 className="text-sm font-medium">In-game tags</h3>
                 <p className="text-xs text-muted-foreground">
-                  Chat prefix and scoreboard name. Empty uses the role default
-                  ([OWNER], [ADMIN], [MOD], [VIP], or [WallBang]). Does not
-                  change roles or VIP perks.
+                  Chat prefix and scoreboard name. Role default uses the
+                  player&apos;s role ([OWNER], [ADMIN], [MOD], [VIP], or
+                  [WallBang]). Does not change roles or VIP perks.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="chatTag">Chat tag</Label>
-                    <Input
+                    <select
                       id="chatTag"
                       value={chatTagDraft}
-                      maxLength={PLAYER_TAG_MAX_LENGTH}
-                      placeholder="[VIP]"
                       onChange={(e) => setChatTagDraft(e.target.value)}
-                    />
+                      className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <option value="">Role default</option>
+                      {CHAT_TAG_OPTIONS.map((tag) => (
+                        <option key={tag} value={tag}>
+                          {tag}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="nameTag">Scoreboard name tag</Label>
-                    <Input
+                    <select
                       id="nameTag"
                       value={nameTagDraft}
-                      maxLength={PLAYER_TAG_MAX_LENGTH}
-                      placeholder="VIP"
                       onChange={(e) => setNameTagDraft(e.target.value)}
-                    />
+                      className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <option value="">Role default</option>
+                      {NAME_TAG_OPTIONS.map((tag) => (
+                        <option key={tag} value={tag}>
+                          {tag}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <Button

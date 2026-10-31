@@ -30,7 +30,10 @@ import {
   updateUserDisplayTags,
   type UserDoc,
 } from "@/lib/auth/users";
-import { parsePlayerTag } from "@/lib/permissions/player-tags";
+import {
+  isAllowedPlayerTag,
+  parsePlayerTag,
+} from "@/lib/permissions/player-tags";
 import type {
   AuditLogDoc,
   PermissionCode,
@@ -199,6 +202,12 @@ export async function setPlayerTags(input: {
 
   const chatTag = parsePlayerTag(input.chatTag);
   const nameTag = parsePlayerTag(input.nameTag);
+  if (
+    !isAllowedPlayerTag("chat", chatTag) ||
+    !isAllowedPlayerTag("name", nameTag)
+  ) {
+    throw new Error("Choose a tag from the list.");
+  }
   const previous = {
     chatTag: user.chatTag?.trim() || null,
     nameTag: user.nameTag?.trim() || null,
