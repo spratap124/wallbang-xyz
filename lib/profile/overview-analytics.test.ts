@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  averageDailyReturningPlayers,
   completedIstPeriod,
   computeOverviewConcurrency,
   istDayOfWeekAndHour,
   overviewIstPeriod,
   retentionRate,
+  summarizeIstDayPlayers,
   type AnalyticsSession,
 } from "./overview-analytics";
+import { listRecentIstDayKeys } from "../time/ist";
 
 const session = (
   id: string,
@@ -297,5 +300,268 @@ describe("retention day assignment", () => {
       retentionRate({ firstSeenAt, activityByPlayer, steamId: "p1", dayOffset: 30 }),
       true,
     );
+  });
+});
+
+describe("per-day new vs returning classification", () => {
+  const dayStartOct10 = new Date("2026-10-10T00:00:00.000+05:30");
+  const dayEndOct10 = new Date("2026-10-11T00:00:00.000+05:30");
+  const now = new Date("2026-10-15T12:00:00.000Z");
+
+  const summarize = (
+    sessions: AnalyticsSession[],
+    firstSeenBySteam: Map<string, Date>,
+    dayStart = dayStartOct10,
+    dayEnd = dayEndOct10,
+  ) =>
+    summarizeIstDayPlayers({
+      sessions,
+      dayStart,
+      dayEnd,
+      now,
+      staleAfterMs: 3_600_000,
+      firstSeenBySteam,
+    });
+
+  it("does not count a first-time player as returning on their first recorded day", () => {
+    const summary = summarize(
+      [
+        session(
+          "s1",
+          "p1",
+          "srv",
+          "2026-10-10T04:30:00.000Z", // 10:00 IST
+          "2026-10-10T05:00:00.000Z",
+        ),
+      ],
+      new Map([["p1", new Date("2026-10-10T04:30:00.000Z")]]),
+    );
+    assert.equal(summary.uniquePlayers.size, 1);
+    assert.equal(summary.newPlayers, 1);
+    assert.equal(summary.returningPlayers, 0);
+  });
+
+  it("counts a returning player once per day across reconnects", () => {
+    const summary = summarize(
+      [
+        session(
+          "s1",
+          "p1",
+          "srv",
+          "2026-10-10T04:30:00.000Z",
+          "2026-10-10T05:00:00.000Z",
+        ),
+        session(
+          "s2",
+          "p1",
+          "srv",
+          "2026-10-10T14:00:00.000Z",
+          "2026-10-10T14:30:00.000Z",
+        ),
+      ],
+      new Map([["p1", new Date("2026-10-09T04:30:00.000Z")]]),
+    );
+    assert.equal(summary.uniquePlayers.size, 1);
+    assert.equal(summary.returningPlayers, 1);
+    assert.equal(summary.newPlayers, 0);
+  });
+
+  it("counts the same returning player on each distinct later day", () => {
+    const firstSeen = new Map([["p1", new Date("2026-10-09T04:30:00.000Z")]]);
+    const first = summarize(
+      [
+        session(
+          "s1",
+          "p1",
+          "srv",
+          "2026-10-10T04:30:00.000Z",
+          "2026-10-10T05:00:00.000Z",
+        ),
+      ],
+      firstSeen,
+    );
+    const second = summarize(
+      [
+        session(
+          "s2",
+          "p1",
+          "srv",
+          "2026-10-11T04:30:00.000Z",
+          "2026-10-11T05:00:00.000Z",
+        ),
+      ],
+      firstSeen,
+      new Date("2026-10-11T00:00:00.000+05:30"),
+      new Date("2026-10-12T00:00:00.000+05:30"),
+    );
+    assert.equal(first.returningPlayers, 1);
+    assert.equal(second.returningPlayers, 1);
+  });
+
+  it("de-duplicates a player who joined multiple servers in one day", () => {
+    const summary = summarize(
+      [
+        session(
+          "s1",
+          "p1",
+          "srv-a",
+          "2026-10-10T04:30:00.000Z",
+          "2026-10-10T05:00:00.000Z",
+        ),
+        session(
+          "s2",
+          "p1",
+          "srv-b",
+          "2026-10-10T04:45:00.000Z",
+          "2026-10-10T05:15:00.000Z",
+        ),
+      ],
+      new Map([["p1", new Date("2026-10-09T04:30:00.000Z")]]),
+    );
+    assert.equal(summary.uniquePlayers.size, 1);
+    assert.equal(summary.returningPlayers, 1);
+  });
+
+  it("classifies sessions crossing the IST midnight boundary on the later day", () => {
+    const firstSeen = new Map([["p1", new Date("2026-10-09T06:30:00.000Z")]]); // Oct 9 12:00 IST
+    const wholeSession = session(
+      "s1",
+      "p1",
+      "srv",
+      "2026-10-09T18:29:59.000Z", // Oct 9 23:59:59 IST, crosses into Oct 10
+      "2026-10-09T19:00:00.000Z",
+    );
+    const oct9 = summarize(
+      [wholeSession],
+      firstSeen,
+      new Date("2026-10-09T00:00:00.000+05:30"),
+      new Date("2026-10-10T00:00:00.000+05:30"),
+    );
+    const oct10 = summarize([wholeSession], firstSeen);
+    // First seen mid-day Oct 9, the pair of players spans exactly one day each side.
+    assert.equal(oct9.newPlayers, 1);
+    assert.equal(oct10.returningPlayers, 1);
+    assert.equal(oct10.newPlayers, 0);
+  });
+
+  it("keeps an untracked identity unclassified instead of returning", () => {
+    const summary = summarize(
+      [
+        session(
+          "s1",
+          "p2",
+          "srv",
+          "2026-10-10T04:30:00.000Z",
+          "2026-10-10T05:00:00.000Z",
+        ),
+      ],
+      new Map(), // no first-seen record for p2
+    );
+    assert.equal(summary.unclassifiedPlayers, 1);
+    assert.equal(summary.returningPlayers, 0);
+    assert.equal(summary.newPlayers, 0);
+  });
+});
+
+describe("average daily returning players", () => {
+  it("averages over complete days only and counts genuine zero days in the denominator", () => {
+    const result = averageDailyReturningPlayers(
+      [
+        { date: "2026-10-10", complete: true, returningPlayers: 0 },
+        { date: "2026-10-11", complete: true, returningPlayers: 10 },
+        { date: "2026-10-12", complete: false, returningPlayers: 50 },
+      ],
+      { observedFromDay: "2026-10-01" },
+    );
+    assert.equal(result.average, 5);
+    assert.equal(result.total, 10);
+    assert.equal(result.days, 2);
+  });
+
+  it("excludes days before the observation start so missing history is not zero", () => {
+    const result = averageDailyReturningPlayers(
+      [
+        { date: "2026-10-10", complete: true, returningPlayers: 10 },
+        { date: "2026-10-11", complete: true, returningPlayers: 10 },
+        { date: "2026-10-12", complete: true, returningPlayers: 0 },
+      ],
+      { observedFromDay: "2026-10-12" },
+    );
+    assert.equal(result.average, 0);
+    assert.equal(result.days, 1);
+  });
+
+  it("returns null when no complete day qualifies", () => {
+    const result = averageDailyReturningPlayers(
+      [{ date: "2026-10-10", complete: false, returningPlayers: 10 }],
+      { observedFromDay: "2026-10-01" },
+    );
+    assert.equal(result.average, null);
+    assert.equal(result.days, 0);
+  });
+
+  it("returns null when there is no tracking data at all", () => {
+    const result = averageDailyReturningPlayers(
+      [{ date: "2026-10-10", complete: true, returningPlayers: 10 }],
+      { observedFromDay: null },
+    );
+    assert.equal(result.average, null);
+    assert.equal(result.days, 0);
+  });
+
+  it("supports every analytics range denominator", () => {
+    for (const range of ["1d", "7d", "30d", "90d"] as const) {
+      const period = overviewIstPeriod(
+        range,
+        undefined,
+        undefined,
+        new Date("2026-10-16T12:00:00.000Z"),
+      );
+      const result = averageDailyReturningPlayers(
+        Array.from({ length: period.dayCount }, (_, i) => {
+          const day = new Date(
+            new Date("2026-07-01T00:00:00.000+05:30").getTime() + (i + 1) * 86_400_000,
+          );
+          return {
+            date: day.toISOString().slice(0, 10),
+            complete: true,
+            returningPlayers: 3,
+          };
+        }),
+        { observedFromDay: "2026-07-01" },
+      );
+      assert.equal(result.days, period.dayCount, range);
+      assert.equal(result.average, 3, range);
+    }
+  });
+});
+
+describe("previous equivalent period for the daily average", () => {
+  it("uses the preceding window's days and excludes the current incomplete day", () => {
+    const now = new Date("2026-10-16T12:00:00.000Z"); // 17:30 IST
+    const period = completedIstPeriod("7d", now);
+    const dailyFor = (window: { start: Date; end: Date }, perDay: number[]) =>
+      listRecentIstDayKeys(perDay.length, new Date(window.end.getTime() - 1)).map(
+        (date, i) => ({ date, complete: true, returningPlayers: perDay[i] }),
+      );
+    const current = averageDailyReturningPlayers(
+      dailyFor(period.current, [2, 3, 1, 2, 1, 2, 3]),
+      { observedFromDay: "2026-09-01" },
+    );
+    const previous = averageDailyReturningPlayers(
+      dailyFor(period.previous, [1, 1, 1, 1, 1, 1, 1]),
+      { observedFromDay: "2026-09-01" },
+    );
+    assert.equal(current.days, 7);
+    assert.equal(current.average, 2);
+    assert.equal(previous.days, 7);
+    assert.equal(previous.average, 1);
+
+    // Buckets are chronological: first is the window's oldest day, last is
+    // yesterday — the running day is never included.
+    const keys = listRecentIstDayKeys(7, new Date(period.current.end.getTime() - 1));
+    assert.equal(keys[0], "2026-10-09");
+    assert.equal(keys[keys.length - 1], "2026-10-15");
+    assert.ok(!keys.includes("2026-10-16"));
   });
 });
