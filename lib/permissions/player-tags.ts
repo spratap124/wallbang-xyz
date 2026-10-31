@@ -1,6 +1,23 @@
 /** Max length for in-game chat prefix and scoreboard clan. */
 export const PLAYER_TAG_MAX_LENGTH = 16;
 
+/** Tags an admin can assign. Empty selection means the role default in-game. */
+export const CHAT_TAG_OPTIONS = [
+  "[OWNER]",
+  "[ADMIN]",
+  "[MOD]",
+  "[VIP]",
+  "[WallBang]",
+] as const;
+
+export const NAME_TAG_OPTIONS = ["OWNER", "ADMIN", "MOD", "VIP", "WallBang"] as const;
+
+export function isAllowedPlayerTag(kind: "chat" | "name", value: string | null): boolean {
+  if (value === null) return true;
+  const allowed = kind === "chat" ? CHAT_TAG_OPTIONS : NAME_TAG_OPTIONS;
+  return (allowed as readonly string[]).includes(value);
+}
+
 const PLAYER_TAG_PATTERN = /^[\p{L}\p{N} \[\]\-_./+]+$/u;
 
 /**
@@ -17,9 +34,7 @@ export function parsePlayerTag(value: unknown): string | null {
   if (!collapsed) return null;
 
   if ([...collapsed].length > PLAYER_TAG_MAX_LENGTH) {
-    throw new Error(
-      `Tag must be ${PLAYER_TAG_MAX_LENGTH} characters or fewer.`,
-    );
+    throw new Error(`Tag must be ${PLAYER_TAG_MAX_LENGTH} characters or fewer.`);
   }
 
   if ([...collapsed].some((ch) => ch.charCodeAt(0) < 32)) {
@@ -27,9 +42,7 @@ export function parsePlayerTag(value: unknown): string | null {
   }
 
   if (!PLAYER_TAG_PATTERN.test(collapsed)) {
-    throw new Error(
-      "Tag may only include letters, numbers, spaces, and [] - _ . / +",
-    );
+    throw new Error("Tag may only include letters, numbers, spaces, and [] - _ . / +");
   }
 
   return collapsed;

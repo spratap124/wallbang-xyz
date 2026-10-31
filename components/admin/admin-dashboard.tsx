@@ -15,13 +15,13 @@ import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { BADGE_LABELS } from "@/lib/profile/badges";
-import type {
-  ResolvedPermissions,
-  RoleCode,
-  RoleSource,
-} from "@/types/permissions";
+import type { ResolvedPermissions, RoleCode, RoleSource } from "@/types/permissions";
 import { BADGE_TYPES, type BadgeType } from "@/types/profile";
-import { PLAYER_TAG_MAX_LENGTH } from "@/lib/permissions/player-tags";
+import { CHAT_TAG_OPTIONS, NAME_TAG_OPTIONS } from "@/lib/permissions/player-tags";
+
+function selectableTag(value: string | null, options: readonly string[]): string {
+  return value && options.includes(value) ? value : "";
+}
 
 type SearchUser = {
   id: string;
@@ -112,9 +112,7 @@ export function AdminDashboard() {
   const [badgeType, setBadgeType] = useState<BadgeType>("VIP");
   const [chatTagDraft, setChatTagDraft] = useState("");
   const [nameTagDraft, setNameTagDraft] = useState("");
-  const [vipEntitlements, setVipEntitlements] = useState<
-    VipEntitlementAdminRow[]
-  >([]);
+  const [vipEntitlements, setVipEntitlements] = useState<VipEntitlementAdminRow[]>([]);
   const [vipServers, setVipServers] = useState<VipServerOption[]>([]);
   const [roleGrantKeys, setRoleGrantKeys] = useState<string[]>([]);
 
@@ -145,17 +143,15 @@ export function AdminDashboard() {
       setVipServers([]);
       setRoleGrantKeys([]);
       startTransition(async () => {
-        const res = await fetch(
-          `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
-        );
+        const res = await fetch(`/api/v1/users?steamId=${encodeURIComponent(steamId)}`);
         const payload = await readJson<ResolvedPermissions>(res);
         if (!payload.ok) {
           setError(payload.error);
           return;
         }
         setSelected(payload.data);
-        setChatTagDraft(payload.data.chatTag ?? "");
-        setNameTagDraft(payload.data.nameTag ?? "");
+        setChatTagDraft(selectableTag(payload.data.chatTag, CHAT_TAG_OPTIONS));
+        setNameTagDraft(selectableTag(payload.data.nameTag, NAME_TAG_OPTIONS));
         loadVipEntitlements(payload.data.userId);
       });
     },
@@ -350,8 +346,8 @@ export function AdminDashboard() {
         return;
       }
       setSelected(payload.data);
-      setChatTagDraft(payload.data.chatTag ?? "");
-      setNameTagDraft(payload.data.nameTag ?? "");
+      setChatTagDraft(selectableTag(payload.data.chatTag, CHAT_TAG_OPTIONS));
+      setNameTagDraft(selectableTag(payload.data.nameTag, NAME_TAG_OPTIONS));
       setMessage("Saved chat and scoreboard tags. Roles were not changed.");
     });
   }
@@ -397,33 +393,27 @@ export function AdminDashboard() {
                 if (e.key === "Enter") search();
               }}
             />
-            <Button
-              type="button"
-              onClick={search}
-              disabled={pending || !query.trim()}
-            >
+            <Button type="button" onClick={search} disabled={pending || !query.trim()}>
               Search
             </Button>
           </div>
 
           {error ? (
-            <p className="text-sm text-destructive" role="alert">
+            <p className="text-destructive text-sm" role="alert">
               {error}
             </p>
           ) : null}
-          {message ? (
-            <p className="text-sm text-muted-foreground">{message}</p>
-          ) : null}
+          {message ? <p className="text-muted-foreground text-sm">{message}</p> : null}
 
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <ul className="divide-border border-border divide-y rounded-lg border">
             {results.length === 0 ? (
-              <li className="px-4 py-6 text-sm text-muted-foreground">
+              <li className="text-muted-foreground px-4 py-6 text-sm">
                 No results yet. Search by SteamID64 or persona name.
               </li>
             ) : (
               results.map((user) => (
                 <li key={user.id}>
-                  <div className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary">
+                  <div className="hover:bg-secondary flex w-full items-center gap-3 px-4 py-3 transition-colors">
                     <button
                       type="button"
                       onClick={() => selectUser(user.steamId)}
@@ -440,7 +430,7 @@ export function AdminDashboard() {
                           className="size-8 rounded-full"
                         />
                       ) : (
-                        <span className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs">
+                        <span className="bg-secondary flex size-8 items-center justify-center rounded-full text-xs">
                           {user.personaName.slice(0, 1).toUpperCase()}
                         </span>
                       )}
@@ -456,14 +446,12 @@ export function AdminDashboard() {
                       <Link
                         href={`/profile/${user.steamId}`}
                         title="View WallBang profile"
-                        className="block truncate font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                        className="text-muted-foreground hover:text-foreground block truncate font-mono text-xs transition-colors hover:underline"
                       >
                         {user.steamId}
                       </Link>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {user.role}
-                    </span>
+                    <span className="text-muted-foreground text-xs">{user.role}</span>
                   </div>
                 </li>
               ))
@@ -471,9 +459,9 @@ export function AdminDashboard() {
           </ul>
         </section>
 
-        <section className="rounded-lg border border-border bg-card/40 p-5">
+        <section className="border-border bg-card/40 rounded-lg border p-5">
           {!selected ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Select a user to view roles and permissions.
             </p>
           ) : (
@@ -496,15 +484,13 @@ export function AdminDashboard() {
                   <Link
                     href={`/profile/${selected.steamId}`}
                     title="View WallBang profile"
-                    className="inline-block font-mono text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                    className="text-muted-foreground hover:text-foreground inline-block font-mono text-xs transition-colors hover:underline"
                   >
                     {selected.steamId}
                   </Link>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     Display role:{" "}
-                    <span className="text-foreground">
-                      {selected.displayRole}
-                    </span>
+                    <span className="text-foreground">{selected.displayRole}</span>
                   </p>
                 </div>
               </div>
@@ -515,11 +501,11 @@ export function AdminDashboard() {
                   {selected.activeAssignments.map((a) => (
                     <li
                       key={a.id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
+                      className="border-border flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
                     >
                       <div>
                         <p className="font-medium">{a.roleCode}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           {a.source}
                           {a.expiresAt
                             ? ` · expires ${formatDate(a.expiresAt)}`
@@ -540,16 +526,16 @@ export function AdminDashboard() {
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3 space-y-3 rounded-md border border-border/80 bg-muted/20 px-3 py-3">
+                <div className="border-border/80 bg-muted/20 mt-3 space-y-3 rounded-md border px-3 py-3">
                   <div>
                     <h4 className="text-sm font-medium">VIP entitlements</h4>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Servers this player can use right now. Grant access from
-                      Grant role below.
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Servers this player can use right now. Grant access from Grant role
+                      below.
                     </p>
                   </div>
                   {vipEntitlements.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       No active VIP entitlements.
                     </p>
                   ) : (
@@ -557,11 +543,11 @@ export function AdminDashboard() {
                       {vipEntitlements.map((row) => (
                         <li
                           key={row.key}
-                          className="flex items-center justify-between gap-3 rounded-md border border-border bg-background/40 px-3 py-2 text-sm"
+                          className="border-border bg-background/40 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
                         >
                           <div className="min-w-0">
                             <p className="truncate font-medium">{row.label}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                               {row.expiresAt
                                 ? `Expires ${formatDate(row.expiresAt)}`
                                 : "Never expires"}
@@ -598,17 +584,15 @@ export function AdminDashboard() {
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-medium">
-                  Effective permissions
-                </h3>
+                <h3 className="mb-2 text-sm font-medium">Effective permissions</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {selected.permissions.length === 0 ? (
-                    <span className="text-sm text-muted-foreground">None</span>
+                    <span className="text-muted-foreground text-sm">None</span>
                   ) : (
                     selected.permissions.map((code) => (
                       <span
                         key={code}
-                        className="rounded-md bg-secondary px-2 py-1 font-mono text-[0.7rem] text-muted-foreground"
+                        className="bg-secondary text-muted-foreground rounded-md px-2 py-1 font-mono text-[0.7rem]"
                       >
                         {code}
                       </span>
@@ -617,7 +601,7 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="space-y-3 border-t border-border pt-4">
+              <div className="border-border space-y-3 border-t pt-4">
                 <h3 className="text-sm font-medium">Grant role</h3>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
@@ -626,7 +610,7 @@ export function AdminDashboard() {
                       id="role"
                       value={roleCode}
                       onChange={(e) => setRoleCode(e.target.value as RoleCode)}
-                      className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="border-border bg-background focus-visible:ring-ring/50 flex h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
                     >
                       {GRANTABLE_ROLES.map((r) => (
                         <option key={r} value={r}>
@@ -641,7 +625,7 @@ export function AdminDashboard() {
                       id="source"
                       value={source}
                       onChange={(e) => setSource(e.target.value as RoleSource)}
-                      className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="border-border bg-background focus-visible:ring-ring/50 flex h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
                     >
                       {SOURCES.map((s) => (
                         <option key={s} value={s}>
@@ -655,10 +639,8 @@ export function AdminDashboard() {
                     <select
                       id="expiry"
                       value={expiryPreset}
-                      onChange={(e) =>
-                        setExpiryPreset(e.target.value as ExpiryPreset)
-                      }
-                      className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      onChange={(e) => setExpiryPreset(e.target.value as ExpiryPreset)}
+                      className="border-border bg-background focus-visible:ring-ring/50 flex h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
                     >
                       {EXPIRY_PRESETS.map((preset) => (
                         <option key={preset.value} value={preset.value}>
@@ -678,7 +660,7 @@ export function AdminDashboard() {
                         onChange={(e) => setCustomExpiry(e.target.value)}
                       />
                       {customExpiry && customExpiryInvalid ? (
-                        <p className="text-xs text-destructive">
+                        <p className="text-destructive text-xs">
                           Pick today or a future date.
                         </p>
                       ) : null}
@@ -689,9 +671,9 @@ export function AdminDashboard() {
                   <div className="space-y-2">
                     <div>
                       <Label>Servers</Label>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        VIP is scoped per server. Pick one or more, or All
-                        servers for the bundle.
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        VIP is scoped per server. Pick one or more, or All servers for the
+                        bundle.
                       </p>
                     </div>
                     <VipServerPicker
@@ -714,33 +696,45 @@ export function AdminDashboard() {
                 </Button>
               </div>
 
-              <div className="space-y-3 border-t border-border pt-4">
+              <div className="border-border space-y-3 border-t pt-4">
                 <h3 className="text-sm font-medium">In-game tags</h3>
-                <p className="text-xs text-muted-foreground">
-                  Chat prefix and scoreboard name. Empty uses the role default
-                  ([OWNER], [ADMIN], [MOD], [VIP], or [WallBang]). Does not
-                  change roles or VIP perks.
+                <p className="text-muted-foreground text-xs">
+                  Chat prefix and scoreboard name. Role default uses the player&apos;s
+                  role ([OWNER], [ADMIN], [MOD], [VIP], or [WallBang]). Does not change
+                  roles or VIP perks.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="chatTag">Chat tag</Label>
-                    <Input
+                    <select
                       id="chatTag"
                       value={chatTagDraft}
-                      maxLength={PLAYER_TAG_MAX_LENGTH}
-                      placeholder="[VIP]"
                       onChange={(e) => setChatTagDraft(e.target.value)}
-                    />
+                      className="border-border bg-background focus-visible:ring-ring/50 flex h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
+                    >
+                      <option value="">Role default</option>
+                      {CHAT_TAG_OPTIONS.map((tag) => (
+                        <option key={tag} value={tag}>
+                          {tag}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="nameTag">Scoreboard name tag</Label>
-                    <Input
+                    <select
                       id="nameTag"
                       value={nameTagDraft}
-                      maxLength={PLAYER_TAG_MAX_LENGTH}
-                      placeholder="VIP"
                       onChange={(e) => setNameTagDraft(e.target.value)}
-                    />
+                      className="border-border bg-background focus-visible:ring-ring/50 flex h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
+                    >
+                      <option value="">Role default</option>
+                      {NAME_TAG_OPTIONS.map((tag) => (
+                        <option key={tag} value={tag}>
+                          {tag}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <Button
@@ -753,9 +747,9 @@ export function AdminDashboard() {
                 </Button>
               </div>
 
-              <div className="space-y-3 border-t border-border pt-4">
+              <div className="border-border space-y-3 border-t pt-4">
                 <h3 className="text-sm font-medium">Grant badge</h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Awards a profile badge without changing RBAC roles.
                 </p>
                 <div className="space-y-1.5">
@@ -763,10 +757,8 @@ export function AdminDashboard() {
                   <select
                     id="badgeType"
                     value={badgeType}
-                    onChange={(e) =>
-                      setBadgeType(e.target.value as BadgeType)
-                    }
-                    className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:max-w-xs"
+                    onChange={(e) => setBadgeType(e.target.value as BadgeType)}
+                    className="border-border bg-background focus-visible:ring-ring/50 flex h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 sm:max-w-xs"
                   >
                     {BADGE_TYPES.map((type) => (
                       <option key={type} value={type}>
@@ -789,7 +781,7 @@ export function AdminDashboard() {
         </section>
       </div>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Role and badge changes are recorded in the{" "}
         <Link
           href="/admin/audit"

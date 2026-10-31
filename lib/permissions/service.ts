@@ -30,7 +30,7 @@ import {
   updateUserDisplayTags,
   type UserDoc,
 } from "@/lib/auth/users";
-import { parsePlayerTag } from "@/lib/permissions/player-tags";
+import { isAllowedPlayerTag, parsePlayerTag } from "@/lib/permissions/player-tags";
 import type {
   AuditLogDoc,
   PermissionCode,
@@ -46,9 +46,9 @@ import { getGameLoadoutForPlayer } from "@/lib/loadout/service";
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(
     err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as { code: unknown }).code === 11000,
+    typeof err === "object" &&
+    "code" in err &&
+    (err as { code: unknown }).code === 11000,
   );
 }
 
@@ -57,10 +57,7 @@ async function ready(): Promise<void> {
   await seedPermissionsCatalog();
 }
 
-function isAssignmentActive(
-  assignment: UserRoleDoc,
-  now = new Date(),
-): boolean {
+function isAssignmentActive(assignment: UserRoleDoc, now = new Date()): boolean {
   if (!assignment.active) return false;
   if (assignment.expiresAt && assignment.expiresAt <= now) return false;
   return true;
@@ -91,9 +88,7 @@ async function resolveFromUser(user: UserDoc): Promise<ResolvedPermissions> {
 
   const cached = getCachedPermissions(user.steamId);
   const assignments = await loadActiveAssignments(user._id);
-  const roleCodes = Array.from(
-    new Set(assignments.map((a) => a.roleCode)),
-  ) as RoleCode[];
+  const roleCodes = Array.from(new Set(assignments.map((a) => a.roleCode))) as RoleCode[];
 
   let permissions: PermissionCode[];
 
@@ -131,9 +126,7 @@ async function resolveFromUser(user: UserDoc): Promise<ResolvedPermissions> {
     displayRole,
     chatTag: user.chatTag?.trim() || null,
     nameTag: user.nameTag?.trim() || null,
-    roles: roleCodes.sort(
-      (a, b) => ROLE_PRIORITY[b] - ROLE_PRIORITY[a],
-    ),
+    roles: roleCodes.sort((a, b) => ROLE_PRIORITY[b] - ROLE_PRIORITY[a]),
     permissions,
     activeAssignments: assignments.map((a) => ({
       id: a._id,
@@ -151,9 +144,7 @@ async function writeAudit(entry: Omit<AuditLogDoc, "_id">): Promise<void> {
 }
 
 /** Write an admin audit log entry (role, badge, or server ops). */
-export async function recordAuditLog(
-  entry: Omit<AuditLogDoc, "_id">,
-): Promise<void> {
+export async function recordAuditLog(entry: Omit<AuditLogDoc, "_id">): Promise<void> {
   await writeAudit(entry);
 }
 
@@ -199,6 +190,9 @@ export async function setPlayerTags(input: {
 
   const chatTag = parsePlayerTag(input.chatTag);
   const nameTag = parsePlayerTag(input.nameTag);
+  if (!isAllowedPlayerTag("chat", chatTag) || !isAllowedPlayerTag("name", nameTag)) {
+    throw new Error("Choose a tag from the list.");
+  }
   const previous = {
     chatTag: user.chatTag?.trim() || null,
     nameTag: user.nameTag?.trim() || null,
@@ -778,8 +772,7 @@ export async function extendVipExpiry(
         assignmentId: existingVip._id,
         revived: !existingVip.active,
         stacked: Boolean(
-          existingVip.expiresAt &&
-            existingVip.expiresAt.getTime() > now.getTime(),
+          existingVip.expiresAt && existingVip.expiresAt.getTime() > now.getTime(),
         ),
       },
       timestamp: new Date(),
@@ -803,9 +796,7 @@ export async function extendVipExpiry(
       grantedBy: input.grantedBy,
       expiresAt: new Date(now.getTime() + durationMs),
     });
-    const assignment = resolved.activeAssignments.find(
-      (a) => a.roleCode === "VIP",
-    );
+    const assignment = resolved.activeAssignments.find((a) => a.roleCode === "VIP");
     return {
       startDate: now,
       endDate: assignment?.expiresAt ?? new Date(now.getTime() + durationMs),
@@ -869,9 +860,7 @@ export type RevokeRoleInput = {
   revokedBy: { id: string; steamId: string } | null;
 };
 
-export async function revokeRole(
-  input: RevokeRoleInput,
-): Promise<ResolvedPermissions> {
+export async function revokeRole(input: RevokeRoleInput): Promise<ResolvedPermissions> {
   await ready();
 
   const user = input.targetUserId
@@ -909,10 +898,7 @@ export async function revokeRole(
     throw new Error("Cannot revoke the baseline USER role.");
   }
 
-  await col.updateOne(
-    { _id: assignment._id },
-    { $set: { active: false } },
-  );
+  await col.updateOne({ _id: assignment._id }, { $set: { active: false } });
 
   invalidatePermissionCache(user.steamId);
 
@@ -956,10 +942,7 @@ async function clearPurchasedVipRoles(userId: string): Promise<number> {
     { userId, roleCode: "VIP", active: true },
     { $set: { active: false } },
   );
-  await col.updateMany(
-    { userId, roleCode: "VIP" },
-    { $set: { expiresAt: new Date(0) } },
-  );
+  await col.updateMany({ userId, roleCode: "VIP" }, { $set: { expiresAt: new Date(0) } });
   return deactivate.modifiedCount;
 }
 
@@ -1039,9 +1022,7 @@ export async function revokeAllVipAccess(
   }
 
   const col = await userRolesCollection();
-  const vipRows = await col
-    .find({ userId: user._id, roleCode: "VIP" })
-    .toArray();
+  const vipRows = await col.find({ userId: user._id, roleCode: "VIP" }).toArray();
 
   const deactivatedVipRoles = await clearPurchasedVipRoles(user._id);
 
@@ -1124,10 +1105,8 @@ export async function revokeVipEntitlement(
     throw new Error("User not found.");
   }
 
-  const {
-    entitlementKeyFromRecord,
-    furthestEntitlementExpiry,
-  } = await import("@/lib/payments/entitlements-logic");
+  const { entitlementKeyFromRecord, furthestEntitlementExpiry } =
+    await import("@/lib/payments/entitlements-logic");
   const { vipHistoryCollection } = await import("@/lib/payments/collections");
   const historyCol = await vipHistoryCollection();
   const history = await historyCol.find({ userId: user._id }).toArray();
@@ -1206,9 +1185,7 @@ export async function listUsers(limit?: number) {
   }));
 }
 
-export async function getAuditLogs(params?: {
-  limit?: number;
-}): Promise<AuditLogDoc[]> {
+export async function getAuditLogs(params?: { limit?: number }): Promise<AuditLogDoc[]> {
   await ready();
   const limit = Math.min(params?.limit ?? 50, 200);
   const col = await auditLogsCollection();
@@ -1302,13 +1279,10 @@ async function scopePermissionsForGameServer(
   if (hasGlobalVipAccess) return resolved;
 
   const { vipHistoryCollection } = await import("@/lib/payments/collections");
-  const { hasActiveVipEntitlementForServer } = await import(
-    "@/lib/payments/entitlements-logic"
-  );
+  const { hasActiveVipEntitlementForServer } =
+    await import("@/lib/payments/entitlements-logic");
   const loadHistory = () =>
-    vipHistoryCollection().then((col) =>
-      col.find({ userId: resolved.userId }).toArray(),
-    );
+    vipHistoryCollection().then((col) => col.find({ userId: resolved.userId }).toArray());
 
   let history = await loadHistory();
   let entitled = hasActiveVipEntitlementForServer({
@@ -1318,8 +1292,7 @@ async function scopePermissionsForGameServer(
 
   if (!entitled) {
     const vipAssignment = resolved.activeAssignments.find(
-      (assignment) =>
-        assignment.roleCode === "VIP" && assignment.source !== "PURCHASE",
+      (assignment) => assignment.roleCode === "VIP" && assignment.source !== "PURCHASE",
     );
     if (vipAssignment) {
       await syncComplimentaryVipEntitlement({
@@ -1349,8 +1322,7 @@ async function scopePermissionsForGameServer(
     }
   }
   const permissions = resolved.permissions.filter(
-    (code) =>
-      !GAME_VIP_PERMISSIONS.includes(code) || grantedByRemaining.has(code),
+    (code) => !GAME_VIP_PERMISSIONS.includes(code) || grantedByRemaining.has(code),
   );
 
   return {
@@ -1358,9 +1330,7 @@ async function scopePermissionsForGameServer(
     roles,
     permissions,
     activeAssignments,
-    displayRole: highestRole(
-      roles.length > 0 ? roles : (["USER"] as RoleCode[]),
-    ),
+    displayRole: highestRole(roles.length > 0 ? roles : (["USER"] as RoleCode[])),
   };
 }
 
@@ -1506,9 +1476,8 @@ async function syncComplimentaryVipEntitlement(input: {
   entitlementKey?: string;
 }): Promise<void> {
   try {
-    const { ensureComplimentaryVipEntitlement } = await import(
-      "@/lib/payments/entitlements"
-    );
+    const { ensureComplimentaryVipEntitlement } =
+      await import("@/lib/payments/entitlements");
     await ensureComplimentaryVipEntitlement({
       userId: input.userId,
       steamId: input.steamId,
@@ -1661,8 +1630,7 @@ export async function processLaunchGiveaway(input: {
     };
   }
 
-  const discordUserId =
-    input.discordUserId?.trim() || user.discordUserId?.trim() || null;
+  const discordUserId = input.discordUserId?.trim() || user.discordUserId?.trim() || null;
   const discordUsername =
     input.discordUsername?.trim() || user.discordUsername?.trim() || null;
 
@@ -1809,9 +1777,7 @@ export async function processGiveawayEntry(input: {
     throw new Error("Launch VIP is only granted on the first Steam login.");
   }
   if (result.status === "needs_discord") {
-    throw new Error(
-      "Link Discord on wallbang.xyz/offers after signing in with Steam.",
-    );
+    throw new Error("Link Discord on wallbang.xyz/offers after signing in with Steam.");
   }
   if (result.status === "not_in_guild") {
     throw new Error(
@@ -1829,16 +1795,12 @@ export async function processDiscordMemberJoined(input: {
   discordUserId: string;
   discordUsername?: string;
 }): Promise<LaunchGiveawayResult | null> {
-  const { findUserByDiscordUserId, linkDiscordAccount } = await import(
-    "@/lib/auth/users"
-  );
+  const { findUserByDiscordUserId, linkDiscordAccount } =
+    await import("@/lib/auth/users");
   const user = await findUserByDiscordUserId(input.discordUserId);
   if (!user) return null;
 
-  if (
-    input.discordUsername &&
-    input.discordUsername !== user.discordUsername
-  ) {
+  if (input.discordUsername && input.discordUsername !== user.discordUsername) {
     try {
       await linkDiscordAccount({
         userId: user._id,

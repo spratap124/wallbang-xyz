@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { parsePlayerTag, PLAYER_TAG_MAX_LENGTH } from "./player-tags";
+import { isAllowedPlayerTag, parsePlayerTag, PLAYER_TAG_MAX_LENGTH } from "./player-tags";
 
 describe("parsePlayerTag", () => {
   it("returns null for empty values", () => {
@@ -26,5 +26,14 @@ describe("parsePlayerTag", () => {
     assert.throws(() => parsePlayerTag("VIP<script>"), /letters/);
     assert.throws(() => parsePlayerTag("a".repeat(PLAYER_TAG_MAX_LENGTH + 1)), /fewer/);
     assert.throws(() => parsePlayerTag(12), /string/);
+  });
+
+  it("allows only the selectable catalog, plus clearing to the role default", () => {
+    assert.equal(isAllowedPlayerTag("chat", null), true);
+    assert.equal(isAllowedPlayerTag("chat", "[VIP]"), true);
+    assert.equal(isAllowedPlayerTag("chat", "[OWNER]"), true);
+    assert.equal(isAllowedPlayerTag("name", "WallBang"), true);
+    assert.equal(isAllowedPlayerTag("chat", "FOUNDER"), false);
+    assert.equal(isAllowedPlayerTag("name", "[VIP]"), false);
   });
 });
