@@ -1,6 +1,12 @@
 export const seoKeywords = [
   "WallBang",
   "wallbang.xyz",
+  "CS2 Retake Servers",
+  "CS2 Retake Servers India",
+  "Indian CS2 Servers",
+  "CS2 Retake India",
+  "CS2 Servers India",
+  "Counter-Strike 2 Retake Servers",
   "CS2 community servers",
   "Counter-Strike 2 server hosting India",
   "CS2 Retake Server",

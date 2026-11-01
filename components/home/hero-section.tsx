@@ -63,11 +63,12 @@ export async function HeroSection() {
             className="animate-rise text-5xl [animation-delay:110ms] sm:text-6xl lg:text-7xl"
           />
           <h1 className="animate-rise mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl [animation-delay:140ms]">
-            India-Hosted Game Server Infrastructure
+            CS2 Retake Servers in India
           </h1>
           <p className="animate-rise mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty [animation-delay:200ms]">
-            Privately managed Counter-Strike 2 community servers hosted in India
-            for reliable, low-latency gameplay.
+            WallBang runs a dedicated Indian Counter-Strike 2 server network —
+            community-hosted CS2 retake matches on India-hosted game server
+            infrastructure, built for players looking for Indian CS2 servers.
           </p>
           <p className="animate-rise mt-3 max-w-xl rounded-lg border border-border/70 bg-card/50 px-3 py-2.5 text-sm leading-relaxed text-foreground/90 backdrop-blur-sm [animation-delay:220ms]">
             {notAGameStore}

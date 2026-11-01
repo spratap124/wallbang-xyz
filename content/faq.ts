@@ -1,5 +1,9 @@
 import type { FaqItem } from "@/types/content";
 import { businessModelFaqs } from "@/content/business";
+import { getServerAddress, resolveServerHost, servers } from "@/config/servers";
+
+/** Example connect address for FAQ copy, always from the actual server config. */
+const exampleServer = (address: string): string => `connect ${address}`;
 
 export const faqs: FaqItem[] = [
   ...businessModelFaqs,
@@ -77,4 +81,49 @@ export const faqs: FaqItem[] = [
   },
 ];
 
-export const homeFaqs = faqs.slice(0, 6);
+/**
+ * Homepage FAQ — answers the questions actual players search before joining.
+ * Must stay a faithful, crawlable description of what WallBang really offers
+ * (mirrored into FAQPage JSON-LD on the homepage).
+ */
+export const homeFaqs: FaqItem[] = [
+  {
+    id: "where-india-retake-servers",
+    question: "Where can I find CS2 retake servers in India?",
+    answer:
+      "On the WallBang homepage and on the live servers page. Every server in the list is an Indian Counter-Strike 2 retake server hosted in India, with its current map, player count, and connect command shown on the card.",
+  },
+  {
+    id: "indian-servers",
+    question: "Does WallBang provide Indian CS2 servers?",
+    answer:
+      "Yes. WallBang operates Counter-Strike 2 community servers exclusively on infrastructure hosted in India. All game servers in the fleet are Indian servers.",
+  },
+  {
+    id: "how-connect",
+    question: "How do I connect to WallBang?",
+    answer:
+      `Launch Counter-Strike 2, open the developer console, and type connect followed by a server address from the list on the homepage — for example: ${exampleServer(
+        getServerAddress({ host: resolveServerHost(servers[0]!.id), port: servers[0]!.port }),
+      )}. Each server card also offers a one-click link that opens CS2 through Steam. You must already own the game.`,
+  },
+  {
+    id: "free-to-play",
+    question: "Is WallBang free to play?",
+    answer:
+      "Yes. Connecting to and playing on WallBang retake servers is free. Optional paid hosted server access adds a reserved slot and server/community privileges for the term you select.",
+  },
+  {
+    id: "what-is-retake",
+    question: "What is a CS2 retake server?",
+    answer:
+      "A retake server drops you into the final seconds of a Counter-Strike 2 round: one side starts already holding the bombsite and the other side pushes to plant or retake it. It is a fast, round-by-round format for practising site fights without the buying and strategy phase.",
+  },
+  {
+    id: "available-maps",
+    question: "Which maps are available on WallBang?",
+    answer:
+      "WallBang retake servers rotate established Counter-Strike 2 maps such as Mirage, Dust2, Inferno, Nuke, Ancient, Anubis, Vertigo, and Cache. The map currently running on each server is shown live on its card.",
+  },
+];
+
