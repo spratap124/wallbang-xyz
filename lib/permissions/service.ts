@@ -34,6 +34,7 @@ import {
   isAllowedPlayerTag,
   parsePlayerTag,
 } from "@/lib/permissions/player-tags";
+import { ALL_RETAKES_ENTITLEMENT_KEY } from "@/lib/payments/entitlements-logic";
 import type {
   AuditLogDoc,
   PermissionCode,
@@ -1336,6 +1337,13 @@ async function scopePermissionsForGameServer(
         steamId: resolved.steamId,
         expiresAt: vipAssignment.expiresAt,
         assignmentId: vipAssignment.id,
+        // Legacy giveaway VIPs predate server selection: upgrade them to the
+        // All Retakes key on first game-server request instead of pinning the
+        // complimentary single server.
+        entitlementKey:
+          vipAssignment.source === "GIVEAWAY"
+            ? ALL_RETAKES_ENTITLEMENT_KEY
+            : undefined,
       });
       history = await loadHistory();
       entitled = hasActiveVipEntitlementForServer({
@@ -1618,6 +1626,10 @@ export async function processLaunchGiveaway(input: {
             ? giveawayVipExpiresAt(existingVip.grantedAt)
             : null),
         assignmentId: existingVip._id,
+        entitlementKey:
+          existingVip.source === "GIVEAWAY"
+            ? ALL_RETAKES_ENTITLEMENT_KEY
+            : undefined,
       });
     }
 
@@ -1735,6 +1747,7 @@ export async function processLaunchGiveaway(input: {
       steamId: user.steamId,
       expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
       assignmentId: raced._id,
+      entitlementKey: ALL_RETAKES_ENTITLEMENT_KEY,
     });
     return {
       steamId: user.steamId,
@@ -1756,6 +1769,9 @@ export async function processLaunchGiveaway(input: {
     source: "GIVEAWAY",
     grantedBy: null,
     expiresAt,
+    // Launch VIP covers every retake server, matching the offer copy
+    // ("priority access to all VIP server features").
+    entitlementKeys: [ALL_RETAKES_ENTITLEMENT_KEY],
   });
 
   try {
