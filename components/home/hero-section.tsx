@@ -13,7 +13,7 @@ const featurePills = [
   { icon: Sparkles, label: "Community Retakes" },
   { icon: ShieldCheck, label: "DDoS Protected" },
   { icon: RefreshCw, label: "Automatic CS2 Updates" },
-  { icon: MapPin, label: "India Hosted" },
+  { icon: MapPin, label: "Mumbai Hosted" },
 ];
 
 export async function HeroSection() {

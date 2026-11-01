@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { CopyIpButton } from "@/components/servers/copy-ip-button";
@@ -109,6 +109,17 @@ function ServerCard({ server }: { server: ServerSummary }) {
         <p className="mt-1 text-xs text-muted-foreground">
           {server.mode} · {server.region}
         </p>
+
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Badge className="gap-1 border-transparent bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-400 hover:bg-emerald-500/10">
+            <ShieldCheck className="size-3" aria-hidden="true" />
+            DDoS Protected
+          </Badge>
+          <Badge className="gap-1 border-transparent bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-400 hover:bg-emerald-500/10">
+            <RefreshCw className="size-3" aria-hidden="true" />
+            Auto Updates
+          </Badge>
+        </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
           <span className="inline-flex items-center gap-2">
