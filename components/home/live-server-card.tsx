@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Play, Users } from "lucide-react";
+import { MapPin, Play, RefreshCw, ShieldCheck, Users } from "lucide-react";
 
 import { CopyIpButton } from "@/components/servers/copy-ip-button";
 import { useLiveServers } from "@/components/servers/live-servers-provider";
@@ -97,6 +97,17 @@ export function LiveServerCard({ serverId }: LiveServerCardProps) {
             {preferred.mode}
             {city ? ` · ${city}, India` : ` · ${preferred.region}`}
           </p>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[0.65rem] font-medium text-emerald-400">
+              <ShieldCheck className="size-3" aria-hidden="true" />
+              DDoS Protected
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[0.65rem] font-medium text-emerald-400">
+              <RefreshCw className="size-3" aria-hidden="true" />
+              Auto Updates
+            </span>
+          </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             <ServerStat
