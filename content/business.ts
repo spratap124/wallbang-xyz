@@ -57,15 +57,8 @@ export const wallbangProvides = [
     id: "reserved-access",
     title: "Reserved server access",
     description:
-      "Paid access includes a reserved slot and related community privileges on the servers you select.",
+      "Optional paid access is prepaid for a fixed duration — 1 month, 3 months, 6 months, or 1 year, with no auto-renewal — and includes a reserved slot and related community privileges on the servers you select.",
     icon: "Lock",
-  },
-  {
-    id: "fixed-duration",
-    title: "Fixed-duration server access",
-    description:
-      "You pay once for 1 month, 3 months, 6 months, or 1 year. Access ends when that term ends — no auto-renewal.",
-    icon: "Timer",
   },
   {
     id: "low-latency",

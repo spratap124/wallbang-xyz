@@ -12,8 +12,15 @@ export const features: FeatureItem[] = [
     id: "vip",
     title: "Hosted Server Access",
     description:
-      "Prepaid 1-month, 3-month, 6-month, or 1-year access to WallBang community servers — reserved slots and server/community privileges, paid once for the term you choose.",
+      "Prepaid 1-month, 3-month, 6-month, or 1-year access to WallBang community servers — server capacity and administration, paid once for the term you choose.",
     icon: "Crown",
+  },
+  {
+    id: "reserved-access",
+    title: "Reserved Server Access",
+    description:
+      "Paid access includes a reserved slot and related community privileges on the WallBang servers you select, with priority queue when those servers are full.",
+    icon: "Lock",
   },
   {
     id: "knife-skins",

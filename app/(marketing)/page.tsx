@@ -2,6 +2,7 @@ import { FaqSection } from "@/components/home/faq-section";
 import { FeaturesSection } from "@/components/home/features-section";
 import { HeroSection } from "@/components/home/hero-section";
 import { RetakeGuideSection } from "@/components/home/retake-guide-section";
+import { ReliabilitySection } from "@/components/home/reliability-section";
 import { ServersSection } from "@/components/home/servers-section";
 import { WaitlistSection } from "@/components/home/waitlist-section";
 import { WhatWeProvideSection } from "@/components/home/what-we-provide-section";
@@ -41,12 +42,14 @@ export default async function HomePage() {
       <JsonLd id="ld-home-faq" data={faqJsonLd(homeFaqs)} />
       <LiveServersProvider>
         <HeroSection />
+        <ReliabilitySection />
         <ServersSection />
       </LiveServersProvider>
-      <WhatWeProvideSection />
-      <RetakeGuideSection />
-      <WhatYouPayForSection />
       <FeaturesSection limit={2} showViewAll={showFeaturesPage} />
+      <WhatWeProvideSection />
+      {/* <RetakeGuideSection /> */}
+      <WhatYouPayForSection />
+
       <WhySection />
       <FaqSection items={homeFaqs} />
       <WaitlistSection />

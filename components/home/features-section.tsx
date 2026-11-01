@@ -5,6 +5,7 @@ import {
   Crosshair,
   Crown,
   Hand,
+  Lock,
   LogIn,
   Medal,
   MessageCircle,
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 const iconMap: Record<string, LucideIcon> = {
   Zap,
   Crown,
+  Lock,
   Sword,
   Crosshair,
   Hand,
