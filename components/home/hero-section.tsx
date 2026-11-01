@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { MapPin, Server, ShieldCheck, Sparkles } from "lucide-react";
+import { MapPin, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 
 import { HeroConnectActions } from "@/components/home/hero-connect-actions";
 import { HeroFleetStats } from "@/components/home/hero-fleet-stats";
@@ -10,10 +10,10 @@ import { notAGameStore } from "@/content/business";
 import { getFeaturedRegisteredServer } from "@/lib/servers/registry";
 
 const featurePills = [
-  { icon: Sparkles, label: "Community retakes" },
-  { icon: Server, label: "Hosted server access" },
-  { icon: ShieldCheck, label: "Reserved server access" },
-  { icon: MapPin, label: "India hosted" },
+  { icon: Sparkles, label: "Community Retakes" },
+  { icon: ShieldCheck, label: "DDoS Protected" },
+  { icon: RefreshCw, label: "Automatic CS2 Updates" },
+  { icon: MapPin, label: "India Hosted" },
 ];
 
 export async function HeroSection() {
@@ -21,7 +21,7 @@ export async function HeroSection() {
   const backdropMap = featured?.map ?? "de_mirage";
 
   return (
-    <section className="relative overflow-hidden border-b border-border">
+    <section className="border-border relative overflow-hidden border-b">
       {/* Cinematic CS2 backdrop */}
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <Image
@@ -39,13 +39,13 @@ export async function HeroSection() {
         {/* Drifting red glow */}
         <div className="animate-gradient-pan absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_75%_0%,rgba(232,36,42,0.22),transparent_55%),radial-gradient(ellipse_60%_50%_at_10%_100%,rgba(232,36,42,0.1),transparent_50%)]" />
         {/* Subtle cyber grid on top */}
-        <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:72px_72px] [mask-image:radial-gradient(ellipse_75%_65%_at_50%_35%,#000,transparent)]" />
+        <div className="absolute inset-0 [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_75%_65%_at_50%_35%,#000,transparent)] [background-size:72px_72px] opacity-[0.06]" />
       </div>
 
       <div className="container-wb relative grid min-h-[calc(100svh-4rem)] items-center gap-12 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:py-24">
         {/* Left — copy + CTAs */}
         <div className="max-w-2xl overflow-visible">
-          <p className="animate-rise mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium tracking-[0.18em] text-primary uppercase [animation-delay:40ms]">
+          <p className="animate-rise border-primary/30 bg-primary/10 text-primary mb-5 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium tracking-[0.18em] uppercase [animation-delay:40ms]">
             <span className="relative flex size-2 text-emerald-400">
               <span className="animate-ping-pulse absolute inline-flex size-full rounded-full" />
               <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
@@ -55,22 +55,22 @@ export async function HeroSection() {
 
           <BrandLogo
             alt=""
-            className="animate-rise mb-5 size-16 sm:size-20 [animation-delay:80ms]"
+            className="animate-rise mb-5 size-16 [animation-delay:80ms] sm:size-20"
             priority
           />
           <BrandMark
             as="p"
             className="animate-rise text-5xl [animation-delay:110ms] sm:text-6xl lg:text-7xl"
           />
-          <h1 className="animate-rise mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl [animation-delay:140ms]">
+          <h1 className="animate-rise text-foreground mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance [animation-delay:140ms] sm:text-3xl">
             CS2 Retake Servers in India
           </h1>
-          <p className="animate-rise mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty [animation-delay:200ms]">
-            WallBang runs a dedicated Indian Counter-Strike 2 server network —
-            community-hosted CS2 retake matches on India-hosted game server
-            infrastructure, built for players looking for Indian CS2 servers.
+          <p className="animate-rise text-muted-foreground mt-4 max-w-xl text-base leading-relaxed text-pretty [animation-delay:200ms]">
+            Play CS2 retakes on low-latency Indian servers powered by DDoS-protected
+            infrastructure. Our servers automatically update whenever Valve releases a new
+            CS2 update, with minimal downtime so you can get back to the action faster.
           </p>
-          <p className="animate-rise mt-3 max-w-xl rounded-lg border border-border/70 bg-card/50 px-3 py-2.5 text-sm leading-relaxed text-foreground/90 backdrop-blur-sm [animation-delay:220ms]">
+          <p className="animate-rise border-border/70 bg-card/50 text-foreground/90 mt-3 max-w-xl rounded-lg border px-3 py-2.5 text-sm leading-relaxed backdrop-blur-sm [animation-delay:220ms]">
             {notAGameStore}
           </p>
 
@@ -79,9 +79,9 @@ export async function HeroSection() {
             {featurePills.map(({ icon: Icon, label }) => (
               <li
                 key={label}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/60 px-3 py-1.5 text-xs font-medium text-foreground/90 backdrop-blur-sm"
+                className="border-border/70 bg-card/60 text-foreground/90 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm"
               >
-                <Icon className="size-3.5 text-primary" aria-hidden="true" />
+                <Icon className="text-primary size-3.5" aria-hidden="true" />
                 {label}
               </li>
             ))}
@@ -92,7 +92,7 @@ export async function HeroSection() {
         </div>
 
         {/* Right — live server card */}
-        <div className="animate-rise max-w-full justify-self-center overflow-x-clip lg:justify-self-end [animation-delay:180ms]">
+        <div className="animate-rise max-w-full justify-self-center overflow-x-clip [animation-delay:180ms] lg:justify-self-end">
           <LiveServerCard serverId={featured?.id} />
         </div>
       </div>
