@@ -11,7 +11,7 @@ export const valveDisclaimer =
   "Counter-Strike 2 is a trademark of Valve Corporation. WallBang is an independent community server operator and is not affiliated with, endorsed by, or sponsored by Valve Corporation.";
 
 export const businessSummary =
-  "WallBang is an independent game-server hosting and community platform focused on providing reliable, low-latency Counter-Strike 2 community servers in India.";
+  "Operation and hosting of Counter-Strike 2 community servers, with optional fixed-duration memberships providing priority server access and additional server privileges.";
 
 export const serviceDescription =
   "WallBang operates independently managed Counter-Strike 2 community servers hosted in India. Customers pay for fixed-duration access to this hosted game-server infrastructure and related server/community privileges.";

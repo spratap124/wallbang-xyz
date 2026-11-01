@@ -1,6 +1,8 @@
 # Our Services
 
-WallBang is an independent game-server hosting and community platform. We operate independently managed Counter-Strike 2 community servers hosted in India.
+**Service summary:** Operation and hosting of Counter-Strike 2 community servers, with optional fixed-duration memberships providing priority server access and additional server privileges.
+
+WallBang is an independent community platform. We operate independently managed Counter-Strike 2 community servers hosted in India.
 
 Customers may purchase Hosted Server Access — prepaid, fixed-duration access to this hosted game-server infrastructure, including server capacity, administration, maintenance, and reserved access for the selected membership period.
 
