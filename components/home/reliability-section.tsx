@@ -1,10 +1,4 @@
-import {
-  Activity,
-  RefreshCw,
-  Server,
-  ShieldCheck,
-  type LucideIcon,
-} from "lucide-react";
+import { Activity, RefreshCw, Server, ShieldCheck, type LucideIcon } from "lucide-react";
 
 import { Container } from "@/components/shared/primitives";
 
@@ -41,9 +35,9 @@ const reliabilityItems: {
 
 export function ReliabilitySection() {
   return (
-    <section className="border-y border-border py-16 sm:py-20">
+    <section className="border-border border-y py-16 sm:py-20">
       <Container>
-        <div className="rounded-2xl border border-border bg-card/30 px-6 py-8 sm:px-10 sm:py-10">
+        <div className="border-border bg-card/30 rounded-2xl border px-6 py-8 sm:px-10 sm:py-10">
           <div className="mx-auto mb-8 max-w-2xl text-center">
             <span className="inline-flex rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium tracking-wide text-emerald-400 uppercase">
               Built for reliability
@@ -51,21 +45,18 @@ export function ReliabilitySection() {
             <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
               Play More. Worry Less.
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              Your matches deserve reliable infrastructure. We’ve got the
-              protection and maintenance covered.
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+              Your matches deserve reliable infrastructure. We’ve got the protection and
+              maintenance covered.
             </p>
           </div>
 
           <ul className="grid gap-x-10 gap-y-7 sm:grid-cols-2">
             {reliabilityItems.map(({ icon: Icon, title, description }) => (
               <li key={title}>
-                <Icon
-                  className="mb-3 size-5 text-emerald-400"
-                  aria-hidden="true"
-                />
+                <Icon className="mb-3 size-5 text-emerald-400" aria-hidden="true" />
                 <h3 className="font-semibold">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                   {description}
                 </p>
               </li>
@@ -73,7 +64,7 @@ export function ReliabilitySection() {
           </ul>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {/* <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <article className="rounded-xl border border-border bg-card/30 p-5 sm:p-6">
             <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-1 text-[0.7rem] font-medium tracking-wide text-emerald-400 uppercase">
               Network protection
@@ -121,7 +112,7 @@ export function ReliabilitySection() {
               <li>Minimal downtime during routine game updates.</li>
             </ul>
           </article>
-        </div>
+        </div> */}
       </Container>
     </section>
   );

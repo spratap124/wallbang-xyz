@@ -45,10 +45,11 @@ export default async function HomePage() {
         <ReliabilitySection />
         <ServersSection />
       </LiveServersProvider>
-      <WhatWeProvideSection />
-      <RetakeGuideSection />
-      <WhatYouPayForSection />
       <FeaturesSection limit={2} showViewAll={showFeaturesPage} />
+      <WhatWeProvideSection />
+      {/* <RetakeGuideSection /> */}
+      <WhatYouPayForSection />
+
       <WhySection />
       <FaqSection items={homeFaqs} />
       <WaitlistSection />
