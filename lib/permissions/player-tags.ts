@@ -1,6 +1,32 @@
 /** Max length for in-game chat prefix and scoreboard clan. */
 export const PLAYER_TAG_MAX_LENGTH = 16;
 
+/** Tags an admin can assign. Empty selection means the role default in-game. */
+export const CHAT_TAG_OPTIONS = [
+  "[OWNER]",
+  "[ADMIN]",
+  "[MOD]",
+  "[VIP]",
+  "[WallBang]",
+] as const;
+
+export const NAME_TAG_OPTIONS = [
+  "OWNER",
+  "ADMIN",
+  "MOD",
+  "VIP",
+  "WallBang",
+] as const;
+
+export function isAllowedPlayerTag(
+  kind: "chat" | "name",
+  value: string | null,
+): boolean {
+  if (value === null) return true;
+  const allowed = kind === "chat" ? CHAT_TAG_OPTIONS : NAME_TAG_OPTIONS;
+  return (allowed as readonly string[]).includes(value);
+}
+
 const PLAYER_TAG_PATTERN = /^[\p{L}\p{N} \[\]\-_./+]+$/u;
 
 /**
