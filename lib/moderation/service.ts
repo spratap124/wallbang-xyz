@@ -9,6 +9,7 @@ import {
 } from "@/lib/moderation/collections";
 import { getGameServerById } from "@/lib/servers/registry";
 import { findUsersBySteamIds } from "@/lib/auth/users";
+import { fetchSteamPlayerSummaries } from "@/lib/auth/steam-api";
 import { isBanCurrentlyActive, isValidSteamId64 } from "@/lib/moderation/validation";
 import type {
   BanDoc,
@@ -16,6 +17,28 @@ import type {
   PlayerReportDoc,
   ReportStatus,
 } from "@/types/moderation";
+
+type SteamProfile = {
+  steamId: string;
+  personaName: string;
+  avatarUrl: string;
+  profileUrl: string;
+  registered: boolean;
+};
+
+async function resolveSteamProfiles(steamIds: string[]): Promise<Map<string, SteamProfile>> {
+  const ids = [...new Set(steamIds.filter(Boolean))];
+  const users = await findUsersBySteamIds(ids).catch(() => []);
+  const profiles = new Map<string, SteamProfile>(
+    users.map((user) => [user.steamId, { steamId: user.steamId, personaName: user.personaName, avatarUrl: user.avatarUrl, profileUrl: user.profileUrl, registered: true }]),
+  );
+  const missing = ids.filter((id) => !profiles.has(id));
+  for (let offset = 0; offset < missing.length; offset += 100) {
+    const summaries = await fetchSteamPlayerSummaries(missing.slice(offset, offset + 100)).catch(() => []);
+    for (const summary of summaries) profiles.set(summary.steamId, { ...summary, registered: false });
+  }
+  return profiles;
+}
 
 export { isBanCurrentlyActive, isValidSteamId64 } from "@/lib/moderation/validation";
 
@@ -98,7 +121,12 @@ export async function listBans(input: {
     .sort({ createdAt: -1 })
     .limit(input.limit)
     .toArray();
-  return docs.map(banView);
+  const profiles = await resolveSteamProfiles(docs.flatMap((ban) => [ban.steamId, ban.createdBySteamId]));
+  return docs.map((ban) => ({
+    ...banView(ban),
+    playerProfile: profiles.get(ban.steamId) ?? null,
+    adminProfile: profiles.get(ban.createdBySteamId) ?? null,
+  }));
 }
 
 /** Public, presentation-safe ban ledger. Never returns SteamIDs or internal user IDs. */
@@ -115,19 +143,20 @@ export async function getPublicBanLedger(limit = 500) {
       $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
     }),
   ]);
-  const users = await findUsersBySteamIds([
+  const profiles = await resolveSteamProfiles([
     ...docs.map((ban) => ban.steamId),
     ...docs.map((ban) => ban.createdBySteamId),
-  ]).catch(() => []);
-  const personaBySteamId = new Map(users.map((user) => [user.steamId, user.personaName]));
+  ]);
   return {
     total,
     active,
     liftedOrExpired: Math.max(0, total - active),
     records: docs.map((ban) => ({
-      player: personaBySteamId.get(ban.steamId) ?? `Player ${ban.steamId.slice(-4)}`,
+      player: profiles.get(ban.steamId)?.personaName ?? `Player ${ban.steamId.slice(-4)}`,
+      playerAvatarUrl: profiles.get(ban.steamId)?.avatarUrl ?? "",
+      playerProfileUrl: profiles.get(ban.steamId)?.profileUrl ?? "",
       reason: ban.reason || "No reason provided",
-      admin: personaBySteamId.get(ban.createdBySteamId) ?? "WallBang staff",
+      admin: profiles.get(ban.createdBySteamId)?.personaName ?? "WallBang staff",
       startsAt: ban.startsAt.toISOString(),
       expiresAt: ban.expiresAt?.toISOString() ?? null,
       permanent: ban.permanent,
@@ -238,16 +267,13 @@ export async function listReports(input: {
 
   // Staff need to recognise the reported player: show their WallBang persona
   // when they have an account, and fall back to the raw SteamID64 otherwise.
-  const users = await findUsersBySteamIds(
-    docs.map((doc) => doc.targetSteamId),
-  ).catch(() => []);
-  const personaBySteamId = new Map(
-    users.map((user) => [user.steamId, user.personaName]),
-  );
+  const profiles = await resolveSteamProfiles(docs.flatMap((doc) => [doc.targetSteamId, doc.reporterSteamId]));
 
   return docs.map((doc) => ({
     ...reportView(doc),
-    targetPersonaName: personaBySteamId.get(doc.targetSteamId) ?? null,
+    targetPersonaName: profiles.get(doc.targetSteamId)?.personaName ?? null,
+    targetProfile: profiles.get(doc.targetSteamId) ?? null,
+    reporterProfile: profiles.get(doc.reporterSteamId) ?? null,
   }));
 }
 
