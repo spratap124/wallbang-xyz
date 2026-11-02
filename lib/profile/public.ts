@@ -82,8 +82,8 @@ export const UNREGISTERED_PLAYER_NAME = "Unregistered player";
 
 /**
  * Builds the staff-only profile for an in-game player who never signed in.
- * Only game-derived data is available — there is no account, avatar, persona,
- * VIP status, or loadout, and nothing is invented for those fields.
+ * Only game-derived data and the public Steam summary are available — there is
+ * no account, VIP status, or loadout, and nothing is invented for those fields.
  */
 export function buildLimitedPublicProfile(input: {
   steamId: string;
@@ -91,6 +91,11 @@ export function buildLimitedPublicProfile(input: {
   stats: QuickStats | null;
   activity: PlayerServerActivity | null;
   currentServer: CurrentServerInfo | null;
+  steamProfile?: {
+    personaName: string;
+    avatarUrl: string;
+    profileUrl: string;
+  } | null;
 }): ProfilePageProfile {
   const activity = input.activity ?? null;
   const firstSeen = activity?.firstSeenAt ?? null;
@@ -98,10 +103,10 @@ export function buildLimitedPublicProfile(input: {
 
   return {
     steamId: input.showSteamId ? input.steamId : "",
-    displayName: UNREGISTERED_PLAYER_NAME,
-    avatarUrl: "",
+    displayName: input.steamProfile?.personaName || UNREGISTERED_PLAYER_NAME,
+    avatarUrl: input.steamProfile?.avatarUrl ?? "",
     steamProfileUrl: input.showSteamId
-      ? `https://steamcommunity.com/profiles/${input.steamId}`
+      ? input.steamProfile?.profileUrl || `https://steamcommunity.com/profiles/${input.steamId}`
       : "",
     bannerUrl: null,
     countryCode: null,

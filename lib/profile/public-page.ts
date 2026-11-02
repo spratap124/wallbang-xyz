@@ -20,6 +20,7 @@ import { readPublicPlayerStats, getPlayerProfile } from "@/lib/profile/service";
 import { getPlayerServerActivity } from "@/lib/profile/sessions";
 import { hasPermission } from "@/lib/permissions/service";
 import { getGameServers } from "@/lib/servers/registry";
+import { fetchSteamPlayerSummary } from "@/lib/auth/steam-api";
 
 export type PlayerProfilePage = {
   profile: ProfilePageProfile;
@@ -87,11 +88,12 @@ export async function loadPlayerProfilePage(input: {
   // No WallBang account: staff only, from game data alone.
   if (!staff) return null;
 
-  const [activity, stats, currentServer, servers] = await Promise.all([
+  const [activity, stats, currentServer, servers, steamProfile] = await Promise.all([
     getPlayerServerActivity(input.steamId).catch(() => null),
     readPublicPlayerStats(input.steamId).catch(() => null),
     resolveCurrentServer(input.steamId).catch(() => null),
     getGameServers().catch(() => []),
+    fetchSteamPlayerSummary(input.steamId).catch(() => null),
   ]);
 
   const serverMeta: ProfileServerMeta[] = servers.map((server) => ({
@@ -108,6 +110,7 @@ export async function loadPlayerProfilePage(input: {
     stats,
     activity,
     currentServer,
+    steamProfile,
   });
 
   return {

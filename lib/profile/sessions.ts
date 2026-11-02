@@ -1,6 +1,7 @@
 import "server-only";
 
 import { findUsersBySteamIds } from "@/lib/auth/users";
+import { fetchSteamPlayerSummaries } from "@/lib/auth/steam-api";
 import {
   ensureProfileIndexes,
   playerPresenceCollection,
@@ -1492,21 +1493,24 @@ export async function listAdminSessions(input: {
     overlapPool = await col.find(overlapFilter).limit(2000).toArray();
   }
 
-  const [users, fleet] = await Promise.all([
+  const [users, fleet, steamProfiles] = await Promise.all([
     findUsersBySteamIds(sessions.map((s) => s.steamId)),
     getGameServers({ includeDisabled: true }).catch(() => []),
+    fetchSteamPlayerSummaries(sessions.map((s) => s.steamId)).catch(() => []),
   ]);
   const userBySteam = new Map(users.map((u) => [u.steamId, u]));
+  const steamProfileBySteam = new Map(steamProfiles.map((profile) => [profile.steamId, profile]));
   const serverNameById = new Map(fleet.map((s) => [s.id, s.name]));
 
   return sessions.map((s) => {
     const user = userBySteam.get(s.steamId);
+    const steamProfile = steamProfileBySteam.get(s.steamId);
     const active = isSessionActive(s, now.getTime());
     return {
       id: s._id,
       steamId: s.steamId,
-      personaName: user?.personaName ?? null,
-      avatarUrl: user?.avatarUrl ?? null,
+      personaName: user?.personaName ?? steamProfile?.personaName ?? null,
+      avatarUrl: user?.avatarUrl ?? steamProfile?.avatarUrl ?? null,
       map: s.map,
       joinedAt: s.joinedAt.toISOString(),
       leftAt: s.leftAt?.toISOString() ?? null,
