@@ -49,6 +49,16 @@ export type BanView = Omit<
   startsAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
+  playerProfile?: SteamProfileView | null;
+  adminProfile?: SteamProfileView | null;
+};
+
+export type SteamProfileView = {
+  steamId: string;
+  personaName: string;
+  avatarUrl: string;
+  profileUrl: string;
+  registered: boolean;
 };
 
 export type ReportView = Omit<
@@ -63,4 +73,6 @@ export type ReportView = Omit<
    * null means the report target has no account on the site.
    */
   targetPersonaName: string | null;
+  targetProfile?: SteamProfileView | null;
+  reporterProfile?: SteamProfileView | null;
 };

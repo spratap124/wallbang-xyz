@@ -578,7 +578,10 @@ function BanCard({
     <Card>
       <CardHeader className="border-border gap-3 border-b sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <CardTitle className="font-mono text-sm break-all">{ban.steamId}</CardTitle>
+          <CardTitle className="flex items-center gap-3 text-sm">
+            {ban.playerProfile?.avatarUrl ? <img src={ban.playerProfile.avatarUrl} alt="" className="size-9 rounded-full border border-border" /> : null}
+            <span className="min-w-0"><a href={ban.playerProfile?.profileUrl || `https://steamcommunity.com/profiles/${ban.steamId}`} target="_blank" rel="noreferrer" className="hover:text-primary">{ban.playerProfile?.personaName || ban.steamId}</a><span className="text-muted-foreground mt-0.5 block font-mono text-xs font-normal">{ban.steamId}</span></span>
+          </CardTitle>
           <CardDescription>{ban.reason}</CardDescription>
         </div>
         <span
@@ -591,8 +594,8 @@ function BanCard({
       <CardContent className="space-y-4 pt-4">
         <dl className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
           <div>
-            <dt className="text-muted-foreground text-xs">Issued by (SteamID64)</dt>
-            <dd className="font-mono text-xs break-all">{ban.createdBySteamId}</dd>
+            <dt className="text-muted-foreground text-xs">Issued by</dt>
+            <dd className="flex items-center gap-2 text-xs break-all">{ban.adminProfile?.avatarUrl ? <img src={ban.adminProfile.avatarUrl} alt="" className="size-6 rounded-full border border-border" /> : null}<a href={ban.adminProfile?.profileUrl || `https://steamcommunity.com/profiles/${ban.createdBySteamId}`} target="_blank" rel="noreferrer" className="hover:text-primary">{ban.adminProfile?.personaName || ban.createdBySteamId}</a></dd>
           </div>
           <div>
             <dt className="text-muted-foreground text-xs">Started</dt>

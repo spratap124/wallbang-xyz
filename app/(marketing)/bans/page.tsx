@@ -71,7 +71,12 @@ export default async function BansPage() {
                       <tbody>
                         {ledger.records.map((record, index) => (
                           <tr key={`${record.startsAt}-${index}`} className="bg-card/60 text-muted-foreground [&>td]:border-y [&>td]:border-border [&>td]:px-4 [&>td]:py-3.5 first:[&>td:first-child]:rounded-l-xl last:[&>td:last-child]:rounded-r-xl">
-                            <td className="font-semibold text-foreground">{record.player}</td>
+                            <td className="font-semibold text-foreground">
+                              <a href={record.playerProfileUrl || undefined} target={record.playerProfileUrl ? "_blank" : undefined} rel="noreferrer" className="flex items-center gap-2.5 hover:text-primary">
+                                {record.playerAvatarUrl ? <img src={record.playerAvatarUrl} alt="" className="size-8 rounded-full border border-border" /> : <span className="flex size-8 items-center justify-center rounded-full bg-muted text-xs">?</span>}
+                                {record.player}
+                              </a>
+                            </td>
                             <td className="max-w-xs truncate">{record.reason}</td>
                             <td>{record.admin}</td>
                             <td className="whitespace-nowrap text-foreground">{duration(record.startsAt, record.expiresAt, record.permanent)}</td>
@@ -86,7 +91,7 @@ export default async function BansPage() {
                     {ledger.records.map((record, index) => (
                       <article key={`${record.startsAt}-${index}`} className="rounded-xl border border-border bg-card/60 p-4">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0"><h3 className="truncate font-semibold">{record.player}</h3><p className="mt-1 text-sm text-muted-foreground">{record.reason}</p></div>
+                          <div className="min-w-0"><a href={record.playerProfileUrl || undefined} target={record.playerProfileUrl ? "_blank" : undefined} rel="noreferrer" className="flex items-center gap-2 font-semibold hover:text-primary">{record.playerAvatarUrl ? <img src={record.playerAvatarUrl} alt="" className="size-8 rounded-full border border-border" /> : null}<span className="truncate">{record.player}</span></a><p className="mt-1 text-sm text-muted-foreground">{record.reason}</p></div>
                           <span className="shrink-0 rounded-full border border-border px-2 py-1 text-[0.65rem] font-semibold uppercase">{record.status}</span>
                         </div>
                         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">

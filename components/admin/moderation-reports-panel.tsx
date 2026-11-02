@@ -372,10 +372,7 @@ function ReportCard({
     resolution?: string | null;
   }) => void;
 }) {
-  const reportedPlayer = getPlayerDisplayName({
-    steamId: report.targetSteamId,
-    personaName: report.targetPersonaName,
-  });
+  const reportedPlayer = getPlayerDisplayName({ steamId: report.targetSteamId, personaName: report.targetProfile?.personaName ?? report.targetPersonaName });
 
   return (
     <Card>
@@ -397,22 +394,11 @@ function ReportCard({
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground text-xs">Reported player</dt>
-            <dd className="break-all">
-              {reportedPlayer.registered ? (
-                <>
-                  <span>{reportedPlayer.label}</span>
-                  <span className="text-muted-foreground block font-mono text-xs">
-                    {report.targetSteamId}
-                  </span>
-                </>
-              ) : (
-                <span className="font-mono">{report.targetSteamId}</span>
-              )}
-            </dd>
+            <dd className="flex items-center gap-2 break-all">{report.targetProfile?.avatarUrl ? <img src={report.targetProfile.avatarUrl} alt="" className="size-8 rounded-full border border-border" /> : null}<span><a href={report.targetProfile?.profileUrl || `https://steamcommunity.com/profiles/${report.targetSteamId}`} target="_blank" rel="noreferrer" className="hover:text-primary">{reportedPlayer.label}</a><span className="text-muted-foreground block font-mono text-xs">{report.targetSteamId}{report.targetProfile?.registered ? " · Registered" : " · Steam profile"}</span></span></dd>
           </div>
           <div>
             <dt className="text-muted-foreground text-xs">Reporter (staff only)</dt>
-            <dd className="font-mono break-all">{report.reporterSteamId}</dd>
+            <dd className="flex items-center gap-2 break-all">{report.reporterProfile?.avatarUrl ? <img src={report.reporterProfile.avatarUrl} alt="" className="size-8 rounded-full border border-border" /> : null}<span><a href={report.reporterProfile?.profileUrl || `https://steamcommunity.com/profiles/${report.reporterSteamId}`} target="_blank" rel="noreferrer" className="hover:text-primary">{report.reporterProfile?.personaName || report.reporterSteamId}</a><span className="text-muted-foreground block font-mono text-xs">{report.reporterSteamId}{report.reporterProfile?.registered ? " · Registered" : " · Steam profile"}</span></span></dd>
           </div>
           <div>
             <dt className="text-muted-foreground text-xs">Server</dt>
