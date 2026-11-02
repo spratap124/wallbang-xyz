@@ -101,6 +101,42 @@ export async function listBans(input: {
   return docs.map(banView);
 }
 
+/** Public, presentation-safe ban ledger. Never returns SteamIDs or internal user IDs. */
+export async function getPublicBanLedger(limit = 500) {
+  await ensureModerationIndexes();
+  const now = new Date();
+  const collection = await bansCollection();
+  const [docs, total, active] = await Promise.all([
+    collection.find({}).sort({ createdAt: -1 }).limit(limit).toArray(),
+    collection.countDocuments({}),
+    collection.countDocuments({
+      status: "active",
+      startsAt: { $lte: now },
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+    }),
+  ]);
+  const users = await findUsersBySteamIds([
+    ...docs.map((ban) => ban.steamId),
+    ...docs.map((ban) => ban.createdBySteamId),
+  ]).catch(() => []);
+  const personaBySteamId = new Map(users.map((user) => [user.steamId, user.personaName]));
+  return {
+    total,
+    active,
+    liftedOrExpired: Math.max(0, total - active),
+    records: docs.map((ban) => ({
+      player: personaBySteamId.get(ban.steamId) ?? `Player ${ban.steamId.slice(-4)}`,
+      reason: ban.reason || "No reason provided",
+      admin: personaBySteamId.get(ban.createdBySteamId) ?? "WallBang staff",
+      startsAt: ban.startsAt.toISOString(),
+      expiresAt: ban.expiresAt?.toISOString() ?? null,
+      permanent: ban.permanent,
+      status: isBanCurrentlyActive(ban, now) ? "active" : "lifted",
+      server: ban.originServerName || "Global",
+    })),
+  };
+}
+
 export async function getActiveBan(steamId: string, now = new Date()) {
   await ensureModerationIndexes();
   const docs = await (
