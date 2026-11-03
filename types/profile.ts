@@ -261,6 +261,22 @@ export type FleetMonetizationAnalytics = {
     grossPaise: number;
     monthlyEquivalentPaise: number;
   }>;
+  recentPurchases: FleetVipPurchase[];
+};
+
+export type FleetVipPurchase = {
+  id: string;
+  playerName: string;
+  avatarUrl: string;
+  steamId: string;
+  plan: string;
+  bundleName: string | null;
+  accessType: string;
+  amountPaise: number;
+  currency: "INR";
+  status: "captured" | "refunded";
+  paidAt: string;
+  durationDays: number;
 };
 
 export type FleetAnalyticsComparison = {
