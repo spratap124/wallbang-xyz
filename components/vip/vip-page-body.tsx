@@ -158,16 +158,26 @@ function ServerAccessMembership({
         {purchaseHistory.length > 0 ? (
           <li className="py-4">
             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Purchase history</p>
-            <ul className="mt-2 divide-y divide-border/60">
+            <ul className="mt-3 space-y-2">
               {purchaseHistory.map((record) => (
-                <li key={record.id} className="py-2 text-sm">
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <span>{record.label}{record.serverNames.length ? ` · ${record.serverNames.join(", ")}` : ""}</span>
-                    <span className="text-xs text-muted-foreground">{purchaseStatusLabel(record)}</span>
+                <li key={record.id} className="rounded-lg border border-border/70 bg-card/40 p-3 text-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium">{record.label}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {record.serverNames.length ? record.serverNames.join(", ") : "All eligible servers"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {purchaseStatusLabel(record)}
+                    </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Purchased {formatVipExpiryDate(record.purchasedAt)} · {record.planName ?? `${record.durationDays} days`} purchased · original term ends {record.expiresAt ? formatVipExpiryDate(record.expiresAt) : "—"}
-                  </p>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+                    <div><dt className="text-muted-foreground">Purchased</dt><dd className="mt-0.5 text-foreground/90">{formatVipExpiryDate(record.purchasedAt)}</dd></div>
+                    <div><dt className="text-muted-foreground">Duration</dt><dd className="mt-0.5 text-foreground/90">{record.planName ?? `${record.durationDays} days`}</dd></div>
+                    <div><dt className="text-muted-foreground">Original term</dt><dd className="mt-0.5 text-foreground/90">{record.expiresAt ? formatVipExpiryDate(record.expiresAt) : "—"}</dd></div>
+                    {record.amountPaise != null ? <div><dt className="text-muted-foreground">Amount</dt><dd className="mt-0.5 text-foreground/90">{formatInr(record.amountPaise)}</dd></div> : null}
+                  </dl>
                 </li>
               ))}
             </ul>
