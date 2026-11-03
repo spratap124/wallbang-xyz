@@ -34,7 +34,7 @@ import {
   isAllowedPlayerTag,
   parsePlayerTag,
 } from "@/lib/permissions/player-tags";
-import { ALL_RETAKES_ENTITLEMENT_KEY } from "@/lib/payments/entitlements-logic";
+import { LAUNCH_GIVEAWAY_ENTITLEMENT_KEY } from "@/lib/payments/entitlements-logic";
 import type {
   AuditLogDoc,
   PermissionCode,
@@ -1337,12 +1337,11 @@ async function scopePermissionsForGameServer(
         steamId: resolved.steamId,
         expiresAt: vipAssignment.expiresAt,
         assignmentId: vipAssignment.id,
-        // Legacy giveaway VIPs predate server selection: upgrade them to the
-        // All Retakes key on first game-server request instead of pinning the
-        // complimentary single server.
+        // Legacy giveaway VIPs predate server selection: use the configured
+        // Mumbai bundle instead of granting the global All Retakes entitlement.
         entitlementKey:
           vipAssignment.source === "GIVEAWAY"
-            ? ALL_RETAKES_ENTITLEMENT_KEY
+            ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
             : undefined,
       });
       history = await loadHistory();
@@ -1628,7 +1627,7 @@ export async function processLaunchGiveaway(input: {
         assignmentId: existingVip._id,
         entitlementKey:
           existingVip.source === "GIVEAWAY"
-            ? ALL_RETAKES_ENTITLEMENT_KEY
+            ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
             : undefined,
       });
     }
@@ -1747,7 +1746,7 @@ export async function processLaunchGiveaway(input: {
       steamId: user.steamId,
       expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
       assignmentId: raced._id,
-      entitlementKey: ALL_RETAKES_ENTITLEMENT_KEY,
+      entitlementKey: LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
     });
     return {
       steamId: user.steamId,
@@ -1771,7 +1770,7 @@ export async function processLaunchGiveaway(input: {
     expiresAt,
     // Launch VIP covers every retake server, matching the offer copy
     // ("priority access to all VIP server features").
-    entitlementKeys: [ALL_RETAKES_ENTITLEMENT_KEY],
+    entitlementKeys: [LAUNCH_GIVEAWAY_ENTITLEMENT_KEY],
   });
 
   try {

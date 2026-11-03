@@ -16,6 +16,9 @@ export const COMPLIMENTARY_VIP_SERVER_ID = "retake-3-mumbai";
 /** Entitlement key covering every retake server. */
 export const ALL_RETAKES_ENTITLEMENT_KEY = "all_retakes";
 
+/** Bundle used by the launch giveaway; intentionally narrower than All Retakes. */
+export const LAUNCH_GIVEAWAY_ENTITLEMENT_KEY = "mumbai-retake-bundle-all";
+
 /** Dedup admin keys and collapse All Retakes so it is never stacked with servers. */
 export function normalizeAdminEntitlementKeys(
   keys: string[],
@@ -90,8 +93,15 @@ export type AdminVipEntitlementRow = {
   key: string;
   label: string;
   purchaseCount: number;
+  sources: string[];
   expiresAt: string | null;
 };
+
+function entitlementSource(record: VipHistoryDoc): string {
+  if (record.source) return record.source;
+  // Older complimentary rows predate the explicit source field.
+  return record.paymentId.startsWith("complimentary:") ? "GIVEAWAY" : "PURCHASE";
+}
 
 /**
  * Rows for the admin "VIP entitlements" list.
@@ -145,6 +155,7 @@ export function buildAdminVipEntitlementRows(input: {
       key,
       label,
       purchaseCount: records.length,
+      sources: [...new Set(records.map(entitlementSource))].sort(),
       expiresAt: expiry ? expiry.toISOString() : null,
     });
   }

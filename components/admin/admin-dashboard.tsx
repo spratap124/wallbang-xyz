@@ -48,6 +48,7 @@ type VipEntitlementAdminRow = {
   key: string;
   label: string;
   purchaseCount: number;
+  sources: string[];
   expiresAt: string | null;
 };
 
@@ -572,6 +573,8 @@ export function AdminDashboard() {
                           <div className="min-w-0">
                             <p className="truncate font-medium">{row.label}</p>
                             <p className="text-xs text-muted-foreground">
+                              Source: {row.sources.join(" + ")} · {row.purchaseCount} record
+                              {row.purchaseCount === 1 ? "" : "s"} ·{" "}
                               {row.expiresAt
                                 ? `Expires ${formatDate(row.expiresAt)}`
                                 : "Never expires"}
