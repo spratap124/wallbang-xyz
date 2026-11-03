@@ -90,10 +90,10 @@ const NAV: NavItem[] = [
     permission: "admin_panel",
   },
   {
-    href: "/admin/analytics#revenue",
+    href: "/admin/revenue",
     label: "Revenue",
     icon: Wallet,
-    match: () => false,
+    match: (path) => path.startsWith("/admin/revenue"),
     permission: "admin_panel",
   },
   {
@@ -142,6 +142,9 @@ function pageMeta(pathname: string): { title: string; subtitle: string } {
       title: "Analytics",
       subtitle: "Player activity, retention, servers & revenue",
     };
+  }
+  if (pathname.startsWith("/admin/revenue")) {
+    return { title: "Revenue", subtitle: "VIP purchases & monetization" };
   }
   if (pathname.startsWith("/admin/servers")) {
     return { title: "Servers", subtitle: "Fleet registry" };
