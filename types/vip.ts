@@ -189,6 +189,7 @@ export type VipPurchaseRecord = {
   /** Plan duration id and its display name, when recorded. */
   plan: string | null;
   planName: string | null;
+  durationDays: number;
   serverIds: string[];
   serverNames: string[];
   purchasedAt: string;

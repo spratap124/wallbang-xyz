@@ -666,6 +666,7 @@ export function buildMembershipFromHistory(input: {
         label: "Individual Server Access",
         plan: record.plan ?? null,
         planName: planName(record.plan),
+        durationDays: record.durationDays,
         serverIds: serverIdsFromRecord(record),
         serverNames: serverIdsFromRecord(record).map((id) =>
           serverName(id, serversById),
@@ -706,6 +707,7 @@ export function buildMembershipFromHistory(input: {
         label,
         plan: record.plan ?? null,
         planName: planName(record.plan),
+        durationDays: record.durationDays,
         serverIds: serverIdsFromRecord(record),
         serverNames: serverIdsFromRecord(record).map((id) =>
           serverName(id, serversById),

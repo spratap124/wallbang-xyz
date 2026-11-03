@@ -166,7 +166,7 @@ function ServerAccessMembership({
                     <span className="text-xs text-muted-foreground">{purchaseStatusLabel(record)}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Purchased {formatVipExpiryDate(record.purchasedAt)} · expires {record.expiresAt ? formatVipExpiryDate(record.expiresAt) : "—"}
+                    Purchased {formatVipExpiryDate(record.purchasedAt)} · {record.planName ?? `${record.durationDays} days`} purchased · original term ends {record.expiresAt ? formatVipExpiryDate(record.expiresAt) : "—"}
                   </p>
                 </li>
               ))}
@@ -558,6 +558,12 @@ function BundleMembership({
                           <dd className="text-foreground/90">{record.planName}</dd>
                         </div>
                       ) : null}
+                      <div className="flex justify-between gap-3">
+                        <dt>Duration purchased</dt>
+                        <dd className="text-foreground/90">
+                          {record.planName ?? `${record.durationDays} days`}
+                        </dd>
+                      </div>
                       {record.amountPaise != null ? (
                         <div className="flex justify-between gap-3">
                           <dt>Amount paid</dt>
@@ -567,7 +573,7 @@ function BundleMembership({
                         </div>
                       ) : null}
                       <div className="flex justify-between gap-3">
-                        <dt>Expires</dt>
+                        <dt>Original term ends</dt>
                         <dd className="text-foreground/90">
                           {record.expiresAt
                             ? formatVipExpiryDate(record.expiresAt)
