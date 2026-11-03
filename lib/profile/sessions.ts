@@ -698,12 +698,14 @@ function calculateRetention(input: {
 }
 
 type AnalyticsPayment = {
+  _id: string;
   userId: string;
   steamId: string;
   status: string;
   amount: number;
   durationDays: number;
   plan: string;
+  bundleName?: string | null;
   accessType?: string;
   serverId?: string | null;
   paidAt?: Date | null;
@@ -713,6 +715,7 @@ type AnalyticsPayment = {
 
 function summarizeMonetization(input: {
   payments: AnalyticsPayment[];
+  playerByUserId: Map<string, { personaName: string; avatarUrl: string }>;
   start: Date;
   end: Date;
   now: Date;
@@ -806,6 +809,25 @@ function summarizeMonetization(input: {
     }
   }
 
+  const recentPurchases = captured
+    .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0))
+    .slice(0, 50)
+    .map((payment) => ({
+      id: payment._id,
+      playerName: input.playerByUserId.get(payment.userId)?.personaName ?? "Unknown player",
+      avatarUrl: input.playerByUserId.get(payment.userId)?.avatarUrl ?? "",
+      steamId: payment.steamId,
+      plan: payment.plan,
+      bundleName: payment.bundleName ?? null,
+      accessType:
+        payment.accessType ?? (payment.serverId ? "INDIVIDUAL_SERVER" : "ALL_RETAKES"),
+      amountPaise: payment.amount,
+      currency: "INR" as const,
+      status: payment.status === "refunded" ? ("refunded" as const) : ("captured" as const),
+      paidAt: payment.paidAt!.toISOString(),
+      durationDays: payment.durationDays,
+    }));
+
   return {
     grossCapturedPaise,
     refundsPaise,
@@ -829,6 +851,7 @@ function summarizeMonetization(input: {
     freeVipUsers: input.freeVipUsers,
     feesPaise: null,
     revenueByPlan: [...plans.values()],
+    recentPurchases,
   };
 }
 
@@ -896,6 +919,7 @@ export async function getFleetConnectionStats(input: {
             amount: 1,
             durationDays: 1,
             plan: 1,
+            bundleName: 1,
             accessType: 1,
             serverId: 1,
             paidAt: 1,
@@ -922,6 +946,16 @@ export async function getFleetConnectionStats(input: {
       .find({}, { projection: { _id: 0, id: 1, createdAt: 1 } })
       .toArray(),
   ]);
+
+  const playerByUserId = new Map(
+    await db
+      .collection<{ _id: string; personaName: string; avatarUrl: string }>("users")
+      .find({ _id: { $in: [...new Set(payments.map((payment) => payment.userId))] } }, {
+        projection: { _id: 1, personaName: 1, avatarUrl: 1 },
+      })
+      .toArray()
+      .then((rows) => rows.map((row) => [row._id, row] as const)),
+  );
 
   const firstSeenBySteam = new Map(
     firstSeenRows.map((row) => [row.steamId, row.firstSeenAt]),
@@ -1164,6 +1198,7 @@ export async function getFleetConnectionStats(input: {
   const freeVipUsers = new Set(freeVipRows.map((row) => row.userId)).size;
   const monetization = summarizeMonetization({
     payments,
+    playerByUserId,
     start: periods.current.start,
     end: periods.current.end,
     now,
@@ -1173,6 +1208,7 @@ export async function getFleetConnectionStats(input: {
   });
   const previousMonetization = summarizeMonetization({
     payments,
+    playerByUserId,
     start: periods.previous.start,
     end: periods.previous.end,
     now,

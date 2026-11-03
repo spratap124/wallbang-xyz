@@ -35,6 +35,7 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
+import { VipBadge } from "@/components/profile/vip-badge";
 import { formatDuration, mapThumbPath, shortServerLabel } from "@/lib/admin/format";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { cn } from "@/lib/utils";
@@ -1780,6 +1781,40 @@ function VipPlanPanel({ data }: { data: FleetOverviewResponse }) {
   }
   return (
     <div className="space-y-2">
+      <div className="border-border overflow-x-auto rounded-lg border">
+        <table className="w-full min-w-[44rem] text-left text-[12px]">
+          <thead className="bg-secondary/40 text-muted-foreground border-b">
+            <tr>
+              <th className="px-3 py-2 font-medium">Player</th>
+              <th className="px-3 py-2 font-medium">VIP purchase</th>
+              <th className="px-3 py-2 font-medium">Paid</th>
+              <th className="px-3 py-2 text-right font-medium">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-border/60 divide-y">
+            {data.monetization.recentPurchases.map((purchase) => (
+              <tr key={purchase.id} className="hover:bg-secondary/20">
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    {purchase.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={purchase.avatarUrl} alt="" className="size-6 rounded-full" />
+                    ) : null}
+                    <span className="font-medium">{purchase.playerName}</span>
+                    <VipBadge compact />
+                  </div>
+                  <span className="text-muted-foreground font-mono text-[10px]">{purchase.steamId}</span>
+                </td>
+                <td className="text-muted-foreground px-3 py-2">
+                  {purchase.bundleName ?? purchase.plan.replaceAll("_", " ")} · {purchase.durationDays} days
+                </td>
+                <td className="text-muted-foreground px-3 py-2">{dateLabel(purchase.paidAt.slice(0, 10))}</td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatInr(purchase.amountPaise)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {data.monetization.revenueByPlan.map((row) => (
         <div
           key={`${row.plan}:${row.accessType}`}
