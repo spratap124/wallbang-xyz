@@ -1765,6 +1765,9 @@ function RevenuePanel({ data }: { data: FleetOverviewResponse }) {
         · Fees are not recorded; operating costs are not configured, so break-even is
         unavailable. Free VIP is excluded.
       </p>
+      <p className="text-muted-foreground mt-1 text-[11px]">
+        Revenue includes purchases captured today; activity metrics use completed IST days.
+      </p>
     </div>
   );
 }

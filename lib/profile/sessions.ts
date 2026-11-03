@@ -1196,11 +1196,15 @@ export async function getFleetConnectionStats(input: {
     multiDayPlayers: previousMultiDayPlayers,
   });
   const freeVipUsers = new Set(freeVipRows.map((row) => row.userId)).size;
+  // Activity metrics intentionally use completed IST days. Revenue is different:
+  // admins should always see purchases captured during the current day in the
+  // standard rolling ranges. Custom ranges retain their explicit end boundary.
+  const revenueEnd = input.range === "custom" ? periods.current.end : now;
   const monetization = summarizeMonetization({
     payments,
     playerByUserId,
     start: periods.current.start,
-    end: periods.current.end,
+    end: revenueEnd,
     now,
     freeVipUsers,
     activePlayerSteamIds: currentPlayers.players,
