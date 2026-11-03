@@ -49,6 +49,8 @@ export async function ensureComplimentaryVipEntitlement(input: {
   serverId?: string;
   /** Server id or `all_retakes`. Defaults to the complimentary Mumbai server. */
   entitlementKey?: string;
+  /** Snapshot of servers covered when the entitlement is a named bundle. */
+  serverIds?: string[];
   now?: Date;
 }): Promise<"inserted" | "skipped"> {
   await ensurePaymentIndexes();
@@ -93,6 +95,7 @@ export async function ensureComplimentaryVipEntitlement(input: {
     paymentId: input.paymentId,
     currentExpiry,
     now,
+    serverIds: input.serverIds,
   });
 
   try {

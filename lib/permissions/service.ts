@@ -1525,12 +1525,16 @@ async function syncComplimentaryVipEntitlement(input: {
     const { ensureComplimentaryVipEntitlement } = await import(
       "@/lib/payments/entitlements"
     );
+    const bundle = input.entitlementKey
+      ? (await import("@/lib/payments/bundles")).listVipBundleDocs().then((rows) => rows.find((row) => row.id === input.entitlementKey))
+      : null;
     await ensureComplimentaryVipEntitlement({
       userId: input.userId,
       steamId: input.steamId,
       expiresAt: input.expiresAt,
       paymentId: `complimentary:${input.assignmentId}`,
       entitlementKey: input.entitlementKey,
+      serverIds: (await bundle)?.serverIds,
     });
   } catch (err) {
     console.error("[vip] complimentary vip_history sync failed", err);

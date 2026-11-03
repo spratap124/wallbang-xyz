@@ -352,9 +352,12 @@ export function buildGrantedEntitlementRecord(input: {
   paymentId: string;
   currentExpiry: Date | null;
   now: Date;
+  serverIds?: string[];
 }): VipHistoryDoc {
   const key = input.entitlementKey.trim();
   const allRetakes = key === ALL_RETAKES_ENTITLEMENT_KEY;
+  const serverIds = input.serverIds?.length ? [...new Set(input.serverIds)] : [key];
+  const customBundle = !allRetakes && serverIds.length > 1;
   const { startDate, endDate } = computeVipExtension({
     currentExpiresAt: input.currentExpiry,
     now: input.now,
@@ -366,10 +369,10 @@ export function buildGrantedEntitlementRecord(input: {
     userId: input.userId,
     steamId: input.steamId,
     bundleId: allRetakes ? ALL_RETAKES_ENTITLEMENT_KEY : key,
-    bundleKind: allRetakes ? "all" : "server",
-    accessType: allRetakes ? "ALL_RETAKES" : "INDIVIDUAL_SERVER",
-    serverId: allRetakes ? null : key,
-    serverIds: allRetakes ? [] : [key],
+    bundleKind: allRetakes ? "all" : customBundle ? "custom" : "server",
+    accessType: allRetakes ? "ALL_RETAKES" : customBundle ? "BUNDLE" : "INDIVIDUAL_SERVER",
+    serverId: allRetakes || customBundle ? null : key,
+    serverIds: allRetakes ? [] : serverIds,
     plan: pickComplimentaryVipPlan(input.durationDays),
     amount: 0,
     durationDays: input.durationDays,
