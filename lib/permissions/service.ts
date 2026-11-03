@@ -1194,26 +1194,26 @@ export async function revokeVipEntitlement(
   };
 }
 
-export async function searchUsers(query: string) {
+export async function searchUsers(query: string, options?: { skip?: number; limit?: number }) {
   await ready();
-  const docs = await searchUserDocs(query);
-  return docs.map((doc) => ({
+  const result = await searchUserDocs(query, options);
+  return { ...result, users: result.users.map((doc) => ({
     ...toAuthUser(doc),
     role: doc.role ?? "USER",
     lastLoginAt: doc.lastLoginAt,
     createdAt: doc.createdAt,
-  }));
+  })) };
 }
 
-export async function listUsers(limit?: number) {
+export async function listUsers(options?: { skip?: number; limit?: number }) {
   await ready();
-  const docs = await listUserDocs(limit);
-  return docs.map((doc) => ({
+  const result = await listUserDocs(options);
+  return { ...result, users: result.users.map((doc) => ({
     ...toAuthUser(doc),
     role: doc.role ?? "USER",
     lastLoginAt: doc.lastLoginAt,
     createdAt: doc.createdAt,
-  }));
+  })) };
 }
 
 export async function getAuditLogs(params?: {

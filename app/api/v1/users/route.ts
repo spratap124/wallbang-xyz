@@ -17,8 +17,12 @@ export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
   const steamId = searchParams.get("steamId")?.trim();
-  const limitRaw = Number(searchParams.get("limit") ?? "200");
-  const limit = Number.isFinite(limitRaw) ? limitRaw : 200;
+  const pageRaw = Number(searchParams.get("page") ?? "1");
+  const pageSizeRaw = Number(searchParams.get("pageSize") ?? "25");
+  const page = Number.isFinite(pageRaw) ? Math.max(Math.floor(pageRaw), 1) : 1;
+  const pageSize = Number.isFinite(pageSizeRaw)
+    ? Math.min(Math.max(Math.floor(pageSizeRaw), 1), 100)
+    : 25;
 
   if (steamId) {
     const resolved = await getUserPermissions({ steamId });
@@ -29,10 +33,10 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (!q) {
-    const users = await listUsers(limit);
-    return jsonOk(users);
+    const result = await listUsers({ skip: (page - 1) * pageSize, limit: pageSize });
+    return jsonOk({ items: result.users, page, pageSize, hasMore: result.hasMore });
   }
 
-  const users = await searchUsers(q);
-  return jsonOk(users);
+  const result = await searchUsers(q, { skip: (page - 1) * pageSize, limit: pageSize });
+  return jsonOk({ items: result.users, page, pageSize, hasMore: result.hasMore });
 }

@@ -184,12 +184,12 @@ export async function updateUserDisplayTags(
 
 export async function searchUsers(
   query: string,
-  limit = 25,
-): Promise<UserDoc[]> {
+  options: { skip?: number; limit?: number } = {},
+): Promise<{ users: UserDoc[]; hasMore: boolean }> {
   await ensureIndexes();
   const col = await users();
   const q = query.trim();
-  if (!q) return [];
+  if (!q) return { users: [], hasMore: false };
 
   const filter: Filter<UserDoc> = /^\d{17}$/.test(q)
     ? { steamId: q }
@@ -200,15 +200,22 @@ export async function searchUsers(
         ],
       };
 
-  return col.find(filter).sort({ lastLoginAt: -1 }).limit(limit).toArray();
+  const limit = Math.min(Math.max(options.limit ?? 25, 1), 100);
+  const skip = Math.max(options.skip ?? 0, 0);
+  const docs = await col.find(filter).sort({ lastLoginAt: -1 }).skip(skip).limit(limit + 1).toArray();
+  return { users: docs.slice(0, limit), hasMore: docs.length > limit };
 }
 
 /** List users for admin directory (newest login first). */
-export async function listUsers(limit = 200): Promise<UserDoc[]> {
+export async function listUsers(
+  options: { skip?: number; limit?: number } = {},
+): Promise<{ users: UserDoc[]; hasMore: boolean }> {
   await ensureIndexes();
   const col = await users();
-  const capped = Math.min(Math.max(limit, 1), 500);
-  return col.find({}).sort({ lastLoginAt: -1 }).limit(capped).toArray();
+  const limit = Math.min(Math.max(options.limit ?? 25, 1), 100);
+  const skip = Math.max(options.skip ?? 0, 0);
+  const docs = await col.find({}).sort({ lastLoginAt: -1 }).skip(skip).limit(limit + 1).toArray();
+  return { users: docs.slice(0, limit), hasMore: docs.length > limit };
 }
 
 function isDuplicateKeyError(err: unknown): boolean {

@@ -1500,13 +1500,15 @@ export async function listAdminSessions(input: {
   range: ServerStatsRange;
   serverId?: string;
   activeOnly?: boolean;
-  limit?: number;
-}): Promise<FleetOverviewRecentSession[]> {
+  page?: number;
+  pageSize?: number;
+}): Promise<{ items: FleetOverviewRecentSession[]; page: number; pageSize: number; hasMore: boolean }> {
   await ensureProfileIndexes();
   const now = new Date();
   const start = rangeStart(input.range, now);
   const col = await playerSessionsCollection();
-  const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
+  const page = Math.max(Math.floor(input.page ?? 1), 1);
+  const pageSize = Math.min(Math.max(Math.floor(input.pageSize ?? 25), 1), 100);
 
   const filter: Record<string, unknown> = {
     joinedAt: { $gte: start },
@@ -1519,7 +1521,9 @@ export async function listAdminSessions(input: {
     };
   }
 
-  const sessions = await col.find(filter).sort({ joinedAt: -1 }).limit(limit).toArray();
+  const rows = await col.find(filter).sort({ joinedAt: -1 }).skip((page - 1) * pageSize).limit(pageSize + 1).toArray();
+  const hasMore = rows.length > pageSize;
+  const sessions = rows.slice(0, pageSize);
 
   let overlapPool = sessions;
   if (sessions.length > 0) {
@@ -1542,7 +1546,7 @@ export async function listAdminSessions(input: {
   const steamProfileBySteam = new Map(steamProfiles.map((profile) => [profile.steamId, profile]));
   const serverNameById = new Map(fleet.map((s) => [s.id, s.name]));
 
-  return sessions.map((s) => {
+  return { items: sessions.map((s) => {
     const user = userBySteam.get(s.steamId);
     const steamProfile = steamProfileBySteam.get(s.steamId);
     const active = isSessionActive(s, now.getTime());
@@ -1562,5 +1566,5 @@ export async function listAdminSessions(input: {
       serverName: s.serverName || serverNameById.get(s.serverId) || s.serverId,
       role: user?.role ?? null,
     };
-  });
+  }), page, pageSize, hasMore };
 }

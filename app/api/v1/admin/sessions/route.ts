@@ -34,15 +34,20 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
-  const limitRaw = Number(searchParams.get("limit") ?? "50");
-  const limit = Number.isFinite(limitRaw) ? limitRaw : 50;
+  const pageRaw = Number(searchParams.get("page") ?? "1");
+  const pageSizeRaw = Number(searchParams.get("pageSize") ?? "25");
+  const page = Number.isFinite(pageRaw) ? Math.max(Math.floor(pageRaw), 1) : 1;
+  const pageSize = Number.isFinite(pageSizeRaw)
+    ? Math.min(Math.max(Math.floor(pageSizeRaw), 1), 100)
+    : 25;
   const activeOnly = searchParams.get("active") === "1";
 
   const sessions = await listAdminSessions({
     range: rangeRaw,
     serverId,
     activeOnly,
-    limit,
+    page,
+    pageSize,
   });
 
   return jsonOk(sessions);
