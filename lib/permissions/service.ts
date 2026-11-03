@@ -34,7 +34,7 @@ import {
   isAllowedPlayerTag,
   parsePlayerTag,
 } from "@/lib/permissions/player-tags";
-import { ALL_RETAKES_ENTITLEMENT_KEY } from "@/lib/payments/entitlements-logic";
+import { LAUNCH_GIVEAWAY_ENTITLEMENT_KEY } from "@/lib/payments/entitlements-logic";
 import type {
   AuditLogDoc,
   PermissionCode,
@@ -1194,26 +1194,26 @@ export async function revokeVipEntitlement(
   };
 }
 
-export async function searchUsers(query: string) {
+export async function searchUsers(query: string, options?: { skip?: number; limit?: number }) {
   await ready();
-  const docs = await searchUserDocs(query);
-  return docs.map((doc) => ({
+  const result = await searchUserDocs(query, options);
+  return { ...result, users: result.users.map((doc) => ({
     ...toAuthUser(doc),
     role: doc.role ?? "USER",
     lastLoginAt: doc.lastLoginAt,
     createdAt: doc.createdAt,
-  }));
+  })) };
 }
 
-export async function listUsers(limit?: number) {
+export async function listUsers(options?: { skip?: number; limit?: number }) {
   await ready();
-  const docs = await listUserDocs(limit);
-  return docs.map((doc) => ({
+  const result = await listUserDocs(options);
+  return { ...result, users: result.users.map((doc) => ({
     ...toAuthUser(doc),
     role: doc.role ?? "USER",
     lastLoginAt: doc.lastLoginAt,
     createdAt: doc.createdAt,
-  }));
+  })) };
 }
 
 export async function getAuditLogs(params?: {
@@ -1337,12 +1337,11 @@ async function scopePermissionsForGameServer(
         steamId: resolved.steamId,
         expiresAt: vipAssignment.expiresAt,
         assignmentId: vipAssignment.id,
-        // Legacy giveaway VIPs predate server selection: upgrade them to the
-        // All Retakes key on first game-server request instead of pinning the
-        // complimentary single server.
+        // Legacy giveaway VIPs predate server selection: use the configured
+        // Mumbai bundle instead of granting the global All Retakes entitlement.
         entitlementKey:
           vipAssignment.source === "GIVEAWAY"
-            ? ALL_RETAKES_ENTITLEMENT_KEY
+            ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
             : undefined,
       });
       history = await loadHistory();
@@ -1526,12 +1525,16 @@ async function syncComplimentaryVipEntitlement(input: {
     const { ensureComplimentaryVipEntitlement } = await import(
       "@/lib/payments/entitlements"
     );
+    const bundle = input.entitlementKey
+      ? (await import("@/lib/payments/bundles")).listVipBundleDocs().then((rows) => rows.find((row) => row.id === input.entitlementKey))
+      : null;
     await ensureComplimentaryVipEntitlement({
       userId: input.userId,
       steamId: input.steamId,
       expiresAt: input.expiresAt,
       paymentId: `complimentary:${input.assignmentId}`,
       entitlementKey: input.entitlementKey,
+      serverIds: (await bundle)?.serverIds,
     });
   } catch (err) {
     console.error("[vip] complimentary vip_history sync failed", err);
@@ -1628,7 +1631,7 @@ export async function processLaunchGiveaway(input: {
         assignmentId: existingVip._id,
         entitlementKey:
           existingVip.source === "GIVEAWAY"
-            ? ALL_RETAKES_ENTITLEMENT_KEY
+            ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
             : undefined,
       });
     }
@@ -1747,7 +1750,7 @@ export async function processLaunchGiveaway(input: {
       steamId: user.steamId,
       expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
       assignmentId: raced._id,
-      entitlementKey: ALL_RETAKES_ENTITLEMENT_KEY,
+      entitlementKey: LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
     });
     return {
       steamId: user.steamId,
@@ -1771,7 +1774,7 @@ export async function processLaunchGiveaway(input: {
     expiresAt,
     // Launch VIP covers every retake server, matching the offer copy
     // ("priority access to all VIP server features").
-    entitlementKeys: [ALL_RETAKES_ENTITLEMENT_KEY],
+    entitlementKeys: [LAUNCH_GIVEAWAY_ENTITLEMENT_KEY],
   });
 
   try {

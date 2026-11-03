@@ -4,6 +4,7 @@ import type {
   VipEntitlement,
   VipIndividualEntitlement,
   VipPurchaseRecord,
+  VipServerAccess,
   VipMembershipSummary,
   VipPlanId,
   VipServerRef,
@@ -15,6 +16,9 @@ export const COMPLIMENTARY_VIP_SERVER_ID = "retake-3-mumbai";
 
 /** Entitlement key covering every retake server. */
 export const ALL_RETAKES_ENTITLEMENT_KEY = "all_retakes";
+
+/** Bundle used by the launch giveaway; intentionally narrower than All Retakes. */
+export const LAUNCH_GIVEAWAY_ENTITLEMENT_KEY = "mumbai-retake-bundle-all";
 
 /** Dedup admin keys and collapse All Retakes so it is never stacked with servers. */
 export function normalizeAdminEntitlementKeys(
@@ -90,8 +94,15 @@ export type AdminVipEntitlementRow = {
   key: string;
   label: string;
   purchaseCount: number;
+  sources: string[];
   expiresAt: string | null;
 };
+
+function entitlementSource(record: VipHistoryDoc): string {
+  if (record.source) return record.source;
+  // Older complimentary rows predate the explicit source field.
+  return record.paymentId.startsWith("complimentary:") ? "GIVEAWAY" : "PURCHASE";
+}
 
 /**
  * Rows for the admin "VIP entitlements" list.
@@ -145,6 +156,7 @@ export function buildAdminVipEntitlementRows(input: {
       key,
       label,
       purchaseCount: records.length,
+      sources: [...new Set(records.map(entitlementSource))].sort(),
       expiresAt: expiry ? expiry.toISOString() : null,
     });
   }
@@ -286,15 +298,9 @@ export function hasActiveVipEntitlementForServer(input: {
   if (!serverId) return false;
   const now = input.now ?? new Date();
 
-  const bundleExpiry = computeEntitlementExpiry(
-    input.history.filter(isAllRetakesRecord),
-  );
-  if (bundleExpiry && bundleExpiry.getTime() > now.getTime()) {
-    return true;
-  }
-
-  const serverRecords = input.history.filter((record) =>
-    serverIdsFromRecord(record).includes(serverId),
+  const serverRecords = input.history.filter(
+    (record) =>
+      isAllRetakesRecord(record) || serverIdsFromRecord(record).includes(serverId),
   );
   const serverExpiry = computeEntitlementExpiry(serverRecords);
   return Boolean(serverExpiry && serverExpiry.getTime() > now.getTime());
@@ -346,9 +352,12 @@ export function buildGrantedEntitlementRecord(input: {
   paymentId: string;
   currentExpiry: Date | null;
   now: Date;
+  serverIds?: string[];
 }): VipHistoryDoc {
   const key = input.entitlementKey.trim();
   const allRetakes = key === ALL_RETAKES_ENTITLEMENT_KEY;
+  const serverIds = input.serverIds?.length ? [...new Set(input.serverIds)] : [key];
+  const customBundle = !allRetakes && serverIds.length > 1;
   const { startDate, endDate } = computeVipExtension({
     currentExpiresAt: input.currentExpiry,
     now: input.now,
@@ -360,10 +369,10 @@ export function buildGrantedEntitlementRecord(input: {
     userId: input.userId,
     steamId: input.steamId,
     bundleId: allRetakes ? ALL_RETAKES_ENTITLEMENT_KEY : key,
-    bundleKind: allRetakes ? "all" : "server",
-    accessType: allRetakes ? "ALL_RETAKES" : "INDIVIDUAL_SERVER",
-    serverId: allRetakes ? null : key,
-    serverIds: allRetakes ? [] : [key],
+    bundleKind: allRetakes ? "all" : customBundle ? "custom" : "server",
+    accessType: allRetakes ? "ALL_RETAKES" : customBundle ? "BUNDLE" : "INDIVIDUAL_SERVER",
+    serverId: allRetakes || customBundle ? null : key,
+    serverIds: allRetakes ? [] : serverIds,
     plan: pickComplimentaryVipPlan(input.durationDays),
     amount: 0,
     durationDays: input.durationDays,
@@ -435,7 +444,37 @@ export function buildSummary(
 export type VipMembershipAggregate = {
   entitlements: VipEntitlement[];
   purchaseHistory: VipPurchaseRecord[];
+  serverAccess: VipServerAccess[];
 };
+
+function recordSource(record: VipHistoryDoc): string {
+  if (record.source) return record.source;
+  return record.paymentId.startsWith("complimentary:") ? "GIVEAWAY" : "PURCHASE";
+}
+
+/** Canonical server-level expiry: every term covering a server stacks on that server. */
+export function buildServerAccess(input: {
+  history: VipHistoryDoc[];
+  eligibleServers: VipMembershipServer[];
+  now?: Date;
+}): VipServerAccess[] {
+  const now = input.now ?? new Date();
+  return input.eligibleServers.flatMap((server) => {
+    const records = input.history.filter(
+      (record) =>
+        isAllRetakesRecord(record) || serverIdsFromRecord(record).includes(server.id),
+    );
+    const expiry = computeEntitlementExpiry(records);
+    if (!expiry) return [];
+    return [{
+      serverId: server.id,
+      serverName: server.shortName || server.name,
+      expiresAt: expiry.toISOString(),
+      status: expiry.getTime() > now.getTime() ? "active" : "expired",
+      sources: [...new Set(records.map(recordSource))].sort(),
+    } satisfies VipServerAccess];
+  });
+}
 
 export function buildMembershipFromHistory(input: {
   history: VipHistoryDoc[];
@@ -447,6 +486,7 @@ export function buildMembershipFromHistory(input: {
   now?: Date;
 }): VipMembershipAggregate {
   const now = input.now ?? new Date();
+  const serverAccess = buildServerAccess(input);
   const serversById = new Map(
     input.eligibleServers.map((server) => [server.id, server]),
   );
@@ -472,6 +512,7 @@ export function buildMembershipFromHistory(input: {
           },
         ],
         purchaseHistory: [],
+        serverAccess,
       };
     }
 
@@ -492,6 +533,7 @@ export function buildMembershipFromHistory(input: {
           status: "active" as const,
         })),
         purchaseHistory: [],
+        serverAccess,
       };
     }
 
@@ -505,6 +547,7 @@ export function buildMembershipFromHistory(input: {
         },
       ],
       purchaseHistory: [],
+      serverAccess,
     };
   }
 
@@ -623,6 +666,7 @@ export function buildMembershipFromHistory(input: {
         label: "Individual Server Access",
         plan: record.plan ?? null,
         planName: planName(record.plan),
+        durationDays: record.durationDays,
         serverIds: serverIdsFromRecord(record),
         serverNames: serverIdsFromRecord(record).map((id) =>
           serverName(id, serversById),
@@ -663,6 +707,7 @@ export function buildMembershipFromHistory(input: {
         label,
         plan: record.plan ?? null,
         planName: planName(record.plan),
+        durationDays: record.durationDays,
         serverIds: serverIdsFromRecord(record),
         serverNames: serverIdsFromRecord(record).map((id) =>
           serverName(id, serversById),
@@ -688,6 +733,7 @@ export function buildMembershipFromHistory(input: {
         ...individuals.sort((a, b) => a.serverName.localeCompare(b.serverName)),
       ],
       purchaseHistory,
+      serverAccess,
     };
   }
 
@@ -705,10 +751,11 @@ export function buildMembershipFromHistory(input: {
         },
       ],
       purchaseHistory,
+    serverAccess,
     };
   }
 
-  return { entitlements: [], purchaseHistory };
+  return { entitlements: [], purchaseHistory, serverAccess };
 }
 
 /** @deprecated Use buildMembershipFromHistory for purchase history too. */

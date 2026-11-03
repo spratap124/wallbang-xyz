@@ -97,6 +97,7 @@ export async function GET(request: Request): Promise<Response> {
     steamId: user.steamId,
     personaName: user.personaName,
     membership,
+    serverAccess: membership.serverAccess,
     entitlements,
     servers: serverOptions,
   });

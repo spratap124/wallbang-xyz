@@ -35,6 +35,7 @@ const ROLE_LABELS: Record<RoleCode, string> = {
 };
 
 type ServerOption = { id: string; shortName: string; name: string };
+type SessionsPage = { items: FleetOverviewRecentSession[]; page: number; pageSize: number; hasMore: boolean };
 
 type AdminSessionsPanelProps = {
   canManageRoles?: boolean;
@@ -52,6 +53,8 @@ export function AdminSessionsPanel({ canManageRoles = false }: AdminSessionsPane
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [roleTarget, setRoleTarget] = useState<SessionRoleTarget | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     if (initialServerId) setServerId(initialServerId);
@@ -78,20 +81,22 @@ export function AdminSessionsPanel({ canManageRoles = false }: AdminSessionsPane
     startTransition(async () => {
       const params = new URLSearchParams({
         range,
-        limit: "100",
+        page: String(page),
+        pageSize: "25",
       });
       if (serverId) params.set("serverId", serverId);
       if (activeOnly) params.set("active", "1");
       const res = await fetch(`/api/v1/admin/sessions?${params}`);
-      const payload = await readJson<FleetOverviewRecentSession[]>(res);
+      const payload = await readJson<SessionsPage>(res);
       if (!payload.ok) {
         setError(payload.error);
         setSessions([]);
         return;
       }
-      setSessions(payload.data);
+      setSessions(payload.data.items);
+      setHasMore(payload.data.hasMore);
     });
-  }, [activeOnly, range, serverId]);
+  }, [activeOnly, page, range, serverId]);
 
   useEffect(() => {
     load();
@@ -124,7 +129,7 @@ export function AdminSessionsPanel({ canManageRoles = false }: AdminSessionsPane
         <div className="flex flex-wrap gap-2">
           <select
             value={serverId}
-            onChange={(e) => setServerId(e.target.value)}
+            onChange={(e) => { setServerId(e.target.value); setPage(1); }}
             className="border-border bg-background focus-visible:ring-ring/50 h-8 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
           >
             <option value="">All servers</option>
@@ -138,7 +143,7 @@ export function AdminSessionsPanel({ canManageRoles = false }: AdminSessionsPane
             <input
               type="checkbox"
               checked={activeOnly}
-              onChange={(e) => setActiveOnly(e.target.checked)}
+              onChange={(e) => { setActiveOnly(e.target.checked); setPage(1); }}
             />
             Live only
           </label>
@@ -151,7 +156,7 @@ export function AdminSessionsPanel({ canManageRoles = false }: AdminSessionsPane
               size="sm"
               variant={range === item.value ? "default" : "outline"}
               disabled={pending}
-              onClick={() => setRange(item.value)}
+              onClick={() => { setRange(item.value); setPage(1); }}
             >
               {item.label}
             </Button>
@@ -318,6 +323,16 @@ export function AdminSessionsPanel({ canManageRoles = false }: AdminSessionsPane
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" size="sm" variant="outline" disabled={pending || page === 1} onClick={() => setPage((value) => value - 1)}>
+          Previous
+        </Button>
+        <span className="text-muted-foreground text-xs">Page {page}</span>
+        <Button type="button" size="sm" variant="outline" disabled={pending || !hasMore} onClick={() => setPage((value) => value + 1)}>
+          Next
+        </Button>
       </div>
 
       {canManageRoles ? (

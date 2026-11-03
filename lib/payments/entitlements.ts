@@ -7,6 +7,7 @@ import {
   COMPLIMENTARY_LIFETIME_DURATION_DAYS,
   COMPLIMENTARY_VIP_SERVER_ID,
   computeEntitlementExpiry,
+  buildServerAccess,
   durationDaysToCoverUntil,
   entitlementKeyFromRecord,
   isAllRetakesRecord,
@@ -48,6 +49,8 @@ export async function ensureComplimentaryVipEntitlement(input: {
   serverId?: string;
   /** Server id or `all_retakes`. Defaults to the complimentary Mumbai server. */
   entitlementKey?: string;
+  /** Snapshot of servers covered when the entitlement is a named bundle. */
+  serverIds?: string[];
   now?: Date;
 }): Promise<"inserted" | "skipped"> {
   await ensurePaymentIndexes();
@@ -92,6 +95,7 @@ export async function ensureComplimentaryVipEntitlement(input: {
     paymentId: input.paymentId,
     currentExpiry,
     now,
+    serverIds: input.serverIds,
   });
 
   try {
@@ -150,6 +154,11 @@ export async function getUserVipMembership(input: {
     bundleLabels,
     now,
   });
+  const serverAccess = buildServerAccess({
+    history,
+    eligibleServers: input.eligibleServers,
+    now,
+  });
 
   const hasActiveVip =
     status.lifetime || entitlements.some((item) => item.status === "active");
@@ -204,6 +213,7 @@ export async function getUserVipMembership(input: {
       (latestEntitlementExpiry ?? status.expiresAt)?.toISOString() ?? null,
     lastExpiredAt: lastExpiredAt?.toISOString() ?? null,
     entitlements,
+    serverAccess,
     purchaseHistory,
     summary,
   };

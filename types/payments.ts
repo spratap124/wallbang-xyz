@@ -68,6 +68,8 @@ export type VipHistoryDoc = {
   startDate: Date;
   endDate: Date;
   paymentId: string;
+  /** Origin of the entitlement when known; older rows infer this from paymentId. */
+  source?: string;
   createdAt: Date;
 };
 

@@ -19,6 +19,7 @@ type SearchUser = {
   lastLoginAt: string;
   createdAt: string;
 };
+type PlayersPage = { items: SearchUser[]; page: number; pageSize: number; hasMore: boolean };
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
@@ -30,40 +31,44 @@ export function AdminPlayersPanel() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [loaded, setLoaded] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [submittedQuery, setSubmittedQuery] = useState("");
 
-  const load = useCallback((q?: string) => {
+  const load = useCallback((q: string, nextPage: number) => {
     setError(null);
     startTransition(async () => {
       const params = new URLSearchParams();
-      const trimmed = q?.trim() ?? "";
-      if (trimmed) {
-        params.set("q", trimmed);
-      } else {
-        params.set("limit", "500");
-      }
+      const trimmed = q.trim();
+      if (trimmed) params.set("q", trimmed);
+      params.set("page", String(nextPage));
+      params.set("pageSize", "25");
       const res = await fetch(`/api/v1/users?${params}`);
-      const payload = await readJson<SearchUser[]>(res);
+      const payload = await readJson<PlayersPage>(res);
       setLoaded(true);
       if (!payload.ok) {
         setError(payload.error);
         setResults([]);
         return;
       }
-      setResults(payload.data);
+      setResults(payload.data.items);
+      setHasMore(payload.data.hasMore);
     });
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(submittedQuery, page);
+  }, [load, page, submittedQuery]);
 
   function search() {
-    load(query);
+    setSubmittedQuery(query.trim());
+    setPage(1);
   }
 
   function clearSearch() {
     setQuery("");
-    load();
+    setSubmittedQuery("");
+    setPage(1);
   }
 
   return (
@@ -101,7 +106,7 @@ export function AdminPlayersPanel() {
       <p className="text-muted-foreground text-xs">
         {pending && !loaded
           ? "Loading players…"
-          : `${results.length} player${results.length === 1 ? "" : "s"}`}
+          : `Page ${page} · ${results.length} player${results.length === 1 ? "" : "s"}`}
       </p>
 
       <div className="border-border overflow-x-auto rounded-xl border">
@@ -199,6 +204,16 @@ export function AdminPlayersPanel() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" size="sm" variant="outline" disabled={pending || page === 1} onClick={() => setPage((value) => value - 1)}>
+          Previous
+        </Button>
+        <span className="text-muted-foreground text-xs">Page {page}</span>
+        <Button type="button" size="sm" variant="outline" disabled={pending || !hasMore} onClick={() => setPage((value) => value + 1)}>
+          Next
+        </Button>
       </div>
     </div>
   );
