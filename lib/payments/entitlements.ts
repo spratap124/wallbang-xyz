@@ -7,6 +7,7 @@ import {
   COMPLIMENTARY_LIFETIME_DURATION_DAYS,
   COMPLIMENTARY_VIP_SERVER_ID,
   computeEntitlementExpiry,
+  buildServerAccess,
   durationDaysToCoverUntil,
   entitlementKeyFromRecord,
   isAllRetakesRecord,
@@ -150,6 +151,11 @@ export async function getUserVipMembership(input: {
     bundleLabels,
     now,
   });
+  const serverAccess = buildServerAccess({
+    history,
+    eligibleServers: input.eligibleServers,
+    now,
+  });
 
   const hasActiveVip =
     status.lifetime || entitlements.some((item) => item.status === "active");
@@ -204,6 +210,7 @@ export async function getUserVipMembership(input: {
       (latestEntitlementExpiry ?? status.expiresAt)?.toISOString() ?? null,
     lastExpiredAt: lastExpiredAt?.toISOString() ?? null,
     entitlements,
+    serverAccess,
     purchaseHistory,
     summary,
   };

@@ -21,6 +21,7 @@ import type {
   RoleSource,
 } from "@/types/permissions";
 import { BADGE_TYPES, type BadgeType } from "@/types/profile";
+import type { VipServerAccess } from "@/types/vip";
 import {
   CHAT_TAG_OPTIONS,
   NAME_TAG_OPTIONS,
@@ -126,6 +127,7 @@ export function AdminDashboard() {
   const [vipEntitlements, setVipEntitlements] = useState<
     VipEntitlementAdminRow[]
   >([]);
+  const [vipServerAccess, setVipServerAccess] = useState<VipServerAccess[]>([]);
   const [vipServers, setVipServers] = useState<VipServerOption[]>([]);
   const [roleGrantKeys, setRoleGrantKeys] = useState<string[]>([]);
 
@@ -136,6 +138,7 @@ export function AdminDashboard() {
       );
       const payload = await readJson<{
         entitlements: VipEntitlementAdminRow[];
+        serverAccess: VipServerAccess[];
         servers: VipServerOption[];
       }>(res);
       if (!payload.ok) {
@@ -144,6 +147,7 @@ export function AdminDashboard() {
         return;
       }
       setVipEntitlements(payload.data.entitlements);
+      setVipServerAccess(payload.data.serverAccess);
       setVipServers(payload.data.servers);
     });
   }, []);
@@ -153,6 +157,7 @@ export function AdminDashboard() {
       setError(null);
       setMessage(null);
       setVipEntitlements([]);
+      setVipServerAccess([]);
       setVipServers([]);
       setRoleGrantKeys([]);
       startTransition(async () => {
@@ -552,6 +557,18 @@ export function AdminDashboard() {
                   ))}
                 </ul>
                 <div className="mt-3 space-y-3 rounded-md border border-border/80 bg-muted/20 px-3 py-3">
+                  <div>
+                    <h4 className="text-sm font-medium">Final server access</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">Final expiry after stacking every bundle and individual term covering each server.</p>
+                    <ul className="mt-2 space-y-2">
+                      {vipServerAccess.map((server) => (
+                        <li key={server.serverId} className="flex items-center justify-between rounded-md border border-border bg-background/40 px-3 py-2 text-sm">
+                          <span>{server.serverName}<span className="ml-2 text-xs text-muted-foreground">{server.sources.join(" + ")}</span></span>
+                          <span className="text-xs text-muted-foreground">{server.expiresAt ? `Expires ${formatDate(server.expiresAt)}` : "Never expires"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                   <div>
                     <h4 className="text-sm font-medium">VIP entitlements</h4>
                     <p className="mt-1 text-xs text-muted-foreground">

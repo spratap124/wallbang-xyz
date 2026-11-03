@@ -170,6 +170,14 @@ export type VipMembershipSummary = {
   subline: string | null;
 };
 
+export type VipServerAccess = {
+  serverId: string;
+  serverName: string;
+  expiresAt: string | null;
+  status: VipEntitlementStatus;
+  sources: string[];
+};
+
 export type VipPurchaseStatus = "active" | "expired" | "covered";
 
 /** One purchase row for the VIP dashboard's purchase history. */
@@ -197,6 +205,8 @@ export type VipMembershipView = {
   overallExpiresAt: string | null;
   lastExpiredAt: string | null;
   entitlements: VipEntitlement[];
+  /** Canonical final access per server, after stacking all covering terms. */
+  serverAccess: VipServerAccess[];
   /** Individual purchases, newest first — informational. */
   purchaseHistory?: VipPurchaseRecord[];
   summary: VipMembershipSummary | null;

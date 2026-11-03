@@ -27,6 +27,7 @@ import type {
   VipIndividualEntitlement,
   VipMembershipView,
   VipPurchaseRecord,
+  VipServerAccess,
 } from "@/types/vip";
 
 type VipPageUser = {
@@ -117,6 +118,64 @@ function purchaseStatusLabel(record: VipPurchaseRecord): string {
   if (record.status === "covered") return "Covered by a bundle";
   if (record.status === "expired") return "Expired";
   return "Active";
+}
+
+function ServerAccessMembership({
+  serverAccess,
+  purchaseHistory,
+  showPricing,
+}: {
+  serverAccess: VipServerAccess[];
+  purchaseHistory: VipPurchaseRecord[];
+  showPricing: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Crown className="size-6 text-primary" aria-hidden />
+        <p className="text-2xl font-bold tracking-tight">VIP Access</p>
+        <StatusPill active={serverAccess.some((item) => item.status === "active")} />
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {serverAccess.filter((item) => item.status === "active").length} servers with VIP access
+      </p>
+      <ul className="mt-5 divide-y divide-white/10">
+        {serverAccess.map((server) => (
+          <li key={server.serverId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div>
+              <p className="font-medium">{server.serverName}</p>
+              <p className="text-xs text-muted-foreground">
+                {server.expiresAt ? `Expires ${formatVipExpiryDateCompact(server.expiresAt)}` : "Does not expire"}
+                {server.sources.length ? ` · ${server.sources.join(" + ")}` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <StatusPill active={server.status === "active"} />
+              {showPricing ? <Link href={pricingCheckoutHref({ accessType: "INDIVIDUAL_SERVER", serverId: server.serverId })} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-3")}>Renew</Link> : null}
+            </div>
+          </li>
+        ))}
+        {purchaseHistory.length > 0 ? (
+          <li className="py-4">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Purchase history</p>
+            <ul className="mt-2 divide-y divide-border/60">
+              {purchaseHistory.map((record) => (
+                <li key={record.id} className="py-2 text-sm">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <span>{record.label}{record.serverNames.length ? ` · ${record.serverNames.join(", ")}` : ""}</span>
+                    <span className="text-xs text-muted-foreground">{purchaseStatusLabel(record)}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Purchased {formatVipExpiryDate(record.purchasedAt)} · expires {record.expiresAt ? formatVipExpiryDate(record.expiresAt) : "—"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
 }
 
 function formatInr(paise: number): string {
@@ -582,6 +641,16 @@ function MembershipDetails({
   const individuals = membership.entitlements.filter(
     (item): item is VipIndividualEntitlement => item.kind === "individual",
   );
+
+  if (membership.serverAccess.length > 0) {
+    return (
+      <ServerAccessMembership
+        serverAccess={membership.serverAccess}
+        purchaseHistory={membership.purchaseHistory ?? []}
+        showPricing={showPricing}
+      />
+    );
+  }
 
   if (bundles.length > 0) {
     return (
