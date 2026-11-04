@@ -101,7 +101,12 @@ async function main() {
         continue;
       }
 
+      const canonicalPaymentId =
+        `complimentary:${role._id}:${LAUNCH_GIVEAWAY_ENTITLEMENT_KEY}`;
       const canonical =
+        activeGiveawayRows.find(
+          (row) => row.paymentId === canonicalPaymentId,
+        ) ??
         activeGiveawayRows.find(
           (row) => row.bundleId === LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
         ) ?? activeGiveawayRows[0];
@@ -138,7 +143,7 @@ async function main() {
             durationDays: days,
             startDate,
             endDate: role.expiresAt,
-            paymentId: `complimentary:${role._id}:${LAUNCH_GIVEAWAY_ENTITLEMENT_KEY}`,
+            paymentId: canonicalPaymentId,
             source: "GIVEAWAY",
             grantId: role._id,
             status: "ACTIVE",
