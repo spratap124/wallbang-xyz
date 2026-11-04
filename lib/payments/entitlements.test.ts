@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   ALL_RETAKES_ENTITLEMENT_KEY,
+  LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
   buildEntitlementsFromHistory,
   buildAdminVipEntitlementRows,
   buildMembershipFromHistory,
@@ -457,6 +458,15 @@ describe("admin-granted entitlements", () => {
       ["retake-1-mumbai", "retake-2-mumbai"],
     );
     assert.deepEqual(normalized.keys, [ALL_RETAKES_ENTITLEMENT_KEY]);
+    assert.deepEqual(normalized.unknown, []);
+  });
+
+  it("normalizes the canonical Mumbai all-server bundle", () => {
+    const normalized = normalizeAdminEntitlementKeys(
+      ["retake-1-mumbai", LAUNCH_GIVEAWAY_ENTITLEMENT_KEY, "retake-2-mumbai"],
+      ["retake-1-mumbai", "retake-2-mumbai"],
+    );
+    assert.deepEqual(normalized.keys, [LAUNCH_GIVEAWAY_ENTITLEMENT_KEY]);
     assert.deepEqual(normalized.unknown, []);
   });
 

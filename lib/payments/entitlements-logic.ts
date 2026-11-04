@@ -41,10 +41,15 @@ export function normalizeAdminEntitlementKeys(
     ...new Set(keys.map((key) => key.trim()).filter(Boolean)),
   ];
   const unknown = unique.filter(
-    (key) => key !== ALL_RETAKES_ENTITLEMENT_KEY && !valid.has(key),
+    (key) =>
+      key !== ALL_RETAKES_ENTITLEMENT_KEY &&
+      key !== LAUNCH_GIVEAWAY_ENTITLEMENT_KEY &&
+      !valid.has(key),
   );
   return {
-    keys: unique.includes(ALL_RETAKES_ENTITLEMENT_KEY)
+    keys: unique.includes(LAUNCH_GIVEAWAY_ENTITLEMENT_KEY)
+      ? [LAUNCH_GIVEAWAY_ENTITLEMENT_KEY]
+      : unique.includes(ALL_RETAKES_ENTITLEMENT_KEY)
       ? [ALL_RETAKES_ENTITLEMENT_KEY]
       : unique,
     unknown,
