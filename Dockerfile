@@ -45,6 +45,7 @@ RUN apk add --no-cache wget \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=wallbang:wallbang /app/.next/standalone ./
 COPY --from=builder --chown=wallbang:wallbang /app/.next/static ./.next/static
+COPY --from=builder --chown=wallbang:wallbang /app/scripts/migrate-giveaway-entitlements.mjs ./scripts/migrate-giveaway-entitlements.mjs
 
 USER wallbang
 EXPOSE 3000
