@@ -1,0 +1,171 @@
+/**
+ * Canonicalize legacy giveaway VIP history.
+ *
+ * Default is a dry run. Use --execute only after reviewing the report:
+ *   npm run migrate:giveaway-entitlements -- --dry-run
+ *   npm run migrate:giveaway-entitlements -- --execute
+ *
+ * Only complimentary giveaway rows are touched. Purchase history is never
+ * merged. Legacy rows remain in vip_history as SUPERSEDED audit history.
+ */
+import { MongoClient } from "mongodb";
+
+import { LAUNCH_GIVEAWAY_ENTITLEMENT_KEY } from "../lib/payments/entitlements-logic";
+import type { VipHistoryDoc } from "../types/payments";
+import type { UserRoleDoc } from "../types/permissions";
+
+const MS_PER_DAY = 86_400_000;
+
+type UserDoc = { _id: string; steamId: string; personaName?: string };
+type BundleDoc = { id: string; serverIds: string[] };
+
+function isGiveaway(record: VipHistoryDoc): boolean {
+  return (
+    record.source === "GIVEAWAY" ||
+    record.paymentId.startsWith("complimentary:")
+  );
+}
+
+function planFor(durationDays: number): VipHistoryDoc["plan"] {
+  if (durationDays >= 365) return "1_year";
+  if (durationDays >= 180) return "6_months";
+  if (durationDays >= 90) return "3_months";
+  return "1_month";
+}
+
+function durationDays(start: Date, end: Date): number {
+  return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / MS_PER_DAY));
+}
+
+async function main(): Promise<void> {
+  const execute = process.argv.includes("--execute");
+  const uri = process.env.MONGODB_URI?.trim();
+  const dbName = process.env.MONGODB_DB?.trim() || "wallbang";
+  if (!uri) throw new Error("MONGODB_URI is required.");
+
+  const client = new MongoClient(uri);
+  await client.connect();
+  const db = client.db(dbName);
+  const now = new Date();
+  const bundle = await db
+    .collection<BundleDoc>("vip_bundles")
+    .findOne({ id: LAUNCH_GIVEAWAY_ENTITLEMENT_KEY });
+  if (!bundle) {
+    throw new Error(`Missing bundle ${LAUNCH_GIVEAWAY_ENTITLEMENT_KEY}.`);
+  }
+
+  const roles = await db
+    .collection<UserRoleDoc>("user_roles")
+    .find({ roleCode: "VIP", source: "GIVEAWAY" })
+    .sort({ grantedAt: 1 })
+    .toArray();
+
+  let changed = 0;
+  let skipped = 0;
+  for (const role of roles) {
+    if (!role.expiresAt) {
+      console.warn(`skip ${role._id}: giveaway role has no expiry`);
+      skipped += 1;
+      continue;
+    }
+
+    const user = await db
+      .collection<UserDoc>("users")
+      .findOne({ _id: role.userId });
+    if (!user) {
+      console.warn(`skip ${role._id}: user ${role.userId} is missing`);
+      skipped += 1;
+      continue;
+    }
+
+    const history = await db
+      .collection<VipHistoryDoc>("vip_history")
+      .find({ userId: role.userId })
+      .toArray();
+    const giveawayRows = history.filter(isGiveaway);
+    const activeGiveawayRows = giveawayRows.filter(
+      (row) => row.status !== "SUPERSEDED",
+    );
+    if (activeGiveawayRows.length === 0) {
+      console.log(`skip ${user.steamId}: no giveaway history`);
+      skipped += 1;
+      continue;
+    }
+
+    const canonical =
+      activeGiveawayRows.find(
+        (row) => row.bundleId === LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
+      ) ?? activeGiveawayRows[0]!;
+    const canonicalId = canonical._id;
+    const startDate = role.grantedAt;
+    const days = durationDays(startDate, role.expiresAt);
+    const superseded = activeGiveawayRows.filter(
+      (row) => row._id !== canonicalId,
+    );
+
+    console.log(
+      `${execute ? "migrate" : "would migrate"} ${user.steamId} (${user.personaName ?? "?"}) ` +
+        `rows=${activeGiveawayRows.length} supersede=${superseded.length} ` +
+        `until=${role.expiresAt.toISOString()}`,
+    );
+
+    if (!execute) {
+      changed += 1;
+      continue;
+    }
+
+    const historyCol = db.collection<VipHistoryDoc>("vip_history");
+    await historyCol.updateOne(
+      { _id: canonicalId },
+      {
+        $set: {
+          bundleId: LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
+          bundleKind: "custom",
+          accessType: "BUNDLE",
+          serverId: null,
+          serverIds: bundle.serverIds,
+          plan: planFor(days),
+          amount: 0,
+          durationDays: days,
+          startDate,
+          endDate: role.expiresAt,
+          paymentId: `complimentary:${role._id}:${LAUNCH_GIVEAWAY_ENTITLEMENT_KEY}`,
+          source: "GIVEAWAY",
+          grantId: role._id,
+          status: "ACTIVE",
+          supersededBy: null,
+          supersededAt: null,
+        },
+      },
+    );
+
+    if (superseded.length > 0) {
+      await historyCol.updateMany(
+        { _id: { $in: superseded.map((row) => row._id) } },
+        {
+          $set: {
+            status: "SUPERSEDED",
+            supersededBy: canonicalId,
+            supersededAt: now,
+          },
+        },
+      );
+    }
+
+    await db.collection<UserRoleDoc>("user_roles").updateOne(
+      { _id: role._id },
+      { $set: { expiresAt: role.expiresAt } },
+    );
+    changed += 1;
+  }
+
+  console.log(
+    `[migrate-giveaway-entitlements] db=${dbName} execute=${execute} changed=${changed} skipped=${skipped}`,
+  );
+  await client.close();
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

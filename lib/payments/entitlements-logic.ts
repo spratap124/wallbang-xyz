@@ -20,6 +20,17 @@ export const ALL_RETAKES_ENTITLEMENT_KEY = "all_retakes";
 /** Bundle used by the launch giveaway; intentionally narrower than All Retakes. */
 export const LAUNCH_GIVEAWAY_ENTITLEMENT_KEY = "mumbai-retake-bundle-all";
 
+export function isSupersededHistoryRecord(record: VipHistoryDoc): boolean {
+  return record.status === "SUPERSEDED";
+}
+
+function isGiveawayHistoryRecord(record: VipHistoryDoc): boolean {
+  return (
+    record.source === "GIVEAWAY" ||
+    record.paymentId.startsWith("complimentary:")
+  );
+}
+
 /** Dedup admin keys and collapse All Retakes so it is never stacked with servers. */
 export function normalizeAdminEntitlementKeys(
   keys: string[],
@@ -126,6 +137,7 @@ export function buildAdminVipEntitlementRows(input: {
 
   const recordsByKey = new Map<string, VipHistoryDoc[]>();
   for (const record of input.history) {
+    if (isSupersededHistoryRecord(record)) continue;
     const key = entitlementKeyFromRecord(record);
     if (!key) continue;
     const list = recordsByKey.get(key) ?? [];
@@ -241,9 +253,25 @@ export function entitlementKeyFromPurchase(input: {
 export function computeEntitlementExpiry(
   records: VipHistoryDoc[],
 ): Date | null {
-  if (records.length === 0) return null;
+  const activeRecords = records.filter(
+    (record) => !isSupersededHistoryRecord(record),
+  );
+  if (activeRecords.length === 0) return null;
 
-  const sorted = [...records].sort(
+  // A giveaway is one grant, even when legacy and current entitlement keys
+  // both exist. Keep the earliest persisted end date until migration has
+  // collapsed those rows; never turn a duplicate giveaway into free time.
+  if (activeRecords.every(isGiveawayHistoryRecord)) {
+    return activeRecords.reduce(
+      (earliest, record) =>
+        record.endDate.getTime() < earliest.getTime()
+          ? record.endDate
+          : earliest,
+      activeRecords[0]!.endDate,
+    );
+  }
+
+  const sorted = [...activeRecords].sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
   );
 
@@ -462,7 +490,8 @@ export function buildServerAccess(input: {
   return input.eligibleServers.flatMap((server) => {
     const records = input.history.filter(
       (record) =>
-        isAllRetakesRecord(record) || serverIdsFromRecord(record).includes(server.id),
+        !isSupersededHistoryRecord(record) &&
+        (isAllRetakesRecord(record) || serverIdsFromRecord(record).includes(server.id)),
     );
     const expiry = computeEntitlementExpiry(records);
     if (!expiry) return [];

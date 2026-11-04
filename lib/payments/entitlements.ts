@@ -6,6 +6,8 @@ import {
   buildSummary,
   COMPLIMENTARY_LIFETIME_DURATION_DAYS,
   COMPLIMENTARY_VIP_SERVER_ID,
+  ALL_RETAKES_ENTITLEMENT_KEY,
+  LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
   computeEntitlementExpiry,
   buildServerAccess,
   durationDaysToCoverUntil,
@@ -45,6 +47,10 @@ export async function ensureComplimentaryVipEntitlement(input: {
   steamId: string;
   expiresAt: Date | null;
   paymentId: string;
+  /** Original role assignment id; used to make giveaway sync idempotent. */
+  grantId?: string;
+  /** Giveaway records are one grant, even when legacy keys differ. */
+  dedupeGiveaway?: boolean;
   /** Individual server id. Prefer `entitlementKey` when granting All Retakes. */
   serverId?: string;
   /** Server id or `all_retakes`. Defaults to the complimentary Mumbai server. */
@@ -62,6 +68,14 @@ export async function ensureComplimentaryVipEntitlement(input: {
     COMPLIMENTARY_VIP_SERVER_ID
   ).trim();
   if (!key || !input.paymentId.trim()) return "skipped";
+  if (
+    input.dedupeGiveaway &&
+    key === ALL_RETAKES_ENTITLEMENT_KEY
+  ) {
+    throw new Error(
+      `New giveaway entitlements must use ${LAUNCH_GIVEAWAY_ENTITLEMENT_KEY}.`,
+    );
+  }
 
   let coversUntil: Date;
   if (!input.expiresAt) {
@@ -75,6 +89,15 @@ export async function ensureComplimentaryVipEntitlement(input: {
   }
 
   const col = await vipHistoryCollection();
+  if (input.dedupeGiveaway && input.grantId) {
+    const escaped = input.grantId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const existing = await col.findOne({
+      userId: input.userId,
+      paymentId: { $regex: `^complimentary:${escaped}(?::|$)` },
+      status: { $ne: "SUPERSEDED" },
+    });
+    if (existing) return "skipped";
+  }
   const history = await col.find({ userId: input.userId }).toArray();
   const currentExpiry = computeEntitlementExpiry(
     history.filter((record) => entitlementKeyFromRecord(record) === key),
@@ -97,6 +120,9 @@ export async function ensureComplimentaryVipEntitlement(input: {
     now,
     serverIds: input.serverIds,
   });
+  doc.source = input.dedupeGiveaway ? "GIVEAWAY" : "ADMIN";
+  doc.grantId = input.grantId ?? null;
+  doc.status = "ACTIVE";
 
   try {
     await col.insertOne(doc);

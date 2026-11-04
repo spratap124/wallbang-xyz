@@ -423,8 +423,14 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
         userId: user._id,
         steamId: user.steamId,
         expiresAt,
-        assignmentId: key ? `${assignment._id}:${key}` : assignment._id,
+        assignmentId:
+          input.source === "GIVEAWAY"
+            ? assignment._id
+            : key
+              ? `${assignment._id}:${key}`
+              : assignment._id,
         entitlementKey: key,
+        dedupeGiveaway: input.source === "GIVEAWAY",
       });
     }
   }
@@ -1343,6 +1349,7 @@ async function scopePermissionsForGameServer(
           vipAssignment.source === "GIVEAWAY"
             ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
             : undefined,
+        dedupeGiveaway: vipAssignment.source === "GIVEAWAY",
       });
       history = await loadHistory();
       entitled = hasActiveVipEntitlementForServer({
@@ -1520,6 +1527,7 @@ async function syncComplimentaryVipEntitlement(input: {
   expiresAt: Date | null;
   assignmentId: string;
   entitlementKey?: string;
+  dedupeGiveaway?: boolean;
 }): Promise<void> {
   try {
     const { ensureComplimentaryVipEntitlement } = await import(
@@ -1535,6 +1543,8 @@ async function syncComplimentaryVipEntitlement(input: {
       paymentId: `complimentary:${input.assignmentId}`,
       entitlementKey: input.entitlementKey,
       serverIds: (await bundle)?.serverIds,
+      grantId: input.assignmentId,
+      dedupeGiveaway: input.dedupeGiveaway,
     });
   } catch (err) {
     console.error("[vip] complimentary vip_history sync failed", err);
@@ -1633,6 +1643,7 @@ export async function processLaunchGiveaway(input: {
           existingVip.source === "GIVEAWAY"
             ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
             : undefined,
+        dedupeGiveaway: existingVip.source === "GIVEAWAY",
       });
     }
 
@@ -1751,6 +1762,7 @@ export async function processLaunchGiveaway(input: {
       expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
       assignmentId: raced._id,
       entitlementKey: LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
+      dedupeGiveaway: true,
     });
     return {
       steamId: user.steamId,

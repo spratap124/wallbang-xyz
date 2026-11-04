@@ -39,6 +39,11 @@ function history(
     startDate: partial.startDate ?? partial.createdAt,
     endDate: partial.endDate ?? partial.createdAt,
     paymentId: partial.paymentId ?? crypto.randomUUID(),
+    source: partial.source,
+    grantId: partial.grantId,
+    status: partial.status,
+    supersededBy: partial.supersededBy,
+    supersededAt: partial.supersededAt,
     createdAt: partial.createdAt,
   };
 }
@@ -137,6 +142,63 @@ describe("VIP entitlement expiry rules", () => {
       furthestEntitlementExpiry(historyDocs)?.toISOString(),
       "2027-09-10T10:00:00.000Z",
     );
+  });
+
+  it("does not stack legacy and current giveaway records", () => {
+    const roleExpiry = new Date("2027-02-02T10:22:08.421Z");
+    const laterBackfill = new Date("2027-02-03T18:35:24.968Z");
+    const expiry = computeEntitlementExpiry([
+      history({
+        bundleId: ALL_RETAKES_ENTITLEMENT_KEY,
+        bundleKind: "all",
+        accessType: "ALL_RETAKES",
+        durationDays: 92,
+        endDate: roleExpiry,
+        paymentId: "complimentary:grant:all_retakes",
+        createdAt: new Date("2026-11-02T10:22:08.491Z"),
+      }),
+      history({
+        bundleId: "mumbai-retake-bundle-all",
+        bundleKind: "custom",
+        accessType: "BUNDLE",
+        serverIds: ["retake-1-mumbai", "retake-2-mumbai"],
+        durationDays: 91,
+        endDate: laterBackfill,
+        paymentId: "complimentary:grant:mumbai-retake-bundle-all",
+        createdAt: new Date("2026-11-03T18:35:24.968Z"),
+      }),
+    ]);
+
+    assert.equal(expiry?.toISOString(), roleExpiry.toISOString());
+  });
+
+  it("ignores superseded history rows", () => {
+    const activeExpiry = new Date("2027-02-02T10:22:08.421Z");
+    const expiry = computeEntitlementExpiry([
+      history({
+        bundleId: "mumbai-retake-bundle-all",
+        bundleKind: "custom",
+        accessType: "BUNDLE",
+        serverIds: ["retake-1-mumbai"],
+        durationDays: 92,
+        endDate: activeExpiry,
+        source: "GIVEAWAY",
+        status: "ACTIVE",
+        createdAt: new Date("2026-11-02T10:22:08.491Z"),
+      }),
+      history({
+        bundleId: ALL_RETAKES_ENTITLEMENT_KEY,
+        bundleKind: "all",
+        accessType: "ALL_RETAKES",
+        durationDays: 92,
+        endDate: new Date("2027-05-03T10:22:08.421Z"),
+        source: "GIVEAWAY",
+        status: "SUPERSEDED",
+        createdAt: new Date("2026-11-03T10:22:08.491Z"),
+      }),
+    ]);
+
+    assert.equal(expiry?.toISOString(), activeExpiry.toISOString());
   });
 
   it("All Retakes covers every server; individual only covers that server", () => {
