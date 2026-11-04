@@ -53,14 +53,27 @@ async function main() {
 
     const roles = await db
       .collection("user_roles")
-      .find({ roleCode: "VIP", source: "GIVEAWAY" })
+      .find({
+        roleCode: "VIP",
+        source: "GIVEAWAY",
+        active: true,
+        expiresAt: { $gt: now },
+      })
       .sort({ grantedAt: 1 })
       .toArray();
 
     let changed = 0;
     let skipped = 0;
+    const processedUsers = new Set();
 
     for (const role of roles) {
+      if (processedUsers.has(role.userId)) {
+        console.warn(`skip ${role._id}: another active giveaway role was already processed for ${role.userId}`);
+        skipped += 1;
+        continue;
+      }
+      processedUsers.add(role.userId);
+
       if (!role.expiresAt) {
         console.warn(`skip ${role._id}: giveaway role has no expiry`);
         skipped += 1;
