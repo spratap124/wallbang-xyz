@@ -1,6 +1,5 @@
-import { ServersSection } from "@/components/home/servers-section";
+import { DedicatedServersPage } from "@/components/servers/dedicated-servers-page";
 import { LiveServersProvider } from "@/components/servers/live-servers-provider";
-import { Container, SectionHeading } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import { breadcrumbJsonLd } from "@/seo/json-ld";
 import { createPageMetadata } from "@/seo/metadata";
@@ -22,15 +21,8 @@ export default function ServersPage() {
           { name: "Servers", path: "/servers" },
         ])}
       />
-      <Container>
-        <SectionHeading
-          eyebrow="Servers"
-          title="Live WallBang CS2 servers"
-          description="India-hosted Counter-Strike 2 community retake servers with one-click Steam connect. You must already own the game. More regions and modes will appear here as WallBang expands."
-        />
-      </Container>
       <LiveServersProvider>
-        <ServersSection showHeading={false} />
+        <DedicatedServersPage />
       </LiveServersProvider>
     </div>
   );
