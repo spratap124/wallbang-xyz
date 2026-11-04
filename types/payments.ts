@@ -70,6 +70,12 @@ export type VipHistoryDoc = {
   paymentId: string;
   /** Origin of the entitlement when known; older rows infer this from paymentId. */
   source?: string;
+  /** Stable originating role/grant id for complimentary entitlements. */
+  grantId?: string | null;
+  /** Superseded rows remain for audit but never contribute to access. */
+  status?: "ACTIVE" | "SUPERSEDED" | "REVOKED";
+  supersededBy?: string | null;
+  supersededAt?: Date | null;
   createdAt: Date;
 };
 
