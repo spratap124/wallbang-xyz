@@ -16,7 +16,7 @@
     "remove:dummy-users": "node --env-file=.env.local --import tsx scripts/remove-dummy-users.ts",
     "grant:vip": "node --env-file=.env.local --import tsx scripts/grant-vip-by-steamid.ts",
     "migrate:vip-server": "node --env-file=.env.local --import tsx scripts/migrate-global-vip-to-server.ts",
-    "migrate:giveaway-entitlements": "node --env-file=.env.local --import tsx scripts/migrate-giveaway-entitlements.ts",
+    "migrate:giveaway-entitlements": "node --env-file=.env.local scripts/migrate-giveaway-entitlements.mjs",
     "rename:server": "node --env-file=.env.local --import tsx scripts/rename-server-id.ts",
     "test:analytics": "node --import tsx --test lib/profile/overview-analytics.test.ts",
     "test:vip-pricing": "node --import tsx --test lib/payments/vip-pricing.test.ts",
