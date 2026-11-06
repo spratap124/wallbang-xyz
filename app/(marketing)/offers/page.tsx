@@ -23,6 +23,7 @@ import { isDiscordLinkConfigured } from "@/lib/discord/config";
 import { isMongoConfigured } from "@/lib/mongo";
 import {
   getLaunchGiveawayMaxWinners,
+  getLaunchGiveawayPlayers,
   getLaunchGiveawayStatus,
   getUserPermissions,
   isLaunchGiveawayDiscordRequired,
@@ -192,10 +193,14 @@ export default async function LaunchOfferPage({
     remaining: number;
     vipMonths: number;
   } | null = null;
+  let giveawayPlayers: Array<{ personaName: string; avatarUrl: string }> = [];
   let userGiveaway: UserGiveawayState | null = null;
 
   if (isMongoConfigured()) {
-    giveawayStatus = await getLaunchGiveawayStatus();
+    [giveawayStatus, giveawayPlayers] = await Promise.all([
+      getLaunchGiveawayStatus(),
+      getLaunchGiveawayPlayers(),
+    ]);
 
     if (session) {
       const result = await processLaunchGiveaway({ steamId: session.steamId });
@@ -316,6 +321,46 @@ export default async function LaunchOfferPage({
               maxWinners={maxWinners}
             />
           </div>
+
+          {giveawayPlayers.length > 0 ? (
+            <section className="mx-auto mt-6 max-w-xl rounded-xl border border-border/80 bg-card/60 px-4 py-4 text-left">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold">Launch VIP players</h2>
+                <span className="text-xs text-muted-foreground">
+                  {giveawayPlayers.length} claimed
+                </span>
+              </div>
+              <ul
+                aria-label="Players who received Launch VIP giveaway access"
+                className="flex flex-wrap gap-2"
+              >
+                {giveawayPlayers.map((player, index) => (
+                  <li key={`${player.personaName}-${index}`}>
+                    {player.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={player.avatarUrl}
+                        alt={player.personaName}
+                        title={player.personaName}
+                        width={32}
+                        height={32}
+                        loading="lazy"
+                        className="size-8 rounded-full border border-border object-cover"
+                      />
+                    ) : (
+                      <span
+                        aria-label={player.personaName}
+                        title={player.personaName}
+                        className="flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-xs font-medium"
+                      >
+                        {player.personaName.slice(0, 1).toUpperCase() || "?"}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </section>
 
         {flash ? (

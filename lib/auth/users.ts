@@ -147,6 +147,18 @@ export async function findUsersBySteamIds(
   return col.find({ steamId: { $in: ids } }).toArray();
 }
 
+export async function findUsersByIds(
+  ids: string[],
+): Promise<Array<Pick<UserDoc, "_id" | "personaName" | "avatarUrl">>> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+  await ensureIndexes();
+  const col = await users();
+  return col
+    .find({ _id: { $in: uniqueIds } }, { projection: { _id: 1, personaName: 1, avatarUrl: 1 } })
+    .toArray();
+}
+
 export async function updateUserDisplayRole(
   userId: string,
   role: RoleCode,
