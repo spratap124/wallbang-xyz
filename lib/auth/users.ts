@@ -147,6 +147,18 @@ export async function findUsersBySteamIds(
   return col.find({ steamId: { $in: ids } }).toArray();
 }
 
+export async function findUsersByIds(
+  ids: string[],
+): Promise<Array<Pick<UserDoc, "_id" | "personaName" | "avatarUrl">>> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+  await ensureIndexes();
+  const col = await users();
+  return col
+    .find({ _id: { $in: uniqueIds } }, { projection: { _id: 1, personaName: 1, avatarUrl: 1 } })
+    .toArray();
+}
+
 export async function updateUserDisplayRole(
   userId: string,
   role: RoleCode,
@@ -209,13 +221,16 @@ export async function searchUsers(
 /** List users for admin directory (newest login first). */
 export async function listUsers(
   options: { skip?: number; limit?: number } = {},
-): Promise<{ users: UserDoc[]; hasMore: boolean }> {
+): Promise<{ users: UserDoc[]; hasMore: boolean; total: number }> {
   await ensureIndexes();
   const col = await users();
   const limit = Math.min(Math.max(options.limit ?? 25, 1), 100);
   const skip = Math.max(options.skip ?? 0, 0);
-  const docs = await col.find({}).sort({ lastLoginAt: -1 }).skip(skip).limit(limit + 1).toArray();
-  return { users: docs.slice(0, limit), hasMore: docs.length > limit };
+  const [docs, total] = await Promise.all([
+    col.find({}).sort({ lastLoginAt: -1 }).skip(skip).limit(limit + 1).toArray(),
+    col.countDocuments({}),
+  ]);
+  return { users: docs.slice(0, limit), hasMore: docs.length > limit, total };
 }
 
 function isDuplicateKeyError(err: unknown): boolean {

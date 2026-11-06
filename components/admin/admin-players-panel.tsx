@@ -19,7 +19,15 @@ type SearchUser = {
   lastLoginAt: string;
   createdAt: string;
 };
-type PlayersPage = { items: SearchUser[]; page: number; pageSize: number; hasMore: boolean };
+type PlayersPage = {
+  items: SearchUser[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+  total?: number;
+  vipGiveawayTotal?: number;
+  vipPurchaseTotal?: number;
+};
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
@@ -34,6 +42,7 @@ export function AdminPlayersPanel() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [submittedQuery, setSubmittedQuery] = useState("");
+  const [totals, setTotals] = useState<Pick<PlayersPage, "total" | "vipGiveawayTotal" | "vipPurchaseTotal">>({});
 
   const load = useCallback((q: string, nextPage: number) => {
     setError(null);
@@ -53,6 +62,13 @@ export function AdminPlayersPanel() {
       }
       setResults(payload.data.items);
       setHasMore(payload.data.hasMore);
+      if (!trimmed) {
+        setTotals({
+          total: payload.data.total,
+          vipGiveawayTotal: payload.data.vipGiveawayTotal,
+          vipPurchaseTotal: payload.data.vipPurchaseTotal,
+        });
+      }
     });
   }, []);
 
@@ -103,11 +119,16 @@ export function AdminPlayersPanel() {
         </p>
       ) : null}
 
-      <p className="text-muted-foreground text-xs">
-        {pending && !loaded
-          ? "Loading players…"
-          : `Page ${page} · ${results.length} player${results.length === 1 ? "" : "s"}`}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+        <span>{pending && !loaded ? "Loading players…" : `Page ${page} · ${results.length} player${results.length === 1 ? "" : "s"}`}</span>
+        {!submittedQuery && (
+          <>
+            <span>Total players: <strong className="text-foreground">{totals.total ?? "—"}</strong></span>
+            <span>VIP Giveaway: <strong className="text-foreground">{totals.vipGiveawayTotal ?? "—"}</strong></span>
+            <span>VIP Purchase: <strong className="text-foreground">{totals.vipPurchaseTotal ?? "—"}</strong></span>
+          </>
+        )}
+      </div>
 
       <div className="border-border overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[36rem] text-left text-sm">

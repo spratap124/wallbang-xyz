@@ -5,6 +5,8 @@ import {
   searchUsers,
 } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
+import { userRolesCollection } from "@/lib/permissions/collections";
+import type { UserRoleDoc } from "@/types/permissions";
 
 export async function GET(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {
@@ -34,7 +36,25 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!q) {
     const result = await listUsers({ skip: (page - 1) * pageSize, limit: pageSize });
-    return jsonOk({ items: result.users, page, pageSize, hasMore: result.hasMore });
+    const activeVipFilter: import("mongodb").Filter<UserRoleDoc> = {
+      roleCode: "VIP",
+      active: true,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+    };
+    const roles = await userRolesCollection();
+    const [vipGiveawayPlayers, vipPurchasePlayers] = await Promise.all([
+      roles.distinct("userId", { ...activeVipFilter, source: "GIVEAWAY" }),
+      roles.distinct("userId", { ...activeVipFilter, source: "PURCHASE" }),
+    ]);
+    return jsonOk({
+      items: result.users,
+      page,
+      pageSize,
+      hasMore: result.hasMore,
+      total: result.total,
+      vipGiveawayTotal: vipGiveawayPlayers.length,
+      vipPurchaseTotal: vipPurchasePlayers.length,
+    });
   }
 
   const result = await searchUsers(q, { skip: (page - 1) * pageSize, limit: pageSize });

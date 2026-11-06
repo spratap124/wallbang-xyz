@@ -23,6 +23,7 @@ import {
   ensureUserFromSteamId,
   findUserById,
   findUserBySteamId,
+  findUsersByIds,
   listUsers as listUserDocs,
   searchUsers as searchUserDocs,
   toAuthUser,
@@ -1527,6 +1528,35 @@ export async function getLaunchGiveawayStatus(): Promise<{
     remaining: Math.max(0, maxWinners - claimed),
     vipMonths: getLaunchGiveawayVipMonths(),
   };
+}
+
+/** Public-safe avatar list for players with active launch giveaway VIP. */
+export async function getLaunchGiveawayPlayers(): Promise<
+  Array<{ personaName: string; avatarUrl: string }>
+> {
+  await ready();
+  const now = new Date();
+  const col = await userRolesCollection();
+  const assignments = await col
+    .find({
+      roleCode: "VIP",
+      source: "GIVEAWAY",
+      active: true,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+    })
+    .sort({ grantedAt: 1 })
+    .toArray();
+
+  const userIds = [...new Set(assignments.map((assignment) => assignment.userId))].slice(
+    0,
+    getLaunchGiveawayMaxWinners(),
+  );
+  const users = await findUsersByIds(userIds);
+  const byId = new Map(users.map((user) => [user._id, user]));
+  return userIds.flatMap((userId) => {
+    const user = byId.get(userId);
+    return user ? [{ personaName: user.personaName, avatarUrl: user.avatarUrl }] : [];
+  });
 }
 
 /**
