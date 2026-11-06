@@ -1,19 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { Check, ChevronDown, Info, Sparkles } from "lucide-react";
+import { Check, Info, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { BuyVipButton } from "@/components/vip/buy-vip-button";
 import { RazorpaySecuredBadge } from "@/components/vip/razorpay-brand";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
 import { trackGaEvent } from "@/lib/analytics/gtag";
 import { vipGaItem } from "@/lib/analytics/items";
 import { getMapImage } from "@/config/servers";
@@ -45,13 +37,6 @@ export type VipShopRenewTarget = {
 
 function serverLabel(server: VipShopServer): string {
   return server.shortName;
-}
-
-function serverMonthlyHint(server: VipShopServer): string {
-  const oneMonth = server.durationOptions.find((item) => item.id === "1_month");
-  return oneMonth
-    ? ` — from ${formatInrFromPaise(oneMonth.amountPaise)}/mo`
-    : "";
 }
 
 const ITEM_LIST_ID = "vip_shop";
@@ -92,6 +77,8 @@ function DurationCards({
       </p>
     );
   }
+
+  const oneMonth = durations.find((item) => item.id === "1_month");
 
   return (
     <>
@@ -134,6 +121,11 @@ function DurationCards({
             ) : (
               <span className="mt-1 min-h-4" aria-hidden />
             )}
+            <span className="mt-2 text-xs font-medium text-emerald-500">
+              {oneMonth && item.months > 1
+                ? `Save ${formatInrFromPaise(Math.max(0, oneMonth.amountPaise * item.months - item.amountPaise))}`
+                : "Save ₹0"}
+            </span>
           </button>
         );
       })}
@@ -150,14 +142,19 @@ export function VipShop({
   hideBuy = false,
   renewTarget = null,
 }: VipShopProps) {
+  const defaultBundle =
+    catalog.bundles.find((bundle) => bundle.featured) ?? catalog.bundles[0] ?? null;
+  const defaultAccessType: VipAccessType = defaultBundle
+    ? "BUNDLE"
+    : catalog.quote.accessType;
   const [accessType, setAccessType] = useState<VipAccessType>(
-    catalog.quote.accessType,
+    defaultAccessType,
   );
   const [selectedServerId, setSelectedServerId] = useState<string | null>(
     catalog.quote.serverId ?? catalog.servers[0]?.id ?? null,
   );
-  const [durationId, setDurationId] = useState<VipPlanId>("1_month");
-  const [bundleId, setBundleId] = useState<string | null>(null);
+  const [durationId, setDurationId] = useState<VipPlanId>("6_months");
+  const [bundleId, setBundleId] = useState<string | null>(defaultBundle?.id ?? null);
   const [shopQuote, setShopQuote] = useState<VipShopQuote>(catalog.quote);
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
@@ -475,63 +472,53 @@ export function VipShop({
             </h2>
             <div className="mt-4">
               <div className="space-y-2">
-                <Label htmlFor="vip-server-select">Server</Label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    id="vip-server-select"
-                    className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:ring-2 data-popup-open:ring-ring/50"
-                  >
-                    <span className="truncate text-left">
-                      {selectedServer
-                        ? `${serverLabel(selectedServer)}${serverMonthlyHint(selectedServer)}`
-                        : "Select a server"}
-                    </span>
-                    <ChevronDown className="size-4 shrink-0 opacity-60" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-64">
-                    <DropdownMenuRadioGroup
-                      value={selectedServerId ?? ""}
-                      onValueChange={(value) => {
-                        setSelectedServerId(value || null);
-                        trackSelectItem({
-                          plan: durationId,
-                          serverShortName: value
-                            ? (catalog.servers.find((s) => s.id === value)
-                                ?.shortName ?? null)
-                            : null,
-                          amountOverride: value
-                            ? lookupPlanPrice(
-                                catalog.servers.find((s) => s.id === value)
-                                  ?.durationOptions ?? [],
-                              )
-                            : null,
-                        });
-                      }}
+                {catalog.servers.map((server) => {
+                  const checked = selectedServerId === server.id;
+                  const price = lookupPlanPrice(server.durationOptions);
+                  return (
+                    <label
+                      key={server.id}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors",
+                        checked
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-card/50 hover:border-primary/30",
+                      )}
                     >
-                      {catalog.servers.map((server) => {
-                        const oneMonth = server.durationOptions.find(
-                          (item) => item.id === "1_month",
-                        );
-                        return (
-                          <DropdownMenuRadioItem
-                            key={server.id}
-                            value={server.id}
-                            className="gap-3"
-                          >
-                            <span className="min-w-0 flex-1 truncate">
-                              {serverLabel(server)}
-                            </span>
-                            {oneMonth ? (
-                              <span className="shrink-0 text-xs text-muted-foreground">
-                                from {formatInrFromPaise(oneMonth.amountPaise)}/mo
-                              </span>
-                            ) : null}
-                          </DropdownMenuRadioItem>
-                        );
-                      })}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <input
+                        type="radio"
+                        name="vip-server"
+                        value={server.id}
+                        checked={checked}
+                        onChange={() => {
+                          setSelectedServerId(server.id);
+                          trackSelectItem({
+                            plan: durationId,
+                            serverShortName: server.shortName,
+                            amountOverride: price,
+                          });
+                        }}
+                        className="size-4 accent-primary"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">
+                          {serverLabel(server)}
+                        </span>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {server.city}
+                        </span>
+                      </span>
+                      {price !== null ? (
+                        <span className="shrink-0 text-right text-sm font-semibold">
+                          {formatInrFromPaise(price)}
+                          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                            {durationLabels[durationId]}
+                          </span>
+                        </span>
+                      ) : null}
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </section>

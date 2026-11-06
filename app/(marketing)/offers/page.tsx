@@ -26,6 +26,7 @@ import {
   getLaunchGiveawayPlayers,
   getLaunchGiveawayStatus,
   getUserPermissions,
+  isLaunchGiveawayClosed,
   isLaunchGiveawayDiscordRequired,
   processLaunchGiveaway,
 } from "@/lib/permissions/service";
@@ -42,7 +43,7 @@ import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
   title: "Launch VIP",
   description:
-    "Become one of WallBang's first 50 players and unlock 3 months of complimentary hosted server access. Sign in with Steam to claim this limited-time offer.",
+    "The WallBang Launch VIP offer has ended. All 50 complimentary VIP spots have been claimed.",
   path: "/offers",
 });
 
@@ -250,8 +251,11 @@ export default async function LaunchOfferPage({
 
   const maxWinners = giveawayStatus?.maxWinners ?? getLaunchGiveawayMaxWinners();
   const vipMonths = giveawayStatus?.vipMonths ?? 3;
-  const claimed = giveawayStatus?.claimed ?? null;
-  const remaining = giveawayStatus?.remaining ?? null;
+  const giveawayClosed = isLaunchGiveawayClosed();
+  const claimed = giveawayClosed
+    ? maxWinners
+    : giveawayStatus?.claimed ?? null;
+  const remaining = giveawayClosed ? 0 : giveawayStatus?.remaining ?? null;
   const isOfferOpen = remaining === null || remaining > 0;
 
   const steamDone = Boolean(session);
@@ -286,10 +290,14 @@ export default async function LaunchOfferPage({
         {/* Hero */}
         <section className="mx-auto max-w-3xl text-center">
           <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-[1.1]">
-            🎉 Become one of WallBang&apos;s first {maxWinners} players
+            {giveawayClosed
+              ? "Launch VIP giveaway has ended"
+              : `🎉 Become one of WallBang's first ${maxWinners} players`}
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
-            {requireDiscord
+            {giveawayClosed
+              ? `All ${maxWinners} Launch VIP spots have been claimed. Thanks for being part of WallBang.`
+              : requireDiscord
               ? `Complete the two steps below to unlock ${vipMonths} months of Launch VIP. This limited-time membership is available only while spots remain.`
               : launchOfferSteamOnlyBlurb(vipMonths)}
           </p>

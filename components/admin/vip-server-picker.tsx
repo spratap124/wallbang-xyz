@@ -6,7 +6,9 @@ export type VipServerOption = {
   hasAccess: boolean;
 };
 
-export const ALL_RETAKES_KEY = "all_retakes";
+// Canonical bundle used for all future all-server grants. Keep the constant
+// name for callers, but never create new grants with the legacy key.
+export const ALL_RETAKES_KEY = "mumbai-retake-bundle-all";
 
 export function nextEntitlementKeys(keys: string[], key: string): string[] {
   if (key === ALL_RETAKES_KEY) {
@@ -48,7 +50,7 @@ export function VipServerPicker({
         />
         <span className="font-medium">All servers</span>
         <span className="text-xs text-muted-foreground">
-          All Retakes Bundle · {servers.length} server
+          All Retake Servers Mumbai · {servers.length} server
           {servers.length === 1 ? "" : "s"}
         </span>
       </label>

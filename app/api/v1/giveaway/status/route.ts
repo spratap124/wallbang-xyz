@@ -2,6 +2,7 @@ import { jsonOk } from "@/lib/permissions/authz";
 import {
   getLaunchGiveawayMaxWinners,
   getLaunchGiveawayStatus,
+  isLaunchGiveawayClosed,
 } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 
@@ -10,8 +11,8 @@ export async function GET(): Promise<Response> {
     const maxWinners = getLaunchGiveawayMaxWinners();
     return jsonOk({
       maxWinners,
-      claimed: 0,
-      remaining: maxWinners,
+      claimed: isLaunchGiveawayClosed() ? maxWinners : 0,
+      remaining: isLaunchGiveawayClosed() ? 0 : maxWinners,
       vipMonths: 3,
     });
   }

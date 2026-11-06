@@ -1424,8 +1424,12 @@ export type GiveawayEntryResult = {
 };
 
 export function getLaunchGiveawayMaxWinners(): number {
-  const parsed = Number.parseInt(process.env.GIVEAWAY_MAX_WINNERS ?? "30", 10);
-  return Number.isFinite(parsed) ? parsed : 30;
+  return 50;
+}
+
+/** The launch VIP promotion has ended; existing grants remain valid. */
+export function isLaunchGiveawayClosed(): boolean {
+  return true;
 }
 
 export function getLaunchGiveawayVipMonths(): number {
@@ -1509,6 +1513,14 @@ export async function getLaunchGiveawayStatus(): Promise<{
 }> {
   await ready();
   const maxWinners = getLaunchGiveawayMaxWinners();
+  if (isLaunchGiveawayClosed()) {
+    return {
+      maxWinners,
+      claimed: maxWinners,
+      remaining: 0,
+      vipMonths: getLaunchGiveawayVipMonths(),
+    };
+  }
   const claimed = await countActiveGiveawayVips();
   return {
     maxWinners,
@@ -1707,6 +1719,19 @@ export async function processLaunchGiveaway(input: {
       position: 0,
       maxWinners,
       status: "revoked",
+      expiresAt: null,
+      discordUserId: user.discordUserId ?? null,
+      discordUsername: user.discordUsername ?? null,
+    };
+  }
+
+  if (isLaunchGiveawayClosed()) {
+    return {
+      steamId: user.steamId,
+      personaName: user.personaName,
+      position: maxWinners,
+      maxWinners,
+      status: "slots_full",
       expiresAt: null,
       discordUserId: user.discordUserId ?? null,
       discordUsername: user.discordUsername ?? null,
