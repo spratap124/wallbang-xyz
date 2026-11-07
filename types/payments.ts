@@ -45,6 +45,8 @@ export type PaymentDoc = {
   payuInvoiceSyncedAt?: Date | null;
   /** GA4 client id captured at checkout (server-side purchase attribution). */
   gaClientId?: string | null;
+  /** GA4 session id captured at checkout (joins the event to that session). */
+  gaSessionId?: string | null;
   purchaseSentAt?: Date | null;
   refundSentAt?: Date | null;
   createdAt: Date;
