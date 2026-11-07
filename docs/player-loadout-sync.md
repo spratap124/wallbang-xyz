@@ -69,6 +69,8 @@ Loadouts are stored **per side** (`sides.CT` / `sides.T`). Flat `weapons` / `kni
 
 `loadout` is `null` when the player has never saved a loadout.
 
+An empty slot means **use the player's normal in-game inventory/default**. The website reset controls clear one override at a time: weapon entries are removed from that side's `weapons` map; knife, gloves, and agent are set to `null`. In the game projection, empty weapon entries are omitted and knife/gloves/agents are `null`. The CS2 plugin must interpret these empty values as instructions to remove any previously applied WallBang override, then allow the game inventory/default item to show. It must not retain an old override just because the corresponding skin fields are absent.
+
 ### PATCH `/api/v1/player/:steamId/loadout` — merge in-game picks
 
 Send only the slots that changed. Omitted slots are left unchanged. Optional `"side": "CT" | "T"` scopes weapon/knife/glove patches to that side; omit it to update both (legacy).
@@ -118,6 +120,8 @@ Clear a slot with `null`:
 ```json
 { "knife": null }
 ```
+
+For weapons, remove the weapon's key from the `weapons` map to clear its override. For gloves and agents, send their nullable slot as `null`. When applying a fetched full loadout, absent weapon keys and `null` slots mean reset to the player's default.
 
 Response matches GET `/api/loadout` (`loadout`, `game`, `updatedAt`).
 

@@ -27,6 +27,7 @@ type SkinBrowserProps = {
   onBack: () => void;
   onSelectSkin: (skin: Skin) => void;
   onEquipSkin: (skin: Skin) => void;
+  onResetToDefault: () => void;
   onToggleFavorite: (skinId: string) => void;
 };
 
@@ -73,6 +74,7 @@ export function SkinBrowser({
   onBack,
   onSelectSkin,
   onEquipSkin,
+  onResetToDefault,
   onToggleFavorite,
 }: SkinBrowserProps) {
   const [skins, setSkins] = useState<Skin[]>([]);
@@ -259,6 +261,18 @@ export function SkinBrowser({
             Favorites
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-card/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium">Use your in-game default</p>
+          <p className="text-xs text-muted-foreground">
+            Clear the WallBang override for this {category === "weapons" ? "weapon" : category === "knives" ? "knife" : "glove"}.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" disabled={!equipped} onClick={onResetToDefault}>
+          Reset to default
+        </Button>
       </div>
 
       <SkinGrid
