@@ -503,6 +503,32 @@ export function LoadoutPage() {
     );
   }
 
+  function resetCurrentToDefault() {
+    if (!activeWeaponId) return;
+    const slot = currentSlotKind();
+    updateLoadout((prev) =>
+      updateSideLoadout(prev, side, (current) => {
+        if (slot === "knives") return { ...current, knife: null };
+        if (slot === "gloves") return { ...current, gloves: null };
+        const weapons = { ...current.weapons };
+        delete weapons[activeWeaponId];
+        return { ...current, weapons };
+      }),
+    );
+    setDraftSkin(null);
+    setBrowsingSkins(false);
+    setMobilePreviewOpen(false);
+    setWear(midFloatForWear("Field-Tested"));
+    setStatTrak(false);
+    setSeed(Math.floor(Math.random() * 1000));
+  }
+
+  function resetAgentToDefault() {
+    updateLoadout((prev) =>
+      updateSideLoadout(prev, side, (current) => ({ ...current, agent: null })),
+    );
+  }
+
   function toggleFavorite(skinId?: string) {
     const id = skinId || favoriteId;
     if (!id) return;
@@ -747,6 +773,7 @@ export function LoadoutPage() {
               onEquipSkin={(skin) => {
                 equipSkin(skin, activeWeaponId);
               }}
+              onResetToDefault={resetCurrentToDefault}
               onToggleFavorite={(id) => toggleFavorite(id)}
             />
           ) : (
@@ -839,12 +866,30 @@ export function LoadoutPage() {
               ) : null}
 
               {tab === "agents" ? (
-                <AgentGrid
-                  faction={side}
-                  equipped={sideLoadout.agent}
-                  filter={search}
-                  onEquip={equipAgent}
-                />
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2 rounded-lg border border-border bg-card/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Use your in-game default</p>
+                      <p className="text-xs text-muted-foreground">
+                        Clear the custom {side} agent and use your own default.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!sideLoadout.agent}
+                      onClick={resetAgentToDefault}
+                    >
+                      Reset to default
+                    </Button>
+                  </div>
+                  <AgentGrid
+                    faction={side}
+                    equipped={sideLoadout.agent}
+                    filter={search}
+                    onEquip={equipAgent}
+                  />
+                </div>
               ) : null}
             </>
           )}
@@ -882,6 +927,8 @@ export function LoadoutPage() {
                 : undefined
             }
             onEquip={handleEquipFromPreview}
+            onResetToDefault={activeWeaponId ? resetCurrentToDefault : undefined}
+            hasCustomOverride={!!equippedForActive}
             onToggleFavorite={() => toggleFavorite()}
             className="hidden lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-5.5rem)] lg:self-start lg:overflow-hidden"
           />
@@ -917,6 +964,16 @@ export function LoadoutPage() {
               onWearChange={setWear}
               onSeedChange={setSeed}
               onStatTrakChange={setStatTrak}
+              onResetToDefault={activeWeaponId ? resetCurrentToDefault : undefined}
+              hasCustomOverride={!!equippedForActive}
+              onBrowseSkins={
+                activeWeaponId
+                  ? () => {
+                      openSkinBrowser(activeWeaponId, equippedForActive);
+                      setMobilePreviewOpen(true);
+                    }
+                  : undefined
+              }
               onEquip={() => {
                 handleEquipFromPreview();
                 setMobilePreviewOpen(false);

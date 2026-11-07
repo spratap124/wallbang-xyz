@@ -28,6 +28,8 @@ type PreviewPanelProps = {
   onSeedChange: (seed: number) => void;
   onStatTrakChange: (value: boolean) => void;
   onEquip: () => void;
+  onResetToDefault?: () => void;
+  hasCustomOverride?: boolean;
   onBrowseSkins?: () => void;
   onToggleFavorite: () => void;
   className?: string;
@@ -50,6 +52,8 @@ export function PreviewPanel({
   onSeedChange,
   onStatTrakChange,
   onEquip,
+  onResetToDefault,
+  hasCustomOverride = false,
   onBrowseSkins,
   onToggleFavorite,
   className,
@@ -189,6 +193,23 @@ export function PreviewPanel({
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-border pt-3">
+        {onResetToDefault ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              {hasCustomOverride
+                ? "A custom override is active for this slot."
+                : "No custom override. Your in-game default is used."}
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={!hasCustomOverride}
+              onClick={onResetToDefault}
+            >
+              Reset to default
+            </Button>
+          </>
+        ) : null}
         {onBrowseSkins ? (
           <Button variant="outline" className="w-full" onClick={onBrowseSkins}>
             Browse skins
