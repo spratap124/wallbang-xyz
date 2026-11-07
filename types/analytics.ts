@@ -13,4 +13,5 @@ export type GaEcommerceItem = {
 /** Non-personal attribution context captured at order creation for server-side GA events. */
 export type PaymentAnalyticsAttribution = {
   gaClientId: string | null;
+  gaSessionId: string | null;
 };

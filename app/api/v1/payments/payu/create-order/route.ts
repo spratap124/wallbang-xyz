@@ -33,6 +33,12 @@ const bodySchema = z
       .trim()
       .regex(/^[0-9a-z._-]{1,64}$/i, "Invalid analytics client id.")
       .optional(),
+    /** GA4 session id from the browser (joins the server purchase to the session). */
+    gaSessionId: z
+      .string()
+      .trim()
+      .regex(/^\d{1,20}$/, "Invalid analytics session id.")
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (value.serverIds && value.serverIds.length > 0) {
@@ -120,6 +126,7 @@ export async function POST(request: Request): Promise<Response> {
       email: parsed.data.email,
       phone: parsed.data.phone,
       gaClientId: parsed.data.gaClientId ?? null,
+      gaSessionId: parsed.data.gaSessionId ?? null,
     });
     return jsonOk(order);
   } catch (err) {

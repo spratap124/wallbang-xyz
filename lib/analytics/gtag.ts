@@ -43,6 +43,49 @@ export function readGaClientId(): string | null {
   }`;
 }
 
+/**
+ * Reads the GA4 session id from the per-property `_ga_<id>` cookie.
+ *
+ * Google changed this cookie from the positional `GS1` layout to the
+ * keyed `GS2` layout in May 2025 (`GS2.1.s<session>$o<number>$g<engaged>...`),
+ * so parse both instead of relying on a fixed segment index.
+ */
+export function readGaSessionId(): string | null {
+  if (typeof document === "undefined" || !MEASUREMENT_ID) return null;
+  const cookieName = `_ga_${MEASUREMENT_ID.replace(/^G-/, "")}`;
+  const raw = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${cookieName}=([^;]+)`),
+  );
+  if (!raw?.[1]) return null;
+  return parseGaSessionId(decodeURIComponent(raw[1]));
+}
+
+/** Extracts the numeric session id from a GA4 `_ga_<id>` cookie value. */
+export function parseGaSessionId(raw: string): string | null {
+  if (!raw) return null;
+  let value = raw;
+  if (value.includes("%")) {
+    try {
+      value = decodeURIComponent(value);
+    } catch {
+      // Keep the raw value; the numeric fallbacks below still apply.
+    }
+  }
+  // GS2: GS2.1.s1694691723$o1$g0$t1694691723$j60$l0$h0
+  const gs2 = value.match(/(?:^|[.$])s(\d+)(?:[.$]|$)/);
+  if (gs2?.[1]) return gs2[1];
+  // GS1: GS1.1.1694691723.1.0.1694691723.0.0.0
+  const parts = value.split(".");
+  if (parts[0] === "GS1" && /^\d+$/.test(parts[2] ?? "")) {
+    return parts[2] ?? null;
+  }
+  // Defensive fallback for future format tweaks: epoch-sized numeric segment.
+  for (const part of parts) {
+    if (/^\d{9,}$/.test(part)) return part;
+  }
+  return null;
+}
+
 /** Fires a gtag event; no-op when GA is not configured or blocked. */
 export function trackGaEvent(
   name: string,
