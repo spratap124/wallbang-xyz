@@ -61,6 +61,9 @@ export async function ensurePaymentIndexes(): Promise<void> {
           },
         ),
         payments.createIndex({ userId: 1, createdAt: -1 }),
+        payments.createIndex({ paidAt: -1 }),
+        payments.createIndex({ refundedAt: -1 }),
+        payments.createIndex({ createdAt: -1 }),
         payments.createIndex({ userId: 1, plan: 1, status: 1, createdAt: -1 }),
         payments.createIndex({
           userId: 1,

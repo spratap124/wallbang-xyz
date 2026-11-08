@@ -7,7 +7,7 @@ import { VipBadge } from "@/components/profile/vip-badge";
 import { Button } from "@/components/ui/button";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { cn } from "@/lib/utils";
-import type { FleetOverviewResponse } from "@/types/profile";
+import type { AdminRevenueResponse } from "@/types/admin-revenue";
 
 function formatInr(paise: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -26,7 +26,7 @@ function formatDate(value: string) {
 }
 
 export function RevenueDashboard() {
-  const [data, setData] = useState<FleetOverviewResponse | null>(null);
+  const [data, setData] = useState<AdminRevenueResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -34,11 +34,11 @@ export function RevenueDashboard() {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    fetch("/api/v1/admin/analytics?range=30d", {
+    fetch("/api/v1/admin/revenue", {
       cache: "no-store",
       signal: controller.signal,
     })
-      .then((response) => response.json() as Promise<ApiResult<FleetOverviewResponse>>)
+      .then((response) => response.json() as Promise<ApiResult<AdminRevenueResponse>>)
       .then((result) => {
         if (!result.ok) {
           setError(result.error);
@@ -57,7 +57,7 @@ export function RevenueDashboard() {
     return () => controller.abort();
   }, [reload]);
 
-  const revenue = data?.monetization;
+  const revenue = data;
   const metrics = [
     ["Captured revenue", revenue ? formatInr(revenue.grossCapturedPaise) : "—", Wallet],
     ["VIP purchases", revenue?.successfulPurchases.toString() ?? "—", CreditCard],
