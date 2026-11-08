@@ -1,1 +1,480 @@
-–&ÿ¦ºŠ]vß›h‘éì¶»§q«^v&WGW&â7&VFVC°§Ð ¦7–æ2gVæ7F–öâÆöE6WGF–æw2‡7FVÔ–C¢7G&–ær“¢&öÖ—6SÅÆ–W%6WGF–æw4Fö3â°¢6öç7B6öÂÒv—BÆ–W%6WGF–æw46öÆÆV7F–öâ‚“°¢6öç7BFö2Òv—B6öÂæf–æDöæR‡²7FVÔ–BÒ“°¢–b†Fö2’&WGW&âFö3°¢6öç7B7&VFVC¢Æ–W%6WGF–æw4Fö2Ò°¢ö–C¢7'—Fòç&æFöÕUT”B‚’À¢ââæFVfVÇE6WGF–æw2‡7FVÔ–B’À¢Ó°¢v—B6öÂæ–ç6W'DöæR†7&VFVB“°¢&WGW&â7&VFVC°§Ð ¦7–æ2gVæ7F–öâÆöD&FvW2€¢7FVÔ–C¢7G&–ærÀ¢&öÆW3¢&öÆT6öFUµÒÀ¢“¢&öÖ—6SÅ&öf–ÆT&FvUµÓâ°¢6öç7B6öÂÒv—BÆ–W$&FvW46öÆÆV7F–öâ‚“°¢6öç7B7F÷&VBÒv—B6öÂæf–æB‡²7FVÔ–BÒ’ç6÷'B‡²w&çFVDC¢ÓÒ’çFô'&’‚“° ¢6öç7B'•G—RÒæWrÖÇ7G&–ærÂ&öf–ÆT&FvSâ‚“°¢f÷"†6öç7B"öb7F÷&VB’°¢'•G—Rç6WB†"æ&FvUG—RÂ°¢G—S¢"æ&FvUG—RÀ¢Æ&VÃ¢&FvTÆ&VÂ†"æ&FvUG—R’À¢w&çFVDC¢"æw&çFVDBçFô•4õ7G&–ær‚’À¢Ò“°¢Ð ¢òò6VVBF—7Æ’&FvW2g&öÒ7F—fR$$2&öÆW2v†Vâæò7F÷&VB&FvRW†—7G2à¢f÷"†6öç7B&öÆRöb&öÆW2’°¢6öç7B&FvUG—RÒ$ôÄUõDõô$DtU·&öÆUÓ°¢–b†&FvUG—Rbb'•G—Ræ†2†&FvUG—R’’°¢'•G—Rç6WB†&FvUG—RÂ°¢G—S¢&FvUG—RÀ¢Æ&VÃ¢&FvTÆ&VÂ†&FvUG—R’À¢w&çFVDC¢æWrFFRƒ’çFô•4õ7G&–ær‚’À¢Ò“°¢Ð¢Ð ¢&WGW&â'&’æg&öÒ†'•G—RçfÇVW2‚’“°§Ð ¦gVæ7F–öâ&VF7E7FG4f÷%&—f7’€¢7FG3¢V–6µ7FG2À¢&—f7“¢&—f7•6WGF–æw2À¢—4÷væW#¢&ööÆVâÀ¢“¢V–6µ7FG2°¢–b†6åf–WvW$66W72‡&—f7’ç7FG2Â—4÷væW"’’&WGW&â7FG3°¢&WGW&â°¢ÖF6†W5Æ–VC¢À¢v–ç3¢À¢Æ÷76W3¢À¢v–å&FS¢çVÆÂÀ¢¶–ÆÇ3¢À¢FVF‡3¢À¢76—7G3¢À¢¶C¢çVÆÂÀ¢†VG6†÷G3¢À¢†VG6†÷EW&6VçC¢çVÆÂÀ¢FÖvS¢À¢G#¢çVÆÂÀ¢&÷VæG5Æ–VC¢À¢&÷VæG5vöã¢À¢&÷VæG4Æ÷7C¢À¢&÷VæEv–å&FS¢çVÆÂÀ¢ÆçG3¢À¢ÆçDGFV×G3¢À¢FVgW6W3¢À¢FVgW6TGFV×G3¢À¢×g3¢À¢&F–æs¢À¢†÷W'5Æ–VC¢À¢Ó°§Ð §G—RvWE&öf–ÆT÷F–öç2Ò°¢ò¢¢6÷VçBV&Æ–2&öf–ÆRf–Wr†FVfVÇBG'VRf÷"vRô’&öf–ÆR&VG2’â¢ð¢–æ7&VÖVçEf–Ww3ó¢&ööÆVã°§Ó° ¦W‡÷'B7–æ2gVæ7F–öâvWEÆ–W%&öf–ÆR€¢7FVÔ–C¢7G&–ærÀ¢f–WvW#¢WF…W6W"ÂçVÆÂÀ¢÷F–öç3¢vWE&öf–ÆT÷F–öç2Ò·ÒÀ¢“¢&öÖ—6SÅÆ–W%&öf–ÆUf–WrÂçVÆÃâ°¢–b‚—5fÆ–E7FVÔ–CcB‡7FVÔ–B’’&WGW&âçVÆÃ° ¢v—BVç7W&U&öf–ÆT–æFW†W2‚“°¢6öç7BW6W"Òv—Bf–æEW6W$'•7FVÔ–B‡7FVÔ–B“°¢–b‚W6W"’&WGW&âçVÆÃ° ¢6öç7BWF…W6W"Ò°¢–C¢W6W"åö–BÀ¢7FVÔ–C¢W6W"ç7FVÔ–BÀ¢W'6öææÖS¢W6W"çW'6öææÖRÀ¢fF%W&Ã¢W6W"æfF%W&ÂÀ¢&öf–ÆUW&Ã¢W6W"ç&öf–ÆUW&ÂÀ¢Ó°¢6öç7B&öf–ÆRÒv—BVç7W&UÆ–W$FöÖ–â†WF…W6W"“°¢6öç7B—4÷væW"Òf–WvW#òç7FVÔ–BÓÓÒ7FVÔ–C°¢6öç7B6†÷VÆD–æ7&VÖVçBÒ÷F–öç2æ–æ7&VÖVçEf–Ww2ÓÒfÇ6Rbb—4÷væW#° ¢–b‡6†÷VÆD–æ7&VÖVçB’°¢6öç7B&öf–ÆW2Òv—BÆ–W%&öf–ÆW46öÆÆV7F–öâ‚“°¢v—B&öf–ÆW2çWFFTöæR€¢²7FVÔ–BÒÀ¢²F–æ3¢²&öf–ÆUf–Ww3¢ÒÂG6WC¢²WFFVDC¢æWrFFR‚’ÒÒÀ¢“°¢&öf–ÆRç&öf–ÆUf–Ww2³Ò°¢Ð ¢6öç7B·&W6öÇfVBÂ7FG4Fö2Â6WGF–æw2Â&F–ætFö5ÒÒv—B&öÖ—6RæÆÂ…°¢vWEW6W%W&Ö—76–öç2‡²7FVÔ–BÒ’À¢ÆöE7FG2‡7FVÔ–B’À¢ÆöE6WGF–æw2‡7FVÔ–B’À¢æWr&F–æu&W÷6—F÷'’‚’æf–æD'•7FVÔ–B‡7FVÔ–B’æ6F6‚‚‚’ÓâçVÆÂ’À¢Ò“° ¢6öç7B&öÆS¢&öÆT6öFRÒ&W6öÇfVCòæF—7Æ•&öÆRóòW6W"ç&öÆRóò%U4U"#°¢6öç7B&öÆW2Ò&W6öÇfVCòç&öÆW2óò·&öÆUÓ°¢6öç7BW&Ö—76–öç2Ò&W6öÇfVCòçW&Ö—76–öç2óòµÓ°¢6öç7B—5f—Ð¢&öÆW2æ–æ6ÇVFW2‚%d•"’ÇÀ¢&öÆW2æ–æ6ÇVFW2‚$dõTäD”äuôÔTÔ$U""’ÇÀ¢W&Ö—76–öç2æ–æ6ÇVFW2‚'vV'6—FUö&FvR"“°¢6öç7B6†÷uvV'6—FT&FvRÒW&Ö—76–öç2æ–æ6ÇVFW2‚'vV'6—FUö&FvR"’ÇÂ—5f—° ¢6öç7B&FvW2Òv—BÆöD&FvW2‡7FVÔ–BÂ&öÆW2“°¢6öç7B6åf–Wu7FG2Ò6åf–WvW$66W72‡6WGF–æw2ç&—f7’ç7FG2Â—4÷væW"“°¢6öç7B&6U7FG2ÒFõV–6µ7FG2‡7FG4Fö2“°¢6öç7B&÷VæEv–ç2Ò&F–ætFö3òçv–ç2óò°¢6öç7B&÷VæDÆ÷76W2Ò&F–ætFö3òæÆ÷76W2óò°¢6öç7BF÷FÅ&÷VæG2Ò&F–ætFö3òç&÷VæG5Æ–VBóò°¢6öç7B&WF¶T¶–ÆÇ2Ò&F–ætFö3òæÆ–fWF–ÖU7FG3òç&WF¶Sòæ¶–ÆÇ2óò°¢6öç7B&WF¶TFVF‡2Ò&F–ætFö3òæÆ–fWF–ÖU7FG3òç&WF¶SòæFVF‡2óò°¢6öç7B&WF¶T76—7G2Ò&F–ætFö3òæÆ–fWF–ÖU7FG3òç&WF¶Sòæ76—7G2óò°¢6öç7B6öÖ&–æVE7FG3¢V–6µ7FG2Ò&F–ætFö2ò°¢ââæ&6U7FG2À¢ÖF6†W5Æ–VC¢F÷FÅ&÷VæG2À¢v–ç3¢&÷VæEv–ç2À¢Æ÷76W3¢&÷VæDÆ÷76W2À¢v–å&FS¢F÷FÅ&÷VæG2âòÖF‚ç&÷VæB‚‡&÷VæEv–ç2òF÷FÅ&÷VæG2’¢’ò¢çVÆÂÀ¢¶–ÆÇ3¢&WF¶T¶–ÆÇ2À¢FVF‡3¢&WF¶TFVF‡2À¢76—7G3¢&WF¶T76—7G2À¢¶C¢&WF¶TFVF‡2âòÖF‚ç&÷VæB‚‡&WF¶T¶–ÆÇ2ò&WF¶TFVF‡2’¢’ò¢&WF¶T¶–ÆÇ2âò&WF¶T¶–ÆÇ2¢çVÆÂÀ¢&÷VæG5Æ–VC¢F÷FÅ&÷VæG2À¢&÷VæG5vöã¢&÷VæEv–ç2À¢&÷VæG4Æ÷7C¢&÷VæDÆ÷76W2À¢&÷VæEv–å&FS¢F÷FÅ&÷VæG2âòÖF‚ç&÷VæB‚‡&÷VæEv–ç2òF÷FÅ&÷VæG2’¢’ò¢çVÆÂÀ¢&F–æs¢&F–ætFö2ç&F–ærÀ¢Vµ&F–æs¢&F–ætFö2çVµ&F–ærÀ¢Ò¢&6U7FG3°¢6öç7B†5&F–æt7F—f—G’Ò&ööÆVâ‡&F–ætFö2bb‡&F–ætFö2ç&÷VæG5Æ–VBâÇÂ&F–ætFö2ç&F–ærâ’“°¢6öç7B7FG2Ò&VF7E7FG4f÷%&—f7’€¢6öÖ&–æVE7FG2À¢6WGF–æw2ç&—f7’À¢—4÷væW"À¢“° ¢6öç7BF—7Æ”æÖRÒ&öf–ÆRæF—7Æ”æÖSòçG&–Ò‚’ÇÂW6W"çW'6öææÖS°¢6öç7B6ö×ÆWF–öâÒ'V–ÆE&öf–ÆT6ö×ÆWF–öâ‡°¢†4fF#¢&ööÆVâ‡W6W"æfF%W&Â’À¢†46÷VçG'“¢&ööÆVâ‡&öf–ÆRæ6÷VçG'”6öFR’À¢†4&–ó¢&ööÆVâ‡&öf–ÆRæ&–ò’À¢†4ff÷&—FUvVöã¢&ööÆVâ‡&öf–ÆRæff÷&—FUvVöâ’À¢†4ff÷&—FTÖ¢&ööÆVâ‡&öf–ÆRæff÷&—FTÖ’À¢†5&VfW'&VE6–FS¢&ööÆVâ‡&öf–ÆRç&VfW'&VE6–FR’À¢†4ÖF6†W3¢7FG4Fö2æÖF6†W5Æ–VBâÇÂF÷FÅ&÷VæG2âÀ¢Ò“°¢6öç7B7W'&VçE6W'fW"Òv—B&W6öÇfT7W'&VçE6W'fW"‡7FVÔ–B“°¢òò&WF–æVB6W76–öâ7F—f—G’—27WÆVÖVçF'“¢æWfW"f–ÂF†Rv†öÆR&öf–ÆP¢òòv†VâF†Rvw&VvFR—2Væf–Æ&ÆR†RærâG&ç6–VçBÖöævòW'&÷"’à¢6öç7B6W'fW$7F—f—G’Òv—BvWEÆ–W%6W'fW$7F—f—G’‡7FVÔ–B’æ6F6‚€¢‚’ÓâçVÆÂÀ¢“° ¢&WGW&â°¢7FVÔ–C¢W6W"ç7FVÔ–BÀ¢W6W$–C¢W6W"åö–BÀ¢W'6öææÖS¢W6W"çW'6öææÖRÀ¢F—7Æ”æÖRÀ¢fF%W&Ã¢W6W"æfF%W&ÂÀ¢7FVÕ&öf–ÆUW&Ã¢W6W"ç&öf–ÆUW&ÂÀ¢&ææW%W&Ã¢&öf–ÆRæ&ææW%W&ÂÀ¢6÷VçG'”6öFS¢&öf–ÆRæ6÷VçG'”6öFRÀ¢&–ó¢&öf–ÆRæ&–òÀ¢&öÆRÀ¢—5f—À¢6†÷uvV'6—FT&FvRÀ¢¦ö–æVDC¢W6W"æ7&VFVDBçFô•4õ7G&–ær‚’À¢Æ7DÆöv–äC¢W6W"æÆ7DÆöv–äBçFô•4õ7G&–ær‚’À¢&öf–ÆUf–Ww3¢&öf–ÆRç&öf–ÆUf–Ww2À¢—4÷væW"À¢7VÖÖ'“¢°¢7FVÔ–C¢W6W"ç7FVÔ–BÀ¢ÖVÖ&W%6–æ6S¢W6W"æ7&VFVDBçFô•4õ7G&–ær‚’À¢Æ7DÆöv–äC¢W6W"æÆ7DÆöv–äBçFô•4õ7G&–ær‚’À¢&öÆRÀ¢&öf–ÆT6ö×ÆWF–öã¢6ö×ÆWF–öâçW&6VçBÀ¢6ö×ÆWF–öâÀ¢7W'&VçE6W'fW"À¢ff÷&—FUvVöã¢&öf–ÆRæff÷&—FUvVöâÀ¢ff÷&—FTÖ¢&öf–ÆRæff÷&—FTÖÀ¢&VfW'&VE6–FS¢&öf–ÆRç&VfW'&VE6–FRÀ¢ÒÀ¢7FG2À¢7FG4†–FFVã¢6åf–Wu7FG2bb‡7FG4Fö2æÖF6†W5Æ–VBâÇÂ†5&F–æt7F—f—G’’À¢6W'fW$7F—f—G’À¢&FvW2À¢&—f7“¢6WGF–æw2ç&—f7’À¢Ó°§Ð ¦W‡÷'B7–æ2gVæ7F–öâvWD×•&öf–ÆR€¢f–WvW#¢WF…W6W"À¢“¢&öÖ—6SÅÆ–W%&öf–ÆUf–WrÂçVÆÃâ°¢v—BVç7W&UÆ–W$FöÖ–â‡f–WvW"“°¢&WGW&âvWEÆ–W%&öf–ÆR‡f–WvW"ç7FVÔ–BÂf–WvW"“°§Ð ¦W‡÷'B7–æ2gVæ7F–öâF6…Æ–W%&öf–ÆR€¢f–WvW#¢WF…W6W"À¢–çWC¢F6…&öf–ÆT–çWBÀ¢“¢&öÖ—6SÅÆ–W%&öf–ÆUf–WrÂçVÆÃâ°¢v—BVç7W&UÆ–W$FöÖ–â‡f–WvW"“°¢6öç7Bæ÷rÒæWrFFR‚“°¢6öç7B&öf–ÆW2Òv—BÆ–W%&öf–ÆW46öÆÆV7F–öâ‚“° ¢6öç7B&öf–ÆU6WC¢&V6÷&CÇ7G&–ærÂVæ¶æ÷vãâÒ²WFFVDC¢æ÷rÓ°¢–b†–çWBæF—7Æ”æÖRÓÒVæFVf–æVB’°¢&öf–ÆU6WBæF—7Æ”æÖRÒ–çWBæF—7Æ”æÖSòçG&–Ò‚’ÇÂçVÆÃ°¢Ð¢–b†–çWBæ&–òÓÒVæFVf–æVB’°¢&öf–ÆU6WBæ&–òÒ–çWBæ&–óòçG&–Ò‚’ÇÂçVÆÃ°¢Ð¢–b†–çWBæ6÷VçG'”6öFRÓÒVæFVf–æVB’°¢&öf–ÆU6WBæ6÷VçG'”6öFRÒ–çWBæ6÷VçG'”6öFSòçG&–Ò‚’çFõWW$66R‚’ÇÂçVÆÃ°¢Ð¢–b†–çWBç&VfW'&VE6–FRÓÒVæFVf–æVB’°¢&öf–ÆU6WBç&VfW'&VE6–FRÒ–çWBç&VfW'&VE6–FS°¢Ð¢–b†–çWBæff÷&—FUvVöâÓÒVæFVf–æVB’°¢&öf–ÆU6WBæff÷&—FUvVöâÒ–çWBæff÷&—FUvVöãòçG&–Ò‚’ÇÂçVÆÃ°¢Ð¢–b†–çWBæff÷&—FTÖÓÒVæFVf–æVB’°¢&öf–ÆU6WBæff÷&—FTÖÒ–çWBæff÷&—FTÖòçG&–Ò‚’ÇÂçVÆÃ°¢Ð ¢–b„ö&¦V7Bæ¶W—2‡&öf–ÆU6WB’æÆVæwF‚â’°¢v—B&öf–ÆW2çWFFTöæR€¢²7FVÔ–C¢f–WvW"ç7FVÔ–BÒÀ¢²G6WC¢&öf–ÆU6WBÒÀ¢“°¢Ð ¢–b€¢–çWBç&—f7’ÓÒVæFVf–æVBÇÀ¢–çWBçF†VÖRÓÒVæFVf–æVBÇÀ¢–çWBææ÷F–f–6F–öç4Væ&ÆVBÓÒVæFVf–æV@¢’°¢6öç7B6WGF–æw2Òv—BÆ–W%6WGF–æw46öÆÆV7F–öâ‚“°¢6öç7B6WGF–æw56WC¢&V6÷&CÇ7G&–ærÂVæ¶æ÷vãâÒ²WFFVDC¢æ÷rÓ°¢–b†–çWBçF†VÖRÓÒVæFVf–æVB’6WGF–æw56WBçF†VÖRÒ–çWBçF†VÖS°¢–b†–çWBææ÷F–f–6F–öç4Væ&ÆVBÓÒVæFVf–æVB’°¢6WGF–æw56WBææ÷F–f–6F–öç4Væ&ÆVBÒ–çWBææ÷F–f–6F–öç4Væ&ÆVC°¢Ð¢–b†–çWBç&—f7’’°¢f÷"†6öç7B¶¶W’ÂfÇVUÒöbö&¦V7BæVçG&–W2†–çWBç&—f7’’’°¢–b‡fÇVR’6WGF–æw56WE¶&—f7’âG¶¶W—ÖÒÒfÇVS°¢Ð¢Ð¢v—B6WGF–æw2çWFFTöæR€¢²7FVÔ–C¢f–WvW"ç7FVÔ–BÒÀ¢²G6WC¢6WGF–æw56WBÒÀ¢²W6W'C¢G'VRÒÀ¢“°¢Ð ¢&WGW&âvWEÆ–W%&öf–ÆR‡f–WvW"ç7FVÔ–BÂf–WvW"“°§Ð ¦W‡÷'B7–æ2gVæ7F–öâvWEÆ–W$7F—f—G’€¢7FVÔ–C¢7G&–ærÀ¢Æ–Ö—BÒ#À¢“¢&öÖ—6SÅÆ–W$7F—f—G”Fö5µÓâ°¢–b‚—5fÆ–E7FVÔ–CcB‡7FVÔ–B’’&WGW&âµÓ°¢v—BVç7W&U&öf–ÆT–æFW†W2‚“°¢6öç7B6öÂÒv—BÆ–W$7F—f—G”6öÆÆV7F–öâ‚“°¢&WGW&â6öÂæf–æB‡²7FVÔ–BÒ’ç6÷'B‡²7&VFVDC¢ÓÒ’æÆ–Ö—B†Æ–Ö—B’çFô'&’‚“°§Ð ¦W‡÷'B7–æ2gVæ7F–öâvWEÆ–W%7FG2€¢7FVÔ–C¢7G&–ærÀ¢“¢&öÖ—6SÅV–6µ7FG2ÂçVÆÃâ°¢–b‚—5fÆ–E7FVÔ–CcB‡7FVÔ–B’’&WGW&âçVÆÃ°¢6öç7BW6W"Òv—Bf–æEW6W$'•7FVÔ–B‡7FVÔ–B“°¢–b‚W6W"’&WGW&âçVÆÃ°¢v—BVç7W&U&öf–ÆT–æFW†W2‚“°¢6öç7BFö2Òv—BÆöE7FG2‡7FVÔ–B“°¢&WGW&âFõV–6µ7FG2†Fö2“°§Ð ¢ò¢ ¢¢&VBÖöæÇ’7FG2Æöö·WF†BFöW2æ÷B&WV—&RvÆÄ&ær66÷VçBæBæWfW ¢¢w&—FW2âW6VBf÷"7Ffbf–Wv–ær–âÖvÖRÖöæÇ’Æ–W'2à¢¢ð¦W‡÷'B7–æ2gVæ7F–öâ&VEV&Æ–5Æ–W%7FG2€¢7FVÔ–C¢7G&–ærÀ¢“¢&öÖ—6SÅV–6µ7FG2ÂçVÆÃâ°¢–b‚—5fÆ–E7FVÔ–CcB‡7FVÔ–B’’&WGW&âçVÆÃ°¢v—BVç7W&U&öf–ÆT–æFW†W2‚“°¢6öç7B6öÂÒv—BÆ–W%7FG46öÆÆV7F–öâ‚“°¢6öç7BFö2Òv—B6öÂæf–æDöæR‡²7FVÔ–BÒ“°¢&WGW&âFö2òFõV–6µ7FG2†æ÷&ÖÆ—¦U7FG4Fö2†Fö2’’¢çVÆÃ°§Ð ¦W‡÷'B7–æ2gVæ7F–öâvWEÆ–W$&FvW2€¢7FVÔ–C¢7G&–ærÀ¢“¢&öÖ—6SÅ&öf–ÆT&FvUµÓâ°¢–b‚—5fÆ–E7FVÔ–CcB‡7FVÔ–B’’&WGW&âµÓ°¢6öç7BW6W"Òv—Bf–æEW6W$'•7FVÔ–B‡7FVÔ–B“°¢–b‚W6W"’&WGW&âµÓ°¢v—BVç7W&U&öf–ÆT–æFW†W2‚“°¢6öç7B&W6öÇfVBÒv—BvWEW6W%W&Ö—76–öç2‡²7FVÔ–BÒ“°¢6öç7B&öÆW2Ò&W6öÇfVCòç&öÆW2óò·W6W"ç&öÆUÓ°¢&WGW&âÆöD&FvW2‡7FVÔ–BÂ&öÆW2“°§Ð ¦W‡÷'B7–æ2gVæ7F–öâw&çEÆ–W$&FvR†–çWC¢°¢7FVÔ–C¢7G&–æs°¢&FvUG—S¢Æ–W$&FvTFö5²&&FvUG—R%Ó°¢w&çFVD'“¢7G&–ærÂçVÆÃ°¢ÖWFFFó¢&V6÷&CÇ7G&–ærÂVæ¶æ÷vãâÂçVÆÃ°§Ò“¢&öÖ—6SÅÆ–W$&FvTFö3â°¢6öç7B²&FvRÒÒv—Bw&çD&FvT–çFW&æÂ†–çWB“°¢&WGW&â&FvS°§Ð 
+import "server-only";
+
+import type { AuthUser } from "@/types/auth";
+import type { RoleCode } from "@/types/permissions";
+import type {
+  PatchProfileInput,
+  PlayerActivityDoc,
+  PlayerBadgeDoc,
+  PlayerProfileDoc,
+  PlayerProfileView,
+  PlayerSettingsDoc,
+  PlayerStatsDoc,
+  PrivacySettings,
+  ProfileBadge,
+  QuickStats,
+} from "@/types/profile";
+import { findUserBySteamId } from "@/lib/auth/users";
+import { getUserPermissions } from "@/lib/permissions/service";
+import { badgeLabel, ROLE_TO_BADGE } from "@/lib/profile/badges";
+import {
+  ensureProfileIndexes,
+  playerActivityCollection,
+  playerBadgesCollection,
+  playerProfilesCollection,
+  playerSettingsCollection,
+  playerStatsCollection,
+} from "@/lib/profile/collections";
+import {
+  buildProfileCompletion,
+  emptyStats,
+  normalizeStatsDoc,
+  toQuickStats,
+} from "@/lib/profile/stats";
+import { resolveCurrentServer } from "@/lib/profile/presence";
+import { grantPlayerBadge as grantBadgeInternal } from "@/lib/profile/activity";
+import { canViewerAccess } from "@/lib/profile/privacy";
+import { getPlayerServerActivity } from "@/lib/profile/sessions";
+import { isValidSteamId64 } from "@/lib/profile/public";
+import { RatingRepository } from "@/lib/rating/RatingRepository";
+
+export const DEFAULT_PRIVACY: PrivacySettings = {
+  stats: "public",
+  matchHistory: "public",
+  steamInventory: "public",
+  activity: "public",
+};
+
+export { isValidSteamId64 } from "@/lib/profile/public";
+
+function defaultSettings(steamId: string): Omit<PlayerSettingsDoc, "_id"> {
+  return {
+    steamId,
+    privacy: { ...DEFAULT_PRIVACY },
+    theme: "dark",
+    notificationsEnabled: true,
+    updatedAt: new Date(),
+  };
+}
+
+/** Ensure Player-domain docs exist after auth (or first profile visit). */
+export async function ensurePlayerDomain(
+  user: AuthUser,
+): Promise<PlayerProfileDoc> {
+  await ensureProfileIndexes();
+  const now = new Date();
+  const profiles = await playerProfilesCollection();
+  const existing = await profiles.findOne({ steamId: user.steamId });
+  if (existing) return existing;
+
+  const profile: PlayerProfileDoc = {
+    _id: crypto.randomUUID(),
+    userId: user.id,
+    steamId: user.steamId,
+    displayName: null,
+    bannerUrl: null,
+    countryCode: null,
+    bio: null,
+    profileViews: 0,
+    preferredSide: null,
+    favoriteWeapon: null,
+    favoriteMap: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await profiles.insertOne(profile);
+
+  const [statsCol, settingsCol, activityCol] = await Promise.all([
+    playerStatsCollection(),
+    playerSettingsCollection(),
+    playerActivityCollection(),
+  ]);
+
+  await Promise.all([
+    statsCol.updateOne(
+      { steamId: user.steamId },
+      {
+        $setOnInsert: {
+          _id: crypto.randomUUID(),
+          ...emptyStats(user.steamId),
+        },
+      },
+      { upsert: true },
+    ),
+    settingsCol.updateOne(
+      { steamId: user.steamId },
+      {
+        $setOnInsert: {
+          _id: crypto.randomUUID(),
+          ...defaultSettings(user.steamId),
+        },
+      },
+      { upsert: true },
+    ),
+    activityCol.insertOne({
+      _id: crypto.randomUUID(),
+      steamId: user.steamId,
+      type: "joined",
+      title: "Joined WallBang",
+      description: "Welcome to the community.",
+      metadata: null,
+      createdAt: now,
+    } satisfies PlayerActivityDoc),
+  ]);
+
+  return profile;
+}
+
+async function loadStats(steamId: string): Promise<PlayerStatsDoc> {
+  const col = await playerStatsCollection();
+  const doc = await col.findOne({ steamId });
+  if (doc) return normalizeStatsDoc(doc);
+  const created: PlayerStatsDoc = {
+    _id: crypto.randomUUID(),
+    ...emptyStats(steamId),
+  };
+  await col.insertOne(created);
+  return created;
+}
+
+async function loadSettings(steamId: string): Promise<PlayerSettingsDoc> {
+  const col = await playerSettingsCollection();
+  const doc = await col.findOne({ steamId });
+  if (doc) return doc;
+  const created: PlayerSettingsDoc = {
+    _id: crypto.randomUUID(),
+    ...defaultSettings(steamId),
+  };
+  await col.insertOne(created);
+  return created;
+}
+
+async function loadBadges(
+  steamId: string,
+  roles: RoleCode[],
+): Promise<ProfileBadge[]> {
+  const col = await playerBadgesCollection();
+  const stored = await col.find({ steamId }).sort({ grantedAt: -1 }).toArray();
+
+  const byType = new Map<string, ProfileBadge>();
+  for (const b of stored) {
+    byType.set(b.badgeType, {
+      type: b.badgeType,
+      label: badgeLabel(b.badgeType),
+      grantedAt: b.grantedAt.toISOString(),
+    });
+  }
+
+  // Seed display badges from active RBAC roles when no stored badge exists.
+  for (const role of roles) {
+    const badgeType = ROLE_TO_BADGE[role];
+    if (badgeType && !byType.has(badgeType)) {
+      byType.set(badgeType, {
+        type: badgeType,
+        label: badgeLabel(badgeType),
+        grantedAt: new Date(0).toISOString(),
+      });
+    }
+  }
+
+  return Array.from(byType.values());
+}
+
+function redactStatsForPrivacy(
+  stats: QuickStats,
+  privacy: PrivacySettings,
+  isOwner: boolean,
+): QuickStats {
+  if (canViewerAccess(privacy.stats, isOwner)) return stats;
+  return {
+    matchesPlayed: 0,
+    wins: 0,
+    losses: 0,
+    winRate: null,
+    kills: 0,
+    deaths: 0,
+    assists: 0,
+    kd: null,
+    headshots: 0,
+    headshotPercent: null,
+    damage: 0,
+    adr: null,
+    roundsPlayed: 0,
+    roundsWon: 0,
+    roundsLost: 0,
+    roundWinRate: null,
+    plants: 0,
+    plantAttempts: 0,
+    defuses: 0,
+    defuseAttempts: 0,
+    mvps: 0,
+    rating: 0,
+    hoursPlayed: 0,
+  };
+}
+
+type GetProfileOptions = {
+  /** Count a public profile view (default true for page/API profile reads). */
+  incrementViews?: boolean;
+};
+
+export async function getPlayerProfile(
+  steamId: string,
+  viewer: AuthUser | null,
+  options: GetProfileOptions = {},
+): Promise<PlayerProfileView | null> {
+  if (!isValidSteamId64(steamId)) return null;
+
+  await ensureProfileIndexes();
+  const user = await findUserBySteamId(steamId);
+  if (!user) return null;
+
+  const authUser = {
+    id: user._id,
+    steamId: user.steamId,
+    personaName: user.personaName,
+    avatarUrl: user.avatarUrl,
+    profileUrl: user.profileUrl,
+  };
+  const profile = await ensurePlayerDomain(authUser);
+  const isOwner = viewer?.steamId === steamId;
+  const shouldIncrement = options.incrementViews !== false && !isOwner;
+
+  if (shouldIncrement) {
+    const profiles = await playerProfilesCollection();
+    await profiles.updateOne(
+      { steamId },
+      { $inc: { profileViews: 1 }, $set: { updatedAt: new Date() } },
+    );
+    profile.profileViews += 1;
+  }
+
+  const [resolved, statsDoc, settings, ratingDoc] = await Promise.all([
+    getUserPermissions({ steamId }),
+    loadStats(steamId),
+    loadSettings(steamId),
+    new RatingRepository().findBySteamId(steamId).catch(() => null),
+  ]);
+
+  const role: RoleCode = resolved?.displayRole ?? user.role ?? "USER";
+  const roles = resolved?.roles ?? [role];
+  const permissions = resolved?.permissions ?? [];
+  const isVip =
+    roles.includes("VIP") ||
+    roles.includes("FOUNDING_MEMBER") ||
+    permissions.includes("website_badge");
+  const showWebsiteBadge = permissions.includes("website_badge") || isVip;
+
+  const badges = await loadBadges(steamId, roles);
+  const canViewStats = canViewerAccess(settings.privacy.stats, isOwner);
+  const baseStats = toQuickStats(statsDoc);
+  const roundWins = ratingDoc?.wins ?? 0;
+  const roundLosses = ratingDoc?.losses ?? 0;
+  const totalRounds = ratingDoc?.roundsPlayed ?? 0;
+  const retakeKills = ratingDoc?.lifetimeStats?.retake?.kills ?? 0;
+  const retakeDeaths = ratingDoc?.lifetimeStats?.retake?.deaths ?? 0;
+  const retakeAssists = ratingDoc?.lifetimeStats?.retake?.assists ?? 0;
+  const combinedStats: QuickStats = ratingDoc ? {
+    ...baseStats,
+    matchesPlayed: totalRounds,
+    wins: roundWins,
+    losses: roundLosses,
+    winRate: totalRounds > 0 ? Math.round((roundWins / totalRounds) * 1000) / 10 : null,
+    kills: retakeKills,
+    deaths: retakeDeaths,
+    assists: retakeAssists,
+    kd: retakeDeaths > 0 ? Math.round((retakeKills / retakeDeaths) * 100) / 100 : retakeKills > 0 ? retakeKills : null,
+    roundsPlayed: totalRounds,
+    roundsWon: roundWins,
+    roundsLost: roundLosses,
+    roundWinRate: totalRounds > 0 ? Math.round((roundWins / totalRounds) * 1000) / 10 : null,
+    rating: ratingDoc.rating,
+    peakRating: ratingDoc.peakRating,
+  } : baseStats;
+  const hasRatingActivity = Boolean(ratingDoc && (ratingDoc.roundsPlayed > 0 || ratingDoc.rating > 0));
+  const stats = redactStatsForPrivacy(
+    combinedStats,
+    settings.privacy,
+    isOwner,
+  );
+
+  const displayName = profile.displayName?.trim() || user.personaName;
+  const completion = buildProfileCompletion({
+    hasAvatar: Boolean(user.avatarUrl),
+    hasCountry: Boolean(profile.countryCode),
+    hasBio: Boolean(profile.bio),
+    hasFavoriteWeapon: Boolean(profile.favoriteWeapon),
+    hasFavoriteMap: Boolean(profile.favoriteMap),
+    hasPreferredSide: Boolean(profile.preferredSide),
+    hasMatches: statsDoc.matchesPlayed > 0 || totalRounds > 0,
+  });
+  const currentServer = await resolveCurrentServer(steamId);
+  // Retained session activity is supplementary: never fail the whole profile
+  // when the aggregate is unavailable (e.g. transient Mongo error).
+  const serverActivity = await getPlayerServerActivity(steamId).catch(
+    () => null,
+  );
+
+  return {
+    steamId: user.steamId,
+    userId: user._id,
+    personaName: user.personaName,
+    displayName,
+    avatarUrl: user.avatarUrl,
+    steamProfileUrl: user.profileUrl,
+    bannerUrl: profile.bannerUrl,
+    countryCode: profile.countryCode,
+    bio: profile.bio,
+    role,
+    isVip,
+    showWebsiteBadge,
+    joinedAt: user.createdAt.toISOString(),
+    lastLoginAt: user.lastLoginAt.toISOString(),
+    profileViews: profile.profileViews,
+    isOwner,
+    summary: {
+      steamId: user.steamId,
+      memberSince: user.createdAt.toISOString(),
+      lastLoginAt: user.lastLoginAt.toISOString(),
+      role,
+      profileCompletion: completion.percent,
+      completion,
+      currentServer,
+      favoriteWeapon: profile.favoriteWeapon,
+      favoriteMap: profile.favoriteMap,
+      preferredSide: profile.preferredSide,
+    },
+    stats,
+    statsHidden: !canViewStats && (statsDoc.matchesPlayed > 0 || hasRatingActivity),
+    serverActivity,
+    badges,
+    privacy: settings.privacy,
+  };
+}
+
+export async function getMyProfile(
+  viewer: AuthUser,
+): Promise<PlayerProfileView | null> {
+  await ensurePlayerDomain(viewer);
+  return getPlayerProfile(viewer.steamId, viewer);
+}
+
+export async function patchPlayerProfile(
+  viewer: AuthUser,
+  input: PatchProfileInput,
+): Promise<PlayerProfileView | null> {
+  await ensurePlayerDomain(viewer);
+  const now = new Date();
+  const profiles = await playerProfilesCollection();
+
+  const profileSet: Record<string, unknown> = { updatedAt: now };
+  if (input.displayName !== undefined) {
+    profileSet.displayName = input.displayName?.trim() || null;
+  }
+  if (input.bio !== undefined) {
+    profileSet.bio = input.bio?.trim() || null;
+  }
+  if (input.countryCode !== undefined) {
+    profileSet.countryCode = input.countryCode?.trim().toUpperCase() || null;
+  }
+  if (input.preferredSide !== undefined) {
+    profileSet.preferredSide = input.preferredSide;
+  }
+  if (input.favoriteWeapon !== undefined) {
+    profileSet.favoriteWeapon = input.favoriteWeapon?.trim() || null;
+  }
+  if (input.favoriteMap !== undefined) {
+    profileSet.favoriteMap = input.favoriteMap?.trim() || null;
+  }
+
+  if (Object.keys(profileSet).length > 1) {
+    await profiles.updateOne(
+      { steamId: viewer.steamId },
+      { $set: profileSet },
+    );
+  }
+
+  if (
+    input.privacy !== undefined ||
+    input.theme !== undefined ||
+    input.notificationsEnabled !== undefined
+  ) {
+    const settings = await playerSettingsCollection();
+    const settingsSet: Record<string, unknown> = { updatedAt: now };
+    if (input.theme !== undefined) settingsSet.theme = input.theme;
+    if (input.notificationsEnabled !== undefined) {
+      settingsSet.notificationsEnabled = input.notificationsEnabled;
+    }
+    if (input.privacy) {
+      for (const [key, value] of Object.entries(input.privacy)) {
+        if (value) settingsSet[`privacy.${key}`] = value;
+      }
+    }
+    await settings.updateOne(
+      { steamId: viewer.steamId },
+      { $set: settingsSet },
+      { upsert: true },
+    );
+  }
+
+  return getPlayerProfile(viewer.steamId, viewer);
+}
+
+export async function getPlayerActivity(
+  steamId: string,
+  limit = 20,
+): Promise<PlayerActivityDoc[]> {
+  if (!isValidSteamId64(steamId)) return [];
+  await ensureProfileIndexes();
+  const col = await playerActivityCollection();
+  return col.find({ steamId }).sort({ createdAt: -1 }).limit(limit).toArray();
+}
+
+export async function getPlayerStats(
+  steamId: string,
+): Promise<QuickStats | null> {
+  if (!isValidSteamId64(steamId)) return null;
+  const user = await findUserBySteamId(steamId);
+  if (!user) return null;
+  await ensureProfileIndexes();
+  const doc = await loadStats(steamId);
+  return toQuickStats(doc);
+}
+
+/**
+ * Read-only stats lookup that does not require a WallBang account and never
+ * writes. Used for staff viewing in-game-only players.
+ */
+export async function readPublicPlayerStats(
+  steamId: string,
+): Promise<QuickStats | null> {
+  if (!isValidSteamId64(steamId)) return null;
+  await ensureProfileIndexes();
+  const col = await playerStatsCollection();
+  const doc = await col.findOne({ steamId });
+  return doc ? toQuickStats(normalizeStatsDoc(doc)) : null;
+}
+
+export async function getPlayerBadges(
+  steamId: string,
+): Promise<ProfileBadge[]> {
+  if (!isValidSteamId64(steamId)) return [];
+  const user = await findUserBySteamId(steamId);
+  if (!user) return [];
+  await ensureProfileIndexes();
+  const resolved = await getUserPermissions({ steamId });
+  const roles = resolved?.roles ?? [user.role];
+  return loadBadges(steamId, roles);
+}
+
+export async function grantPlayerBadge(input: {
+  steamId: string;
+  badgeType: PlayerBadgeDoc["badgeType"];
+  grantedBy: string | null;
+  metadata?: Record<string, unknown> | null;
+}): Promise<PlayerBadgeDoc> {
+  const { badge } = await grantBadgeInternal(input);
+  return badge;
+}
+
