@@ -76,6 +76,7 @@ export type PlayerDoc = {
 export type PlayerRatingResponse = {
   rating: number;
   rank: RankName;
+  leaderboardPosition: number | null;
   /** Premier-style `//` label + color for the CS2 scoreboard. */
   premier: PremierDisplay;
 };
@@ -153,6 +154,7 @@ export type UpdatedPlayer = {
   /** True when named rank tier crossed this update. */
   rankChanged: boolean;
   premier: PremierDisplay;
+  leaderboardPosition: number | null;
   won: boolean;
 };
 
