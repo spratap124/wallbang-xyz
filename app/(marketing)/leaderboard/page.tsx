@@ -6,6 +6,8 @@ import { getGlobalLeaderboard } from "@/lib/rating/leaderboard";
 import { rankService } from "@/lib/rating/RankService";
 import { isMongoConfigured } from "@/lib/mongo";
 import { createPageMetadata } from "@/seo/metadata";
+import { redirect } from "next/navigation";
+import { isLeaderboardsPageEnabled } from "@/lib/platform/feature-flags";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Global Rating Leaderboard",
@@ -28,6 +30,7 @@ function PositionBadge({ position, rankColor }: { position: number; rankColor: s
 }
 
 export default async function LeaderboardPage() {
+  if (!(await isLeaderboardsPageEnabled())) redirect("/");
   const leaderboard = isMongoConfigured() ? await getGlobalLeaderboard().catch(() => null) : null;
   const players = leaderboard?.players ?? null;
 
