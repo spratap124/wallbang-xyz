@@ -21,6 +21,8 @@ const ENV_NAMES: Record<WritableFeatureFlag, string> = {
   pricingPage: "FEATURE_PRICING_PAGE",
   profilePage: "FEATURE_PROFILE_PAGE",
   settingsPage: "FEATURE_SETTINGS_PAGE",
+  bansPage: "FEATURE_BANS_PAGE",
+  leaderboardsPage: "FEATURE_LEADERBOARDS_PAGE",
 };
 
 type FeatureFlagDoc = {
@@ -32,6 +34,8 @@ type FeatureFlagDoc = {
   pricingPage?: boolean;
   profilePage?: boolean;
   settingsPage?: boolean;
+  bansPage?: boolean;
+  leaderboardsPage?: boolean;
   updatedAt?: Date;
   updatedBy?: string;
 };
@@ -128,6 +132,16 @@ export async function isProfilePageEnabled(): Promise<boolean> {
 export async function isSettingsPageEnabled(): Promise<boolean> {
   const flags = await getRuntimeFeatureFlags();
   return flags.settingsPage;
+}
+
+export async function isBansPageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.bansPage;
+}
+
+export async function isLeaderboardsPageEnabled(): Promise<boolean> {
+  const flags = await getRuntimeFeatureFlags();
+  return flags.leaderboardsPage;
 }
 
 export async function setVipPageEnabled(

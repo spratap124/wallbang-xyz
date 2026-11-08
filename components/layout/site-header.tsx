@@ -31,6 +31,8 @@ type SiteHeaderProps = {
   showPricing?: boolean;
   showProfile?: boolean;
   showSettings?: boolean;
+  showBans?: boolean;
+  showLeaderboards?: boolean;
 };
 
 export function SiteHeader({
@@ -43,6 +45,8 @@ export function SiteHeader({
   showPricing = true,
   showProfile = false,
   showSettings = false,
+  showBans = true,
+  showLeaderboards = true,
 }: SiteHeaderProps) {
   const pathname = usePathname();
   const nav = filterNavItems(mainNav, {
@@ -50,6 +54,8 @@ export function SiteHeader({
     loadoutPage: showLoadout,
     featuresPage: showFeatures,
     pricingPage: showPricing,
+    bansPage: showBans,
+    leaderboardsPage: showLeaderboards,
   });
 
   return (

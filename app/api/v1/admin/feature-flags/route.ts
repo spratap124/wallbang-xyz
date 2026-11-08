@@ -17,6 +17,8 @@ const patchSchema = z
     pricingPage: z.boolean().optional(),
     profilePage: z.boolean().optional(),
     settingsPage: z.boolean().optional(),
+    bansPage: z.boolean().optional(),
+    leaderboardsPage: z.boolean().optional(),
   })
   .refine(
     (value) => writableFeatureFlags.some((key) => value[key] !== undefined),
