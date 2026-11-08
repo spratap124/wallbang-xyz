@@ -149,6 +149,7 @@ export class RatingService {
         rank,
         rankChanged,
         premier,
+        leaderboardPosition: null,
         won: roundScore.won,
       });
     }
