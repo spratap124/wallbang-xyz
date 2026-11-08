@@ -451,6 +451,7 @@ export type QuickStats = {
   defuseAttempts: number;
   mvps: number;
   rating: number;
+  peakRating?: number;
   hoursPlayed: number;
 };
 

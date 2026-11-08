@@ -41,10 +41,10 @@ export function ProfileStats({ stats }: ProfileStatsProps) {
           <div className="rounded-xl bg-secondary/60 p-4">
             <div className="flex items-start justify-between gap-3">
               <div><p className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">WallBang Rating</p><p className="mt-1 font-mono text-2xl font-semibold tabular-nums">{stats.rating.toLocaleString()}</p></div>
-              <div className="text-right"><p className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">Peak Rating</p><p className="mt-1 font-mono text-xl font-semibold tabular-nums">—</p></div>
+              <div className="text-right"><p className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">Peak Rating</p><p className="mt-1 font-mono text-xl font-semibold tabular-nums">{stats.peakRating?.toLocaleString() ?? "—"}</p></div>
             </div>
             <div className="mt-3 h-1.5 rounded-full bg-amber-400" />
-            <p className="mt-2 text-xs text-muted-foreground">Peak rating is not tracked for this profile yet</p>
+            <p className="mt-2 text-xs text-muted-foreground">Current rating equals personal best</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {quickItems.map(([label, value]) => <div key={label} className="rounded-lg bg-secondary/60 px-3 py-3"><p className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">{label}</p><p className="mt-1 font-mono text-lg font-semibold tabular-nums">{value}</p></div>)}
