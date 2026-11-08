@@ -69,7 +69,8 @@ export class RatingService {
       });
     }
 
-    return { rating: premier.rating, rank, premier };
+    const leaderboardPosition = await this.getLeaderboardPosition(steamId);
+    return { rating: premier.rating, rank, premier, leaderboardPosition };
   }
 
   /**
@@ -153,6 +154,12 @@ export class RatingService {
     }
 
     await this.history.insertMany(historyRows);
+
+    const topTen = await this.repo.findTopTen();
+    const positions = new Map(topTen.map((player, index) => [player.steamId, index + 1]));
+    for (const player of updatedPlayers) {
+      player.leaderboardPosition = positions.get(player.steamId) ?? null;
+    }
 
     return { updatedPlayers };
   }
@@ -265,6 +272,12 @@ export class RatingService {
     }
 
     return { updated, scanned: players.length };
+  }
+
+  private async getLeaderboardPosition(steamId: string): Promise<number | null> {
+    const topTen = await this.repo.findTopTen();
+    const index = topTen.findIndex((player) => player.steamId === steamId);
+    return index < 0 ? null : index + 1;
   }
 }
 
