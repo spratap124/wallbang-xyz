@@ -28,9 +28,10 @@ function PositionBadge({ position, rankColor }: { position: number; rankColor: s
 }
 
 export default async function LeaderboardPage() {
-  const players = isMongoConfigured() ? await getGlobalLeaderboard().catch(() => null) : null;
-  const activePlayers = players?.filter((player) => player.matchesPlayed > 0).length ?? 0;
-  const totalMatches = players?.reduce((total, player) => total + player.matchesPlayed, 0) ?? 0;
+  const leaderboard = isMongoConfigured() ? await getGlobalLeaderboard().catch(() => null) : null;
+  const players = leaderboard?.players ?? null;
+  const activePlayers = leaderboard?.activePlayers ?? 0;
+  const totalMatches = leaderboard?.totalMatches ?? 0;
   const topRating = players?.[0]?.rating ?? 0;
 
   return (
@@ -49,7 +50,7 @@ export default async function LeaderboardPage() {
 
         {players ? players.length ? <section className="mt-6 rounded-3xl border border-white/15 bg-[#0c0f14] p-3 shadow-[0_20px_80px_rgba(0,0,0,0.35)] sm:p-6">
           <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[850px] border-separate border-spacing-y-1.5 text-left text-sm">
-            <thead><tr className="text-[0.68rem] font-bold tracking-[0.14em] text-slate-400 uppercase"><th className="px-4 py-3">#</th><th className="px-4 py-3">Player</th><th className="px-4 py-3">Rank</th><th className="px-4 py-3 text-right">Rating</th><th className="px-4 py-3 text-right">Win rate</th><th className="px-4 py-3 text-right">Matches</th></tr></thead>
+            <thead><tr className="text-[0.68rem] font-bold tracking-[0.14em] text-slate-400 uppercase"><th className="px-4 py-3">#</th><th className="px-4 py-3">Player</th>{/* <th className="px-4 py-3">Rank</th> */}<th className="px-4 py-3 text-right">Rating</th><th className="px-4 py-3 text-right">Win rate</th><th className="px-4 py-3 text-right">Matches</th></tr></thead>
             <tbody>{players.map((player, i) => {
               const rank = rankService.rankFromRating(player.rating);
               const rankColor = rankService.colorForRank(rank).hex;
@@ -57,7 +58,7 @@ export default async function LeaderboardPage() {
               return <tr key={player.steamId} className="bg-[#151920] transition-colors hover:bg-[#1b2029] [&>td]:border-y [&>td]:border-white/[0.06] [&>td]:px-4 [&>td]:py-3 first:[&>td:first-child]:rounded-l-2xl last:[&>td:last-child]:rounded-r-2xl">
                 <td className="w-20"><PositionBadge position={i + 1} rankColor={rankColor} /></td>
                 <td><Link href={`/profile/${player.steamId}`} className="flex items-center gap-3 font-semibold hover:text-rose-400">{player.avatar ? <img src={player.avatar} alt="" className="size-10 rounded-full border border-white/15 object-cover" /> : <span className="size-10 rounded-full bg-slate-700" />}{player.name}</Link></td>
-                <td><span className="rounded-lg border border-white/10 px-3 py-1.5 font-bold" style={{ color: rankColor }}>{rank}</span></td>
+                {/* <td><span className="rounded-lg border border-white/10 px-3 py-1.5 font-bold" style={{ color: rankColor }}>{rank}</span></td> */}
                 <td className="text-right text-base font-bold tabular-nums">{player.rating.toLocaleString()}</td>
                 <td className="text-right"><span className="font-bold text-emerald-400">{winRate.toFixed(1)}%</span><span className="ml-2 inline-block h-1.5 w-16 overflow-hidden rounded-full bg-slate-700 align-middle"><span className="block h-full rounded-full bg-emerald-400" style={{ width: `${Math.min(winRate, 100)}%` }} /></span></td>
                 <td className="text-right tabular-nums text-slate-300">{player.matchesPlayed.toLocaleString()}</td>
@@ -69,7 +70,7 @@ export default async function LeaderboardPage() {
             const rankColor = rankService.colorForRank(rank).hex;
             return <Link key={player.steamId} href={`/profile/${player.steamId}`} className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#151920] p-3">
               <PositionBadge position={i + 1} rankColor={rankColor} />{player.avatar ? <img src={player.avatar} alt="" className="size-9 rounded-full border border-white/15 object-cover" /> : <span className="size-9 rounded-full bg-slate-700" />}
-              <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{player.name}</span><span className="text-xs font-semibold" style={{ color: rankColor }}>{rank}</span></span><span className="text-right text-sm font-bold tabular-nums">{player.rating.toLocaleString()}<span className="block text-[0.65rem] font-normal text-slate-400">{player.matchesPlayed} matches</span></span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{player.name}</span></span><span className="text-right text-sm font-bold tabular-nums">{player.rating.toLocaleString()}<span className="block text-[0.65rem] font-normal text-slate-400">{player.matchesPlayed} matches</span></span>
             </Link>;
           })}</div>
         </section> : <p className="py-12 text-center text-sm text-slate-400">No rated players yet.</p> : <p className="py-12 text-center text-sm text-slate-400">Leaderboard is temporarily unavailable.</p>}
