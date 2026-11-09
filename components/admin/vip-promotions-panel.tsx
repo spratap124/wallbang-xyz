@@ -94,7 +94,9 @@ export function VipPromotionsPanel() {
         if (!values[plan].trim()) continue;
         const rupees = Number(values[plan]);
         if (!Number.isFinite(rupees) || rupees <= 0) { setError(`Enter a valid promotional price for ${target.name} · ${labels[plan]}, or leave it blank.`); return; }
-        pricingByPlan[plan] = Math.round(rupees * 100);
+        const pricePaise = Math.round(rupees * 100);
+        if (pricePaise === target.pricingByPlan[plan]) continue;
+        pricingByPlan[plan] = pricePaise;
       }
       if (Object.keys(pricingByPlan).length === 0) { setError(`Set at least one promotional duration for ${target.name}.`); return; }
       targets.push({ targetType: target.targetType, targetId: target.id, pricingByPlan });
