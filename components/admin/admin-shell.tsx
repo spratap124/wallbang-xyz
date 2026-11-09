@@ -133,7 +133,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/admin/permissions",
-    label: "Permissions",
+    label: "Grant role",
     icon: Shield,
     match: (path) => path.startsWith("/admin/permissions"),
     permission: "manage_users",

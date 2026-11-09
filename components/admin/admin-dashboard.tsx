@@ -111,6 +111,7 @@ export function AdminDashboard() {
   const [query, setQuery] = useState(initialSteamId);
   const [results, setResults] = useState<SearchUser[]>([]);
   const [selected, setSelected] = useState<ResolvedPermissions | null>(null);
+  const [unregisteredTarget, setUnregisteredTarget] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -165,15 +166,28 @@ export function AdminDashboard() {
         const res = await fetch(
           `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
         );
-        const payload = await readJson<ResolvedPermissions>(res);
+        const payload = await readJson<
+          | { registered: true; permissions: ResolvedPermissions }
+          | { registered: false; profile: { steamId: string; personaName: string; avatarUrl: string; profileUrl: string } }
+        >(res);
         if (!payload.ok) {
           setError(payload.error);
           return;
         }
-        setSelected(payload.data);
-        setChatTagDraft(selectableTag(payload.data.chatTag, CHAT_TAG_OPTIONS));
-        setNameTagDraft(selectableTag(payload.data.nameTag, NAME_TAG_OPTIONS));
-        loadVipEntitlements(payload.data.userId);
+        if (payload.data.registered) {
+          setUnregisteredTarget(false);
+          setSelected(payload.data.permissions);
+          setChatTagDraft(selectableTag(payload.data.permissions.chatTag, CHAT_TAG_OPTIONS));
+          setNameTagDraft(selectableTag(payload.data.permissions.nameTag, NAME_TAG_OPTIONS));
+          loadVipEntitlements(payload.data.permissions.userId);
+        } else {
+          const profile = payload.data.profile;
+          setUnregisteredTarget(true);
+          setSelected({ userId: "", steamId: profile.steamId, personaName: profile.personaName, avatarUrl: profile.avatarUrl, profileUrl: profile.profileUrl, displayRole: "USER", chatTag: null, nameTag: null, roles: [], permissions: [], activeAssignments: [] });
+          setVipEntitlements([]);
+          setVipServerAccess([]);
+          setVipServers([]);
+        }
       });
     },
     [loadVipEntitlements],
@@ -188,15 +202,21 @@ export function AdminDashboard() {
   function search() {
     setError(null);
     setMessage(null);
+    setResults([]);
+    const trimmedQuery = query.trim();
+    if (/^\d{17}$/.test(trimmedQuery)) {
+      selectUser(trimmedQuery);
+      return;
+    }
     startTransition(async () => {
-      const res = await fetch(`/api/v1/users?q=${encodeURIComponent(query)}`);
-      const payload = await readJson<SearchUser[]>(res);
+      const res = await fetch(`/api/v1/users?q=${encodeURIComponent(trimmedQuery)}`);
+      const payload = await readJson<{ items: SearchUser[] }>(res);
       if (!payload.ok) {
         setError(payload.error);
         setResults([]);
         return;
       }
-      setResults(payload.data);
+      setResults(payload.data.items ?? []);
     });
   }
 
@@ -221,7 +241,7 @@ export function AdminDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          targetUserId: selected.userId,
+          ...(unregisteredTarget ? { targetSteamId: selected.steamId } : { targetUserId: selected.userId }),
           roleCode,
           source,
           ...(roleCode === "VIP" && source === "PURCHASE" ? { purchaseAmountPaise: Math.round(Number(purchaseAmount) * 100) } : {}),
@@ -235,6 +255,7 @@ export function AdminDashboard() {
         return;
       }
       setSelected(payload.data);
+      setUnregisteredTarget(false);
       if (roleCode === "VIP") {
         setRoleGrantKeys([]);
         loadVipEntitlements(selected.userId);
@@ -527,6 +548,11 @@ export function AdminDashboard() {
                   </p>
                 </div>
               </div>
+              {unregisteredTarget ? (
+                <p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                  This Steam player has not registered on WallBang. Searching does not create an account; the account record is created only when you grant a role.
+                </p>
+              ) : null}
 
               <div>
                 <h3 className="mb-2 text-sm font-medium">Active roles</h3>
