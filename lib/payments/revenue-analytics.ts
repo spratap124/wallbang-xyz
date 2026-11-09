@@ -52,7 +52,7 @@ export async function getAdminRevenueAnalytics(
     paymentId: { $regex: "^offline-purchase:" },
     status: { $ne: "SUPERSEDED" },
     createdAt: { $gte: period.start, $lt: revenueEnd },
-  }).sort({ createdAt: -1 }).limit(RECENT_PURCHASE_LIMIT).toArray();
+  }).sort({ createdAt: -1 }).toArray();
   const captured = payments.filter(
     (payment) =>
       (payment.status === "captured" || payment.status === "refunded") &&
@@ -68,23 +68,28 @@ export async function getAdminRevenueAnalytics(
       payment.refundedAt < revenueEnd,
   );
 
-  const grossCapturedPaise = captured.reduce((sum, payment) => sum + payment.amount, 0);
+  const grossCapturedPaise =
+    captured.reduce((sum, payment) => sum + payment.amount, 0) +
+    offlineRows.reduce((sum, row) => sum + row.amount, 0);
   const refundsPaise = refunds.reduce((sum, payment) => sum + payment.amount, 0);
   const monthlyEquivalentPaise =
-    captured.reduce(
+      captured.reduce(
       (sum, payment) => sum + (payment.amount * 30) / Math.max(1, payment.durationDays),
       0,
     ) -
     refunds.reduce(
       (sum, payment) => sum + (payment.amount * 30) / Math.max(1, payment.durationDays),
       0,
+    ) +
+    offlineRows.reduce(
+      (sum, row) => sum + (row.amount * 30) / Math.max(1, row.durationDays),
+      0,
     );
 
-  const payingCustomers = new Set(
-    captured
-      .filter((payment) => payment.status === "captured")
-      .map((payment) => payment.userId),
-  ).size;
+  const payingCustomers = new Set([
+    ...captured.filter((payment) => payment.status === "captured").map((payment) => payment.userId),
+    ...offlineRows.map((row) => row.userId),
+  ]).size;
   const checkoutPayments = payments.filter(
     (payment) => payment.createdAt >= period.start && payment.createdAt < revenueEnd,
   );
@@ -120,6 +125,21 @@ export async function getAdminRevenueAnalytics(
       (payment.amount * 30) / Math.max(1, payment.durationDays);
     revenueByPlan.set(key, row);
   }
+  for (const purchase of offlineRows) {
+    const accessType = purchase.accessType ?? (purchase.serverId ? "INDIVIDUAL_SERVER" : "ALL_RETAKES");
+    const key = `${purchase.plan}:${accessType}`;
+    const row = revenueByPlan.get(key) ?? {
+      plan: purchase.plan,
+      accessType,
+      purchases: 0,
+      grossPaise: 0,
+      monthlyEquivalentPaise: 0,
+    };
+    row.purchases += 1;
+    row.grossPaise += purchase.amount;
+    row.monthlyEquivalentPaise += (purchase.amount * 30) / Math.max(1, purchase.durationDays);
+    revenueByPlan.set(key, row);
+  }
   for (const payment of refunds) {
     const accessType = payment.accessType ?? (payment.serverId ? "INDIVIDUAL_SERVER" : "ALL_RETAKES");
     const row = revenueByPlan.get(`${payment.plan}:${accessType}`);
@@ -133,7 +153,8 @@ export async function getAdminRevenueAnalytics(
     .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0))
     .slice(0, RECENT_PURCHASE_LIMIT);
   const db = await getDb();
-  const userIds = [...new Set([...recent.map((payment) => payment.userId), ...offlineRows.map((row) => row.userId)])];
+  const recentOfflineRows = offlineRows.slice(0, RECENT_PURCHASE_LIMIT);
+  const userIds = [...new Set([...recent.map((payment) => payment.userId), ...recentOfflineRows.map((row) => row.userId)])];
   const users = userIds.length
     ? await db
         .collection<{ _id: string; personaName: string; avatarUrl: string }>("users")
@@ -161,7 +182,7 @@ export async function getAdminRevenueAnalytics(
       durationDays: payment.durationDays,
     };
   });
-  const offlinePurchases: FleetVipPurchase[] = offlineRows.map((record: VipHistoryDoc) => {
+  const offlinePurchases: FleetVipPurchase[] = recentOfflineRows.map((record: VipHistoryDoc) => {
     const user = userById.get(record.userId);
     return {
       id: record._id,
@@ -185,7 +206,7 @@ export async function getAdminRevenueAnalytics(
     netRevenuePaise: grossCapturedPaise - refundsPaise,
     monthlyEquivalentPaise,
     payingCustomers,
-    successfulPurchases: captured.length,
+    successfulPurchases: captured.length + offlineRows.length,
     abandonedCheckouts,
     checkoutUsers,
     checkoutConversionPercent:
