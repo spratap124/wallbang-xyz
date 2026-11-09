@@ -347,6 +347,12 @@ export function VipShop({
     shopQuote.durations[0] ??
     null;
   const promotionEndsAt = duration?.promotion?.endsAt;
+  const [countdownNow, setCountdownNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setCountdownNow(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const refreshQuote = () => {
@@ -384,6 +390,19 @@ export function VipShop({
       ? (catalog.bundles.find((bundle) => bundle.id === bundleId) ?? null)
       : null;
 
+  const promotionEligibleLabel = selectedBundle
+    ? selectedBundle.name
+    : selectedServer
+      ? serverLabel(selectedServer)
+      : null;
+  const promotionRemainingMs = duration?.promotion
+    ? Math.max(0, new Date(duration.promotion.endsAt).getTime() - countdownNow)
+    : 0;
+  const promotionRemainingSeconds = Math.floor(promotionRemainingMs / 1_000);
+  const promotionCountdown = promotionRemainingMs <= 0
+    ? "Offer ended"
+    : `Ends in ${Math.floor(promotionRemainingSeconds / 86_400)}d ${Math.floor((promotionRemainingSeconds % 86_400) / 3_600)}h ${Math.floor((promotionRemainingSeconds % 3_600) / 60)}m ${promotionRemainingSeconds % 60}s`;
+
   const checkoutReady =
     (accessType === "BUNDLE" && Boolean(selectedBundle)) ||
     (accessType === "INDIVIDUAL_SERVER" && Boolean(selectedServerId));
@@ -413,7 +432,13 @@ export function VipShop({
               {duration.promotion.name} — {duration.promotion.discountPercentage}% off
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Limited-time VIP pricing. Offer ends {new Intl.DateTimeFormat("en-IN", {
+              Limited-time VIP pricing. {promotionEligibleLabel ? `Eligible for ${promotionEligibleLabel}.` : ""}
+            </p>
+            <p className="mt-2 inline-flex rounded-md border border-primary/30 bg-background/60 px-3 py-1.5 font-mono text-sm font-semibold tabular-nums text-foreground" aria-live="off">
+              {promotionCountdown}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Offer ends {new Intl.DateTimeFormat("en-IN", {
                 day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata", timeZoneName: "short",
               }).format(new Date(duration.promotion.endsAt))}.
             </p>
