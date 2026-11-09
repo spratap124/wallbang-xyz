@@ -59,7 +59,7 @@ export function RevenueDashboard() {
 
   const revenue = data;
   const metrics = [
-    ["Captured revenue", revenue ? formatInr(revenue.grossCapturedPaise) : "—", Wallet],
+    ["Combined revenue", revenue ? formatInr(revenue.grossCapturedPaise) : "—", Wallet],
     ["VIP purchases", revenue?.successfulPurchases.toString() ?? "—", CreditCard],
     ["Paying players", revenue?.payingCustomers.toString() ?? "—", Users],
     ["Net revenue", revenue ? formatInr(revenue.netRevenuePaise) : "—", TrendingUp],
@@ -73,7 +73,7 @@ export function RevenueDashboard() {
           <p className="text-muted-foreground mt-1 text-sm">
             VIP purchases, paying players, and monetization performance.
           </p>
-          <p className="text-muted-foreground mt-1 text-xs">Last 30 days · revenue includes purchases captured today</p>
+          <p className="text-muted-foreground mt-1 text-xs">Last 30 days · online captures and offline purchases, including today</p>
         </div>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => setReload((value) => value + 1)} disabled={loading}>
           <RefreshCw className={cn("size-3.5", loading && "animate-spin")} /> Refresh
@@ -99,7 +99,7 @@ export function RevenueDashboard() {
           <section className="border-border bg-card overflow-hidden rounded-xl border">
             <div className="border-border border-b px-4 py-4">
               <h2 className="font-semibold">VIP purchasers</h2>
-              <p className="text-muted-foreground mt-1 text-xs">Players with captured VIP purchases in the selected period.</p>
+              <p className="text-muted-foreground mt-1 text-xs">Online and offline VIP purchases recorded in the selected period.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[42rem] text-left text-sm">
@@ -138,7 +138,7 @@ export function RevenueDashboard() {
         <section className="border-border bg-card overflow-hidden rounded-xl border">
           <div className="border-border border-b px-4 py-4">
             <h2 className="font-semibold">Offline purchases</h2>
-            <p className="text-muted-foreground mt-1 text-xs">Manual VIP grants recorded with source PURCHASE in the last 30 days. These are separate from provider payment totals.</p>
+            <p className="text-muted-foreground mt-1 text-xs">Manual VIP purchases recorded with source PURCHASE in the last 30 days. Included in combined revenue and purchase totals.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[42rem] text-left text-sm">
