@@ -10,11 +10,11 @@ type Context = { params: Promise<{ id: string }> };
 const targetSchema = z.object({
   targetType: z.enum(["server", "bundle"]), targetId: z.string().min(1).max(64),
   pricingByPlan: z.object({
-    "1_month": z.number().int().positive().max(10_000_000),
-    "3_months": z.number().int().positive().max(10_000_000),
-    "6_months": z.number().int().positive().max(10_000_000),
-    "1_year": z.number().int().positive().max(10_000_000),
-  }),
+    "1_month": z.number().int().positive().max(10_000_000).optional(),
+    "3_months": z.number().int().positive().max(10_000_000).optional(),
+    "6_months": z.number().int().positive().max(10_000_000).optional(),
+    "1_year": z.number().int().positive().max(10_000_000).optional(),
+  }).refine((prices) => Object.values(prices).some((price) => price !== undefined), "Set at least one promotional duration."),
 });
 const zonedDate = z.string().refine(
   (value) => Number.isFinite(Date.parse(value)) && /(?:Z|[+-]\d{2}:\d{2})$/i.test(value),

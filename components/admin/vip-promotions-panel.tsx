@@ -48,7 +48,7 @@ export function VipPromotionsPanel() {
       setForm({
         name: `${copy.name || "Untitled offer"} (copy)`, description: copy.description ?? "",
         startsAt: dateToIstInput(copy.startsAt), endsAt: dateToIstInput(copy.endsAt), percentage: "",
-        targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan])]))])) as Form["targets"],
+        targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan] ?? 0)]))])) as Form["targets"],
       });
     }
     setFormOpen(true);
@@ -59,7 +59,7 @@ export function VipPromotionsPanel() {
     setForm({
       name: promotion.name || "", description: promotion.description ?? "",
       startsAt: dateToIstInput(promotion.startsAt), endsAt: dateToIstInput(promotion.endsAt), percentage: "",
-      targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan])]))])) as Form["targets"],
+      targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan] ?? 0)]))])) as Form["targets"],
     });
     setFormOpen(true);
   }
@@ -89,12 +89,16 @@ export function VipPromotionsPanel() {
     for (const [key, values] of Object.entries(form.targets)) {
       const target = data.targets.find((item) => targetKey(item.targetType, item.id) === key);
       if (!target) continue;
-      const pricingByPlan = {} as Record<VipPlanId, number>;
+      const pricingByPlan: Partial<Record<VipPlanId, number>> = {};
       for (const plan of plans) {
+        if (!values[plan].trim()) continue;
         const rupees = Number(values[plan]);
-        if (!values[plan] || !Number.isFinite(rupees) || rupees <= 0) { setError(`Set a promotional price for ${target.name} · ${labels[plan]}.`); return; }
-        pricingByPlan[plan] = Math.round(rupees * 100);
+        if (!Number.isFinite(rupees) || rupees <= 0) { setError(`Enter a valid promotional price for ${target.name} · ${labels[plan]}, or leave it blank.`); return; }
+        const pricePaise = Math.round(rupees * 100);
+        if (pricePaise === target.pricingByPlan[plan]) continue;
+        pricingByPlan[plan] = pricePaise;
       }
+      if (Object.keys(pricingByPlan).length === 0) { setError(`Set at least one promotional duration for ${target.name}.`); return; }
       targets.push({ targetType: target.targetType, targetId: target.id, pricingByPlan });
     }
     if (!targets.length) { setError("Select at least one server or bundle."); return; }
