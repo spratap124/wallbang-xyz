@@ -10,6 +10,19 @@ function accessTypeOf(payment: PaymentDoc): VipAccessType {
   return payment.accessType ?? "INDIVIDUAL_SERVER";
 }
 
+/**
+ * GA4 drops Measurement Protocol hits it cannot join to a session, so always
+ * send one: the checkout session id when captured, otherwise an epoch-second
+ * derived from the payment time. The fallback starts a fresh session for an
+ * otherwise-real client id — revenue still counts, attribution degrades.
+ */
+function sessionIdFor(payment: PaymentDoc): string {
+  return (
+    payment.gaSessionId ??
+    String(Math.floor((payment.paidAt ?? new Date()).getTime() / 1000))
+  );
+}
+
 async function itemFor(payment: PaymentDoc) {
   const serverId = payment.serverId ?? payment.serverIds[0] ?? null;
   let serverShortName: string | null = null;
@@ -48,6 +61,7 @@ export async function trackPurchaseForPayment(
       clientId: payment.gaClientId,
       name: "purchase",
       params: {
+        session_id: sessionIdFor(payment),
         transaction_id: payment.razorpayOrderId,
         value: Math.round(payment.amount) / 100,
         currency: payment.currency,
@@ -89,6 +103,7 @@ export async function trackRefundForPayment(payment: PaymentDoc): Promise<void> 
       clientId: payment.gaClientId,
       name: "refund",
       params: {
+        session_id: sessionIdFor(payment),
         transaction_id: payment.razorpayOrderId,
         value: Math.round(payment.amount) / 100,
         currency: payment.currency,

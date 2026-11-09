@@ -115,6 +115,8 @@ export async function createVipOrder(input: {
   phone: string;
   /** Attribution context from the checkout page (GA4 client id). */
   gaClientId?: string | null;
+  /** GA4 session id at checkout, so the server purchase joins that session. */
+  gaSessionId?: string | null;
 }): Promise<CreateVipOrderResult> {
   await ready();
 
@@ -211,6 +213,7 @@ export async function createVipOrder(input: {
           email: input.email,
           phone: input.phone,
           gaClientId: input.gaClientId ?? null,
+          gaSessionId: input.gaSessionId ?? null,
           updatedAt: new Date(),
         },
       },
@@ -260,6 +263,7 @@ export async function createVipOrder(input: {
     email: input.email,
     phone: input.phone,
     gaClientId: input.gaClientId ?? null,
+    gaSessionId: input.gaSessionId ?? null,
     bundleId,
     bundleKind,
     bundleName,

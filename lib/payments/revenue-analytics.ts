@@ -53,7 +53,6 @@ export async function getAdminRevenueAnalytics(
     status: { $ne: "SUPERSEDED" },
     createdAt: { $gte: period.start, $lt: revenueEnd },
   }).sort({ createdAt: -1 }).limit(RECENT_PURCHASE_LIMIT).toArray();
-
   const captured = payments.filter(
     (payment) =>
       (payment.status === "captured" || payment.status === "refunded") &&

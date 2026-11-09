@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApiResult } from "@/lib/api/waitlist";
-import { readGaClientId, trackGaEvent, vipEcommerceParams } from "@/lib/analytics/gtag";
+import {
+  readGaClientId,
+  readGaSessionId,
+  trackGaEvent,
+  vipEcommerceParams,
+} from "@/lib/analytics/gtag";
 import { isVipPlanId } from "@/lib/payments/quote";
 import { vipGaItem } from "@/lib/analytics/items";
 import type { PaymentProvider } from "@/types/payments";
@@ -235,6 +240,7 @@ export function BuyVipButton({
         email: trimmedEmail,
         phone: trimmedPhone,
         gaClientId: readGaClientId() ?? undefined,
+        gaSessionId: readGaSessionId() ?? undefined,
       }),
     });
     const payload = (await response.json()) as ApiResult<CreatePayuOrderData>;
@@ -260,6 +266,7 @@ export function BuyVipButton({
         email: trimmedEmail,
         phone: trimmedPhone,
         gaClientId: readGaClientId() ?? undefined,
+        gaSessionId: readGaSessionId() ?? undefined,
       }),
     });
     const payload = (await response.json()) as ApiResult<CreateRazorpayOrderData>;
