@@ -119,8 +119,12 @@ export async function validatePromotionTargets(targets: VipPromotionTarget[]): P
     const server = target.targetType === "server" ? serverById.get(target.targetId) : null;
     const bundle = target.targetType === "bundle" ? bundleById.get(target.targetId) : null;
     if (!server && !bundle) throw new Error(`Unknown ${target.targetType}: ${target.targetId}.`);
+    if (!durationMetas().some(({ id }) => target.pricingByPlan[id] !== undefined)) {
+      throw new Error(`Set at least one promotional duration for ${target.targetId}.`);
+    }
     for (const meta of durationMetas()) {
       const price = target.pricingByPlan[meta.id];
+      if (price === undefined) continue;
       const base = server
         ? (server.vipPricingByPlan?.[meta.id] ?? undefined)
         : bundle?.pricingByPlan[meta.id];

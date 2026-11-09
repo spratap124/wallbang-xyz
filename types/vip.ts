@@ -75,7 +75,7 @@ export type VipPromotionTargetType = "server" | "bundle";
 export type VipPromotionTarget = {
   targetType: VipPromotionTargetType;
   targetId: string;
-  pricingByPlan: Record<VipPlanId, number>;
+  pricingByPlan: Partial<Record<VipPlanId, number>>;
 };
 
 export type VipPromotionDoc = {

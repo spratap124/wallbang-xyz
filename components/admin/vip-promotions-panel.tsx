@@ -89,12 +89,14 @@ export function VipPromotionsPanel() {
     for (const [key, values] of Object.entries(form.targets)) {
       const target = data.targets.find((item) => targetKey(item.targetType, item.id) === key);
       if (!target) continue;
-      const pricingByPlan = {} as Record<VipPlanId, number>;
+      const pricingByPlan: Partial<Record<VipPlanId, number>> = {};
       for (const plan of plans) {
+        if (!values[plan].trim()) continue;
         const rupees = Number(values[plan]);
-        if (!values[plan] || !Number.isFinite(rupees) || rupees <= 0) { setError(`Set a promotional price for ${target.name} · ${labels[plan]}.`); return; }
+        if (!Number.isFinite(rupees) || rupees <= 0) { setError(`Enter a valid promotional price for ${target.name} · ${labels[plan]}, or leave it blank.`); return; }
         pricingByPlan[plan] = Math.round(rupees * 100);
       }
+      if (Object.keys(pricingByPlan).length === 0) { setError(`Set at least one promotional duration for ${target.name}.`); return; }
       targets.push({ targetType: target.targetType, targetId: target.id, pricingByPlan });
     }
     if (!targets.length) { setError("Select at least one server or bundle."); return; }
