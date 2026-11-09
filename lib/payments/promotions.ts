@@ -216,7 +216,7 @@ export async function resolvePromotionPrices<T extends { id: string; durationOpt
       ...item,
       durationOptions: item.durationOptions.map((option) => {
         const sale = active.target.pricingByPlan[option.id];
-        if (!Number.isInteger(sale) || sale <= 0 || sale >= option.amountPaise) return option;
+        if (sale === undefined || !Number.isInteger(sale) || sale <= 0 || sale >= option.amountPaise) return option;
         const discount = option.amountPaise - sale;
         return {
           ...option,

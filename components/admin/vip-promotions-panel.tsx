@@ -48,7 +48,7 @@ export function VipPromotionsPanel() {
       setForm({
         name: `${copy.name || "Untitled offer"} (copy)`, description: copy.description ?? "",
         startsAt: dateToIstInput(copy.startsAt), endsAt: dateToIstInput(copy.endsAt), percentage: "",
-        targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan])]))])) as Form["targets"],
+        targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan] ?? 0)]))])) as Form["targets"],
       });
     }
     setFormOpen(true);
@@ -59,7 +59,7 @@ export function VipPromotionsPanel() {
     setForm({
       name: promotion.name || "", description: promotion.description ?? "",
       startsAt: dateToIstInput(promotion.startsAt), endsAt: dateToIstInput(promotion.endsAt), percentage: "",
-      targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan])]))])) as Form["targets"],
+      targets: Object.fromEntries(targets.map((target) => [targetKey(target.targetType, target.targetId), Object.fromEntries(plans.map((plan) => [plan, inrInput(target.pricingByPlan[plan] ?? 0)]))])) as Form["targets"],
     });
     setFormOpen(true);
   }
