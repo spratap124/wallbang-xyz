@@ -36,6 +36,11 @@ type CreateRazorpayOrderData = {
   plan: string;
   keyId: string;
   description: string;
+  originalAmount: number;
+  discountAmount: number;
+  promotionId: string | null;
+  promotionName: string | null;
+  promotionEndsAt: string | null;
   prefill: { name: string; email: string; contact: string };
 };
 
@@ -119,6 +124,7 @@ type BuyVipButtonProps = {
   /** Selected price (paise) for ecommerce events; omit when unknown. */
   amountPaise?: number | null;
   serverShortName?: string | null;
+  onPriceChange?: (input: CreateRazorpayOrderData) => void;
 };
 
 export function BuyVipButton({
@@ -133,6 +139,7 @@ export function BuyVipButton({
   collectContact = true,
   amountPaise = null,
   serverShortName = null,
+  onPriceChange,
 }: BuyVipButtonProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -140,6 +147,7 @@ export function BuyVipButton({
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [priceChangeOrder, setPriceChangeOrder] = useState<CreateRazorpayOrderData | null>(null);
 
   function beginCheckout(): void {
     setError(null);
@@ -241,7 +249,6 @@ export function BuyVipButton({
     trimmedEmail: string,
     trimmedPhone: string,
   ): Promise<void> {
-    const Razorpay = await loadRazorpayScript();
     const response = await fetch("/api/v1/payments/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -260,15 +267,29 @@ export function BuyVipButton({
       throw new Error(payload.error);
     }
 
-    const orderId = payload.data.orderId;
+    if (amountPaise !== null && payload.data.amount !== amountPaise) {
+      setPriceChangeOrder(payload.data);
+      onPriceChange?.(payload.data);
+      setBusy(false);
+      setCollectingContact(false);
+      return;
+    }
+
+    await launchRazorpay(payload.data);
+  }
+
+  async function launchRazorpay(order: CreateRazorpayOrderData): Promise<void> {
+    const Razorpay = await loadRazorpayScript();
+
+    const orderId = order.orderId;
     let checkoutSettled = false;
     const checkout = new Razorpay({
-      key: payload.data.keyId,
-      amount: payload.data.amount,
-      currency: payload.data.currency,
-      description: payload.data.description,
+      key: order.keyId,
+      amount: order.amount,
+      currency: order.currency,
+      description: order.description,
       order_id: orderId,
-      prefill: payload.data.prefill,
+      prefill: order.prefill,
       theme: { color: "#e8242a" },
       modal: {
         ondismiss: () => {
@@ -303,6 +324,34 @@ export function BuyVipButton({
     });
 
     checkout.open();
+  }
+
+  if (priceChangeOrder) {
+    return (
+      <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+        <p className="text-sm font-medium">Pricing changed before checkout.</p>
+        <p className="text-xs text-muted-foreground">
+          {priceChangeOrder.promotionName ? `${priceChangeOrder.promotionName} · ` : ""}
+          New payable amount: ₹{(priceChangeOrder.amount / 100).toFixed(2)}. Confirm to continue.
+        </p>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => setPriceChangeOrder(null)}>
+            Cancel
+          </Button>
+          <Button type="button" className="flex-1" onClick={() => {
+            const order = priceChangeOrder;
+            setPriceChangeOrder(null);
+            setBusy(true);
+            void launchRazorpay(order).catch((err) => {
+              setError(err instanceof Error ? err.message : "Unable to open checkout.");
+              setBusy(false);
+            });
+          }}>
+            Confirm updated price
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (collectingContact && loggedIn && collectContact && !disabled) {

@@ -66,6 +66,13 @@ export class RatingRepository {
     return col.find({}).toArray();
   }
 
+  /** Top 10 uses the website leaderboard rating and deterministic SteamID tie-break. */
+  async findTopTen(): Promise<PlayerDoc[]> {
+    await ensurePlayerIndexes();
+    const col = await playersCollection();
+    return col.find({}).sort({ rating: -1, steamId: 1 }).limit(10).toArray();
+  }
+
   /**
    * Ensure a player row exists. Creates at default rating when missing.
    * Updates name/avatar when provided.

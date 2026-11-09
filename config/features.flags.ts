@@ -48,6 +48,10 @@ export const featureFlags = {
    * Default on so the live page stays visible until an admin hides it.
    */
   pricingPage: true,
+  /** Public bans ledger page and navigation links. */
+  bansPage: true,
+  /** Public leaderboard page and navigation links. */
+  leaderboardsPage: true,
   inventory: false,
   statistics: false,
   adminPanel: true,
@@ -67,7 +71,9 @@ export type WritableFeatureFlag =
   | "featuresPage"
   | "pricingPage"
   | "profilePage"
-  | "settingsPage";
+  | "settingsPage"
+  | "bansPage"
+  | "leaderboardsPage";
 
 export const writableFeatureFlags: readonly WritableFeatureFlag[] = [
   "vipPage",
@@ -77,4 +83,6 @@ export const writableFeatureFlags: readonly WritableFeatureFlag[] = [
   "pricingPage",
   "profilePage",
   "settingsPage",
+  "bansPage",
+  "leaderboardsPage",
 ] as const;

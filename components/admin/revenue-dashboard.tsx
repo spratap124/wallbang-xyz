@@ -7,7 +7,7 @@ import { VipBadge } from "@/components/profile/vip-badge";
 import { Button } from "@/components/ui/button";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { cn } from "@/lib/utils";
-import type { FleetOverviewResponse } from "@/types/profile";
+import type { AdminRevenueResponse } from "@/types/admin-revenue";
 
 function formatInr(paise: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -26,7 +26,7 @@ function formatDate(value: string) {
 }
 
 export function RevenueDashboard() {
-  const [data, setData] = useState<FleetOverviewResponse | null>(null);
+  const [data, setData] = useState<AdminRevenueResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -34,11 +34,11 @@ export function RevenueDashboard() {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    fetch("/api/v1/admin/analytics?range=30d", {
+    fetch("/api/v1/admin/revenue", {
       cache: "no-store",
       signal: controller.signal,
     })
-      .then((response) => response.json() as Promise<ApiResult<FleetOverviewResponse>>)
+      .then((response) => response.json() as Promise<ApiResult<AdminRevenueResponse>>)
       .then((result) => {
         if (!result.ok) {
           setError(result.error);
@@ -57,7 +57,7 @@ export function RevenueDashboard() {
     return () => controller.abort();
   }, [reload]);
 
-  const revenue = data?.monetization;
+  const revenue = data;
   const metrics = [
     ["Captured revenue", revenue ? formatInr(revenue.grossCapturedPaise) : "—", Wallet],
     ["VIP purchases", revenue?.successfulPurchases.toString() ?? "—", CreditCard],
@@ -94,6 +94,7 @@ export function RevenueDashboard() {
       </div>
 
       {data ? (
+        <div className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
           <section className="border-border bg-card overflow-hidden rounded-xl border">
             <div className="border-border border-b px-4 py-4">
@@ -133,6 +134,31 @@ export function RevenueDashboard() {
               {revenue?.revenueByPlan.map((row) => <div key={`${row.plan}:${row.accessType}`} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground truncate">{row.plan.replaceAll("_", " ")} · {row.purchases} sales</span><span className="font-semibold tabular-nums">{formatInr(row.grossPaise)}</span></div>)}
             </div>
           </section>
+        </div>
+        <section className="border-border bg-card overflow-hidden rounded-xl border">
+          <div className="border-border border-b px-4 py-4">
+            <h2 className="font-semibold">Offline purchases</h2>
+            <p className="text-muted-foreground mt-1 text-xs">Manual VIP grants recorded with source PURCHASE in the last 30 days. These are separate from provider payment totals.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[42rem] text-left text-sm">
+              <thead className="bg-secondary/40 text-muted-foreground border-b text-xs">
+                <tr><th className="px-4 py-3 font-medium">Player</th><th className="px-4 py-3 font-medium">Plan</th><th className="px-4 py-3 font-medium">Purchased</th><th className="px-4 py-3 text-right font-medium">Amount</th></tr>
+              </thead>
+              <tbody className="divide-border/60 divide-y">
+                {revenue?.offlinePurchases.map((purchase) => (
+                  <tr key={purchase.id} className="hover:bg-secondary/20">
+                    <td className="px-4 py-3"><div className="flex items-center gap-2">{purchase.avatarUrl ? <img src={purchase.avatarUrl} alt="" className="size-7 rounded-full" /> : null}<span className="font-medium">{purchase.playerName}</span><VipBadge compact /></div><span className="text-muted-foreground font-mono text-[10px]">{purchase.steamId}</span></td>
+                    <td className="text-muted-foreground px-4 py-3">{purchase.bundleName ?? purchase.plan.replaceAll("_", " ")} · {purchase.durationDays}d</td>
+                    <td className="text-muted-foreground px-4 py-3 text-xs">{formatDate(purchase.paidAt)}</td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatInr(purchase.amountPaise)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!revenue?.offlinePurchases.length ? <p className="text-muted-foreground px-4 py-10 text-center text-sm">No offline VIP purchases found for this period.</p> : null}
+          </div>
+        </section>
         </div>
       ) : null}
     </div>

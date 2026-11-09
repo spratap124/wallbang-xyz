@@ -40,7 +40,7 @@ function isDuplicateKeyError(err: unknown): boolean {
  * this collection — the global VIP role alone is not enough.
  *
  * Does not stack on top of an already-covering individual entitlement.
- * Purchases write their own history and should not call this.
+ * Admin-entered offline purchases use this path with source `PURCHASE`.
  */
 export async function ensureComplimentaryVipEntitlement(input: {
   userId: string;
@@ -57,6 +57,10 @@ export async function ensureComplimentaryVipEntitlement(input: {
   entitlementKey?: string;
   /** Snapshot of servers covered when the entitlement is a named bundle. */
   serverIds?: string[];
+  bundleName?: string;
+  /** Origin of an admin-created record, including offline purchases. */
+  source?: string;
+  amountPaise?: number;
   now?: Date;
 }): Promise<"inserted" | "skipped"> {
   await ensurePaymentIndexes();
@@ -120,7 +124,9 @@ export async function ensureComplimentaryVipEntitlement(input: {
     now,
     serverIds: input.serverIds,
   });
-  doc.source = input.dedupeGiveaway ? "GIVEAWAY" : "ADMIN";
+  doc.source = input.source ?? (input.dedupeGiveaway ? "GIVEAWAY" : "ADMIN");
+  if (input.bundleName) doc.bundleName = input.bundleName;
+  if (input.amountPaise != null) doc.amount = input.amountPaise;
   doc.grantId = input.grantId ?? null;
   doc.status = "ACTIVE";
 

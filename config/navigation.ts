@@ -6,6 +6,7 @@ export type NavItem = {
 
 export const mainNav: NavItem[] = [
   { title: "Servers", href: "/servers" },
+  { title: "Leaderboard", href: "/leaderboard" },
   { title: "Bans", href: "/bans" },
   { title: "Loadout", href: "/loadout" },
   { title: "VIP", href: "/vip" },
@@ -19,6 +20,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
     title: "Product",
     items: [
       { title: "Servers", href: "/servers" },
+      { title: "Leaderboard", href: "/leaderboard" },
       { title: "Ban ledger", href: "/bans" },
       { title: "Loadout", href: "/loadout" },
       { title: "VIP", href: "/vip" },
@@ -52,6 +54,8 @@ export type NavVisibility = {
   loadoutPage?: boolean;
   featuresPage?: boolean;
   pricingPage?: boolean;
+  bansPage?: boolean;
+  leaderboardsPage?: boolean;
 };
 
 const gatedHrefs: Record<string, keyof NavVisibility> = {
@@ -59,6 +63,8 @@ const gatedHrefs: Record<string, keyof NavVisibility> = {
   "/loadout": "loadoutPage",
   "/features": "featuresPage",
   "/pricing": "pricingPage",
+  "/bans": "bansPage",
+  "/leaderboard": "leaderboardsPage",
 };
 
 /** Drop gated nav entries when their public page flag is off. */

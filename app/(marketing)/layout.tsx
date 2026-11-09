@@ -58,6 +58,8 @@ export default async function MarketingLayout({
         showPricing={flags.pricingPage}
         showProfile={flags.profilePage}
         showSettings={flags.settingsPage}
+        showBans={flags.bansPage}
+        showLeaderboards={flags.leaderboardsPage}
       />
       <Suspense fallback={null}>
         <AuthErrorBanner />
@@ -68,6 +70,8 @@ export default async function MarketingLayout({
         showLoadout={flags.loadoutPage}
         showFeatures={flags.featuresPage}
         showPricing={flags.pricingPage}
+        showBans={flags.bansPage}
+        showLeaderboards={flags.leaderboardsPage}
       />
     </>
   );

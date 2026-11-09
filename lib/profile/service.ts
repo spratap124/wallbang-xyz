@@ -36,6 +36,7 @@ import { grantPlayerBadge as grantBadgeInternal } from "@/lib/profile/activity";
 import { canViewerAccess } from "@/lib/profile/privacy";
 import { getPlayerServerActivity } from "@/lib/profile/sessions";
 import { isValidSteamId64 } from "@/lib/profile/public";
+import { RatingRepository } from "@/lib/rating/RatingRepository";
 
 export const DEFAULT_PRIVACY: PrivacySettings = {
   stats: "public",
@@ -249,10 +250,11 @@ export async function getPlayerProfile(
     profile.profileViews += 1;
   }
 
-  const [resolved, statsDoc, settings] = await Promise.all([
+  const [resolved, statsDoc, settings, ratingDoc] = await Promise.all([
     getUserPermissions({ steamId }),
     loadStats(steamId),
     loadSettings(steamId),
+    new RatingRepository().findBySteamId(steamId).catch(() => null),
   ]);
 
   const role: RoleCode = resolved?.displayRole ?? user.role ?? "USER";
@@ -266,8 +268,33 @@ export async function getPlayerProfile(
 
   const badges = await loadBadges(steamId, roles);
   const canViewStats = canViewerAccess(settings.privacy.stats, isOwner);
+  const baseStats = toQuickStats(statsDoc);
+  const roundWins = ratingDoc?.wins ?? 0;
+  const roundLosses = ratingDoc?.losses ?? 0;
+  const totalRounds = ratingDoc?.roundsPlayed ?? 0;
+  const retakeKills = ratingDoc?.lifetimeStats?.retake?.kills ?? 0;
+  const retakeDeaths = ratingDoc?.lifetimeStats?.retake?.deaths ?? 0;
+  const retakeAssists = ratingDoc?.lifetimeStats?.retake?.assists ?? 0;
+  const combinedStats: QuickStats = ratingDoc ? {
+    ...baseStats,
+    matchesPlayed: totalRounds,
+    wins: roundWins,
+    losses: roundLosses,
+    winRate: totalRounds > 0 ? Math.round((roundWins / totalRounds) * 1000) / 10 : null,
+    kills: retakeKills,
+    deaths: retakeDeaths,
+    assists: retakeAssists,
+    kd: retakeDeaths > 0 ? Math.round((retakeKills / retakeDeaths) * 100) / 100 : retakeKills > 0 ? retakeKills : null,
+    roundsPlayed: totalRounds,
+    roundsWon: roundWins,
+    roundsLost: roundLosses,
+    roundWinRate: totalRounds > 0 ? Math.round((roundWins / totalRounds) * 1000) / 10 : null,
+    rating: ratingDoc.rating,
+    peakRating: ratingDoc.peakRating,
+  } : baseStats;
+  const hasRatingActivity = Boolean(ratingDoc && (ratingDoc.roundsPlayed > 0 || ratingDoc.rating > 0));
   const stats = redactStatsForPrivacy(
-    toQuickStats(statsDoc),
+    combinedStats,
     settings.privacy,
     isOwner,
   );
@@ -280,7 +307,7 @@ export async function getPlayerProfile(
     hasFavoriteWeapon: Boolean(profile.favoriteWeapon),
     hasFavoriteMap: Boolean(profile.favoriteMap),
     hasPreferredSide: Boolean(profile.preferredSide),
-    hasMatches: statsDoc.matchesPlayed > 0,
+    hasMatches: statsDoc.matchesPlayed > 0 || totalRounds > 0,
   });
   const currentServer = await resolveCurrentServer(steamId);
   // Retained session activity is supplementary: never fail the whole profile
@@ -319,7 +346,7 @@ export async function getPlayerProfile(
       preferredSide: profile.preferredSide,
     },
     stats,
-    statsHidden: !canViewStats && statsDoc.matchesPlayed > 0,
+    statsHidden: !canViewStats && (statsDoc.matchesPlayed > 0 || hasRatingActivity),
     serverActivity,
     badges,
     privacy: settings.privacy,

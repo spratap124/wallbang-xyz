@@ -6,6 +6,8 @@ import { getRuntimeFeatureFlags } from "@/lib/platform/feature-flags";
 const staticRoutes = [
   "/",
   "/servers",
+  "/bans",
+  "/leaderboard",
   "/features",
   "/pricing",
   "/offers",
@@ -30,6 +32,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     loadoutPage: false,
     featuresPage: false,
     pricingPage: false,
+    bansPage: false,
+    leaderboardsPage: false,
   }));
 
   const pages = staticRoutes
@@ -37,6 +41,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (path === "/vip") return flags.vipPage;
       if (path === "/features") return flags.featuresPage;
       if (path === "/pricing") return flags.pricingPage;
+      if (path === "/bans") return flags.bansPage;
+      if (path === "/leaderboard") return flags.leaderboardsPage;
       return true;
     })
     .map((path) => ({

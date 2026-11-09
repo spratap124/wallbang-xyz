@@ -76,6 +76,13 @@ const NAV: NavItem[] = [
     permission: "manage_servers",
   },
   {
+    href: "/admin/vip-promotions",
+    label: "Promotional Offers",
+    icon: Megaphone,
+    match: (path) => path.startsWith("/admin/vip-promotions"),
+    permission: "manage_servers",
+  },
+  {
     href: "/admin/players",
     label: "Players",
     icon: Users,
@@ -151,6 +158,9 @@ function pageMeta(pathname: string): { title: string; subtitle: string } {
   }
   if (pathname.startsWith("/admin/vip-bundles")) {
     return { title: "VIP & Subscriptions", subtitle: "Plans & server bundles" };
+  }
+  if (pathname.startsWith("/admin/vip-promotions")) {
+    return { title: "Promotional Offers", subtitle: "Scheduled VIP pricing" };
   }
   if (pathname.startsWith("/admin/players")) {
     return { title: "Players", subtitle: "Directory" };

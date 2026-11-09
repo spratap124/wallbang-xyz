@@ -4,6 +4,8 @@ import { Container } from "@/components/shared/primitives";
 import { getPublicBanLedger } from "@/lib/moderation/service";
 import { isMongoConfigured } from "@/lib/mongo";
 import { createPageMetadata } from "@/seo/metadata";
+import { redirect } from "next/navigation";
+import { isBansPageEnabled } from "@/lib/platform/feature-flags";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Ban Ledger",
@@ -30,6 +32,7 @@ function Stat({ label, value, accent }: { label: string; value: number; accent?:
 }
 
 export default async function BansPage() {
+  if (!(await isBansPageEnabled())) redirect("/");
   const ledger = isMongoConfigured()
     ? await getPublicBanLedger().catch(() => null)
     : null;

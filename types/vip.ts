@@ -37,6 +37,16 @@ export type VipDurationOption = {
   badge?: "popular" | "best-value";
   amountPaise: number;
   perMonthPaise: number | null;
+  baseAmountPaise?: number;
+  promotion?: VipPromotionPrice;
+};
+
+export type VipPromotionPrice = {
+  id: string;
+  name: string;
+  discountAmountPaise: number;
+  discountPercentage: number;
+  endsAt: string;
 };
 
 export type VipShopQuote = {
@@ -59,6 +69,36 @@ export type VipBundleDoc = {
   featured: boolean;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type VipPromotionTargetType = "server" | "bundle";
+export type VipPromotionTarget = {
+  targetType: VipPromotionTargetType;
+  targetId: string;
+  pricingByPlan: Record<VipPlanId, number>;
+};
+
+export type VipPromotionDoc = {
+  _id: string;
+  id: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  startsAt: Date;
+  endsAt: Date;
+  targets: VipPromotionTarget[];
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  updatedBy?: string;
+};
+
+export type VipPromotionView = Omit<VipPromotionDoc, "startsAt" | "endsAt" | "createdAt" | "updatedAt"> & {
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+  updatedAt: string;
+  status: "scheduled" | "active" | "expired" | "disabled";
 };
 
 /** Admin-facing bundle with resolved durations and server names. */
