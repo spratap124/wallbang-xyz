@@ -7,6 +7,8 @@ import {
 import { isMongoConfigured } from "@/lib/mongo";
 import { userRolesCollection } from "@/lib/permissions/collections";
 import type { UserRoleDoc } from "@/types/permissions";
+import { fetchSteamPlayerSummary } from "@/lib/auth/steam-api";
+import { isValidSteamId64 } from "@/lib/profile/public";
 
 export async function GET(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {
@@ -28,10 +30,14 @@ export async function GET(request: Request): Promise<Response> {
 
   if (steamId) {
     const resolved = await getUserPermissions({ steamId });
-    if (!resolved) {
-      return jsonError("User not found.", 404);
+    if (resolved) return jsonOk({ registered: true, permissions: resolved });
+    if (!isValidSteamId64(steamId)) return jsonError("Invalid SteamID64.", 400);
+    try {
+      const profile = await fetchSteamPlayerSummary(steamId);
+      return jsonOk({ registered: false, profile });
+    } catch {
+      return jsonError("Steam profile not found or unavailable.", 404);
     }
-    return jsonOk(resolved);
   }
 
   if (!q) {
