@@ -4,7 +4,6 @@ import { ProfilePageView } from "@/components/profile/profile-page-view";
 import { getSession } from "@/lib/auth/session";
 import { isMongoConfigured } from "@/lib/mongo";
 import { isProfilePageEnabled } from "@/lib/platform/feature-flags";
-import { getProfileDashboard } from "@/lib/profile/dashboard";
 import { ensurePlayerDomain, getMyProfile } from "@/lib/profile";
 import { createPageMetadata } from "@/seo/metadata";
 export const metadata = createPageMetadata({
@@ -34,17 +33,8 @@ export default async function MyProfilePage() {
     redirect("/");
   }
 
-  const dashboard = await getProfileDashboard({
-    userId: profile.userId,
-    steamId: profile.steamId,
-    fallbackVip: profile.isVip,
-    joinedAt: profile.joinedAt,
-  });
+  // Give the signed-in player's profile the same canonical SteamID URL as
+  // every other player profile.
+  redirect(`/profile/${encodeURIComponent(profile.steamId)}`);
 
-  return (
-    <ProfilePageView
-      profile={{ ...profile, showSteamId: true, accountLinked: true }}
-      dashboard={dashboard}
-    />
-  );
 }
