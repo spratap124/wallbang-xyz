@@ -15,11 +15,11 @@ import { VIP_PLAN_IDS } from "@/types/vip";
 export const runtime = "nodejs";
 
 const pricesSchema = z.object({
-  "1_month": z.number().int().positive().max(10_000_000),
-  "3_months": z.number().int().positive().max(10_000_000),
-  "6_months": z.number().int().positive().max(10_000_000),
-  "1_year": z.number().int().positive().max(10_000_000),
-});
+  "1_month": z.number().int().positive().max(10_000_000).optional(),
+  "3_months": z.number().int().positive().max(10_000_000).optional(),
+  "6_months": z.number().int().positive().max(10_000_000).optional(),
+  "1_year": z.number().int().positive().max(10_000_000).optional(),
+}).refine((prices) => Object.values(prices).some((price) => price !== undefined), "Set at least one promotional duration.");
 const targetSchema = z.object({
   targetType: z.enum(["server", "bundle"]),
   targetId: z.string().trim().min(1).max(64),
