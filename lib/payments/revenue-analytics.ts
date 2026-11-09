@@ -2,8 +2,8 @@ import "server-only";
 
 import { getDb } from "@/lib/mongo";
 import { overviewIstPeriod } from "@/lib/profile/overview-analytics";
-import { ensurePaymentIndexes, paymentsCollection } from "@/lib/payments/collections";
-import type { PaymentDoc } from "@/types/payments";
+import { ensurePaymentIndexes, paymentsCollection, vipHistoryCollection } from "@/lib/payments/collections";
+import type { PaymentDoc, VipHistoryDoc } from "@/types/payments";
 import type { AdminRevenueResponse } from "@/types/admin-revenue";
 import type { FleetVipPurchase } from "@/types/profile";
 
@@ -18,6 +18,7 @@ export async function getAdminRevenueAnalytics(
   const period = overviewIstPeriod("30d", undefined, undefined, now).current;
   const revenueEnd = now;
   const paymentsCollectionHandle = await paymentsCollection();
+  const historyCollectionHandle = await vipHistoryCollection();
   const payments = await paymentsCollectionHandle
     .find(
       {
@@ -46,6 +47,12 @@ export async function getAdminRevenueAnalytics(
     )
     .toArray();
 
+  const offlineRows = await historyCollectionHandle.find({
+    source: "PURCHASE",
+    paymentId: { $regex: "^offline-purchase:" },
+    status: { $ne: "SUPERSEDED" },
+    createdAt: { $gte: period.start, $lt: revenueEnd },
+  }).sort({ createdAt: -1 }).limit(RECENT_PURCHASE_LIMIT).toArray();
   const captured = payments.filter(
     (payment) =>
       (payment.status === "captured" || payment.status === "refunded") &&
@@ -126,7 +133,7 @@ export async function getAdminRevenueAnalytics(
     .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0))
     .slice(0, RECENT_PURCHASE_LIMIT);
   const db = await getDb();
-  const userIds = [...new Set(recent.map((payment) => payment.userId))];
+  const userIds = [...new Set([...recent.map((payment) => payment.userId), ...offlineRows.map((row) => row.userId)])];
   const users = userIds.length
     ? await db
         .collection<{ _id: string; personaName: string; avatarUrl: string }>("users")
@@ -154,6 +161,23 @@ export async function getAdminRevenueAnalytics(
       durationDays: payment.durationDays,
     };
   });
+  const offlinePurchases: FleetVipPurchase[] = offlineRows.map((record: VipHistoryDoc) => {
+    const user = userById.get(record.userId);
+    return {
+      id: record._id,
+      playerName: user?.personaName ?? "Unknown player",
+      avatarUrl: user?.avatarUrl ?? "",
+      steamId: record.steamId,
+      plan: record.plan,
+      bundleName: record.bundleName ?? null,
+      accessType: record.accessType ?? (record.serverId ? "INDIVIDUAL_SERVER" : "ALL_RETAKES"),
+      amountPaise: record.amount,
+      currency: "INR",
+      status: "captured",
+      paidAt: record.createdAt.toISOString(),
+      durationDays: record.durationDays,
+    };
+  });
 
   return {
     grossCapturedPaise,
@@ -168,5 +192,6 @@ export async function getAdminRevenueAnalytics(
       checkoutUsers > 0 ? Math.round((convertedUsers / checkoutUsers) * 1000) / 10 : null,
     revenueByPlan: [...revenueByPlan.values()],
     recentPurchases,
+    offlinePurchases,
   };
 }

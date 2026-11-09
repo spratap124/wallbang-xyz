@@ -22,6 +22,7 @@ import {
 } from "@/lib/payments/entitlements-logic";
 import { computeVipExtension } from "@/lib/payments/expiry";
 import { listVipBundleDocs } from "@/lib/payments/bundles";
+import { resolveVipPrice } from "@/lib/payments/promotions";
 import {
   trackPurchaseForPayment,
   trackRefundForPayment,
@@ -94,6 +95,11 @@ export type CreateVipOrderResult = {
   keyId: string;
   description: string;
   reused: boolean;
+  originalAmount: number;
+  discountAmount: number;
+  promotionId: string | null;
+  promotionName: string | null;
+  promotionEndsAt: string | null;
 };
 
 export async function createVipOrder(input: {
@@ -150,6 +156,18 @@ export async function createVipOrder(input: {
     bundles,
   });
 
+  const promotionTargetType = quote.accessType === "BUNDLE" ? "bundle" : "server";
+  const promotionTargetId = quote.accessType === "BUNDLE" ? quote.bundleId : quote.serverId!;
+  const price = await resolveVipPrice({
+    targetType: promotionTargetType,
+    targetId: promotionTargetId,
+    plan: quote.durationId,
+    basePrice: quote.amountPaise,
+  });
+  const originalAmount = price.basePrice;
+  const chargedAmount = price.finalPrice;
+  const discountAmount = originalAmount - chargedAmount;
+
   const limited = rateLimit(`vip-order:${input.userId}`, 8, 60_000);
   if (!limited.ok) {
     throw new Error("Too many payment attempts. Try again shortly.");
@@ -176,9 +194,12 @@ export async function createVipOrder(input: {
   const reuseAfter = new Date(Date.now() - REUSE_ORDER_MS);
   const existing = await payments.findOne({
     userId: input.userId,
+    provider: "razorpay",
     plan: quote.durationId,
     accessType: quote.accessType,
     bundleId,
+    serverId,
+    serverIds,
     status: "created",
     razorpayPaymentId: null,
     createdAt: { $gt: reuseAfter },
@@ -208,12 +229,17 @@ export async function createVipOrder(input: {
       keyId,
       description: checkoutDescription,
       reused: true,
+      originalAmount: existing.originalAmount ?? existing.amount,
+      discountAmount: existing.discountAmount ?? 0,
+      promotionId: existing.promotionId ?? null,
+      promotionName: existing.promotionName ?? null,
+      promotionEndsAt: existing.promotionEndsAt?.toISOString() ?? null,
     };
   }
 
   const receipt = `wb_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`;
   const order = await createRazorpayOrder({
-    amountPaise: quote.amountPaise,
+    amountPaise: chargedAmount,
     receipt,
     notes: {
       user_id: input.userId,
@@ -246,7 +272,14 @@ export async function createVipOrder(input: {
     serverIds,
     plan: quote.durationId,
     durationDays: quote.durationDays,
-    amount: quote.amountPaise,
+    amount: chargedAmount,
+    originalAmount,
+    discountAmount,
+    promotionId: price.promotion?.id ?? null,
+    promotionName: price.promotion?.name ?? null,
+    promotionTargetType,
+    promotionTargetId,
+    promotionEndsAt: price.promotion?.endsAt ?? null,
     currency: "INR",
     status: "created",
     paidAt: null,
@@ -274,12 +307,17 @@ export async function createVipOrder(input: {
       keyId,
       description: checkoutDescription,
       reused: true,
+      originalAmount: raced.originalAmount ?? raced.amount,
+      discountAmount: raced.discountAmount ?? 0,
+      promotionId: raced.promotionId ?? null,
+      promotionName: raced.promotionName ?? null,
+      promotionEndsAt: raced.promotionEndsAt?.toISOString() ?? null,
     };
   }
 
   return {
     orderId: order.id,
-    amount: quote.amountPaise,
+    amount: chargedAmount,
     currency: "INR",
     plan: quote.durationId,
     accessType: quote.accessType,
@@ -288,6 +326,11 @@ export async function createVipOrder(input: {
     keyId,
     description: checkoutDescription,
     reused: false,
+    originalAmount,
+    discountAmount,
+    promotionId: price.promotion?.id ?? null,
+    promotionName: price.promotion?.name ?? null,
+    promotionEndsAt: price.promotion?.endsAt.toISOString() ?? null,
   };
 }
 
@@ -433,6 +476,13 @@ export async function fulfillCapturedPayment(input: {
     serverIds,
     plan: claimed.plan,
     amount: claimed.amount,
+    originalAmount: claimed.originalAmount ?? claimed.amount,
+    discountAmount: claimed.discountAmount ?? 0,
+    promotionId: claimed.promotionId ?? null,
+    promotionName: claimed.promotionName ?? null,
+    promotionTargetType: claimed.promotionTargetType ?? null,
+    promotionTargetId: claimed.promotionTargetId ?? null,
+    promotionEndsAt: claimed.promotionEndsAt ?? null,
     durationDays: claimed.durationDays,
     startDate: extension.startDate,
     endDate: extension.endDate,

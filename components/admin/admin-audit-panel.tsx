@@ -33,6 +33,13 @@ function auditDetailLabel(entry: AuditLogDoc): string {
         "bundle";
       return `Bundle ${entry.action.split("_")[0]?.toLowerCase()} · ${name}`;
     }
+    case "CREATE_VIP_PROMOTION":
+    case "UPDATE_VIP_PROMOTION":
+    case "SET_VIP_PROMOTION_ENABLED": {
+      const name = stringField(entry.newValue, "name") ?? stringField(entry.oldValue, "name") ?? "offer";
+      const action = entry.action === "CREATE_VIP_PROMOTION" ? "created" : entry.action === "UPDATE_VIP_PROMOTION" ? "updated" : "enabled state changed for";
+      return `Promotion ${action} · ${name}`;
+    }
     case "CREATE_BAN":
       return `Ban created · ${stringField(entry.newValue, "banId") ?? "unknown"}`;
     case "REVOKE_BAN":

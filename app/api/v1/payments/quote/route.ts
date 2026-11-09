@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { buildVipShopQuote } from "@/config/vip-plans";
 import { listVipBundleDocs } from "@/lib/payments/bundles";
+import { applyPromotionsToQuote } from "@/lib/payments/promotions";
 import { jsonError, jsonOk } from "@/lib/permissions/authz";
 import {
   isVipPageEnabled,
@@ -132,5 +133,5 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError("Unknown server.", 400);
   }
 
-  return jsonOk<VipShopQuote>(quote);
+  return jsonOk<VipShopQuote>(await applyPromotionsToQuote(quote));
 }

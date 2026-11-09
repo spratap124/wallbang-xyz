@@ -13,4 +13,5 @@ export type AdminRevenueResponse = {
   checkoutConversionPercent: number | null;
   revenueByPlan: FleetMonetizationAnalytics["revenueByPlan"];
   recentPurchases: FleetVipPurchase[];
+  offlinePurchases: FleetVipPurchase[];
 };

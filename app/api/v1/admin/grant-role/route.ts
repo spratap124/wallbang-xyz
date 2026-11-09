@@ -15,6 +15,7 @@ const bodySchema = z.object({
   source: z.string().default("MANUAL"),
   expiresAt: z.union([z.string().datetime(), z.null()]).optional(),
   entitlementKeys: z.array(z.string().min(1)).max(50).optional(),
+  purchaseAmountPaise: z.number().int().positive().optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -45,6 +46,7 @@ export async function POST(request: Request): Promise<Response> {
     source,
     expiresAt,
     entitlementKeys,
+    purchaseAmountPaise,
   } = parsed.data;
 
   if (!targetUserId && !targetSteamId) {
@@ -60,6 +62,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let vipEntitlementKeys: string[] | undefined;
+  if (roleCode === "VIP" && source === "PURCHASE" && !purchaseAmountPaise) {
+    return jsonError("Purchase amount is required for purchase-sourced VIP grants.", 400);
+  }
   if (roleCode === "VIP") {
     if (!entitlementKeys || entitlementKeys.length === 0) {
       return jsonError(
@@ -95,6 +100,7 @@ export async function POST(request: Request): Promise<Response> {
             ? null
             : new Date(expiresAt),
       entitlementKeys: vipEntitlementKeys,
+      purchaseAmountPaise,
     });
     return jsonOk(resolved);
   } catch (err) {

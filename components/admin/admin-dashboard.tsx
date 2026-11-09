@@ -72,9 +72,9 @@ const SOURCES: RoleSource[] = [
 ];
 
 const EXPIRY_PRESETS = [
-  { value: "30", label: "30 days", days: 30 },
-  { value: "60", label: "60 days", days: 60 },
-  { value: "90", label: "90 days", days: 90 },
+  { value: "30", label: "1 month", days: 30 },
+  { value: "60", label: "2 months", days: 60 },
+  { value: "90", label: "3 months", days: 90 },
   { value: "180", label: "6 months", days: 180 },
   { value: "365", label: "1 year", days: 365 },
   { value: "lifetime", label: "Lifetime", days: null },
@@ -117,6 +117,7 @@ export function AdminDashboard() {
 
   const [roleCode, setRoleCode] = useState<RoleCode>("VIP");
   const [source, setSource] = useState<RoleSource>("MANUAL");
+  const [purchaseAmount, setPurchaseAmount] = useState("");
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("30");
   const [customExpiry, setCustomExpiry] = useState("");
   const customExpiryInvalid =
@@ -212,6 +213,7 @@ export function AdminDashboard() {
     if (!selected) return;
     if (roleCode === "VIP" && roleGrantKeys.length === 0) return;
     if (customExpiryInvalid) return;
+    if (roleCode === "VIP" && source === "PURCHASE" && (!purchaseAmount || Number(purchaseAmount) <= 0)) return;
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -222,6 +224,7 @@ export function AdminDashboard() {
           targetUserId: selected.userId,
           roleCode,
           source,
+          ...(roleCode === "VIP" && source === "PURCHASE" ? { purchaseAmountPaise: Math.round(Number(purchaseAmount) * 100) } : {}),
           expiresAt: resolveExpiresAt(),
           ...(roleCode === "VIP" ? { entitlementKeys: roleGrantKeys } : {}),
         }),
@@ -655,7 +658,14 @@ export function AdminDashboard() {
                     <select
                       id="role"
                       value={roleCode}
-                      onChange={(e) => setRoleCode(e.target.value as RoleCode)}
+                      onChange={(e) => {
+                        const nextRole = e.target.value as RoleCode;
+                        setRoleCode(nextRole);
+                        if (nextRole === "VIP" && source === "PURCHASE") {
+                          setChatTagDraft("[VIP]");
+                          setNameTagDraft("VIP");
+                        }
+                      }}
                       className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       {GRANTABLE_ROLES.map((r) => (
@@ -665,12 +675,25 @@ export function AdminDashboard() {
                       ))}
                     </select>
                   </div>
+                  {roleCode === "VIP" && source === "PURCHASE" ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="purchaseAmount">Purchase amount (₹)</Label>
+                      <Input id="purchaseAmount" type="number" min="0.01" step="0.01" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="e.g. 299" />
+                    </div>
+                  ) : null}
                   <div className="space-y-1.5">
                     <Label htmlFor="source">Source</Label>
                     <select
                       id="source"
                       value={source}
-                      onChange={(e) => setSource(e.target.value as RoleSource)}
+                      onChange={(e) => {
+                        const nextSource = e.target.value as RoleSource;
+                        setSource(nextSource);
+                        if (roleCode === "VIP" && nextSource === "PURCHASE") {
+                          setChatTagDraft("[VIP]");
+                          setNameTagDraft("VIP");
+                        }
+                      }}
                       className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       {SOURCES.map((s) => (
@@ -737,7 +760,8 @@ export function AdminDashboard() {
                   disabled={
                     pending ||
                     customExpiryInvalid ||
-                    (roleCode === "VIP" && roleGrantKeys.length === 0)
+                    (roleCode === "VIP" && roleGrantKeys.length === 0) ||
+                    (roleCode === "VIP" && source === "PURCHASE" && (!purchaseAmount || Number(purchaseAmount) <= 0))
                   }
                 >
                   Grant

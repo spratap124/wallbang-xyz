@@ -346,6 +346,8 @@ export type GrantRoleInput = {
   expiresAt?: Date | null;
   /** VIP only: server ids or `all_retakes`. Defaults to complimentary Mumbai. */
   entitlementKeys?: string[];
+  /** Offline VIP purchase amount in paise; only used when source is PURCHASE. */
+  purchaseAmountPaise?: number;
 };
 
 async function resolveGrantTarget(
@@ -410,14 +412,18 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   await col.insertOne(assignment);
   invalidatePermissionCache(user.steamId);
 
+  if (input.roleCode === "VIP" && input.source === "PURCHASE") {
+    await updateUserDisplayTags(user._id, { chatTag: "[VIP]", nameTag: "VIP" });
+  }
+
   const vipEntitlementKeys =
-    input.roleCode === "VIP" && input.source !== "PURCHASE"
+    input.roleCode === "VIP"
       ? input.entitlementKeys && input.entitlementKeys.length > 0
         ? input.entitlementKeys
         : undefined
       : undefined;
 
-  if (input.roleCode === "VIP" && input.source !== "PURCHASE") {
+  if (input.roleCode === "VIP") {
     const keys = vipEntitlementKeys ?? [undefined];
     for (const key of keys) {
       await syncComplimentaryVipEntitlement({
@@ -431,6 +437,8 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
               ? `${assignment._id}:${key}`
               : assignment._id,
         entitlementKey: key,
+        source: input.source,
+        amountPaise: input.source === "PURCHASE" ? input.purchaseAmountPaise : undefined,
         dedupeGiveaway: input.source === "GIVEAWAY",
       });
     }
@@ -476,6 +484,7 @@ export type ExtendVipExpiryInput = {
   userId: string;
   durationDays: number;
   source: RoleSource;
+  amountPaise?: number;
   grantedBy: { id: string; steamId: string } | null;
 };
 
@@ -1569,6 +1578,8 @@ async function syncComplimentaryVipEntitlement(input: {
   expiresAt: Date | null;
   assignmentId: string;
   entitlementKey?: string;
+  source?: RoleSource;
+  amountPaise?: number;
   dedupeGiveaway?: boolean;
 }): Promise<void> {
   try {
@@ -1582,10 +1593,13 @@ async function syncComplimentaryVipEntitlement(input: {
       userId: input.userId,
       steamId: input.steamId,
       expiresAt: input.expiresAt,
-      paymentId: `complimentary:${input.assignmentId}`,
+      paymentId: `${input.source === "PURCHASE" ? "offline-purchase" : "complimentary"}:${input.assignmentId}`,
       entitlementKey: input.entitlementKey,
       serverIds: (await bundle)?.serverIds,
+      bundleName: (await bundle)?.name,
       grantId: input.assignmentId,
+      source: input.source ?? (input.dedupeGiveaway ? "GIVEAWAY" : "ADMIN"),
+      amountPaise: input.amountPaise,
       dedupeGiveaway: input.dedupeGiveaway,
     });
   } catch (err) {

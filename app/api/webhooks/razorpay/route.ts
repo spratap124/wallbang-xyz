@@ -70,10 +70,14 @@ export async function POST(request: Request): Promise<Response> {
       const orderId = payment?.order_id;
       const paymentId = payment?.id;
       if (orderId && paymentId) {
+        if (typeof payment.amount !== "number" || !Number.isInteger(payment.amount)) {
+          console.error("[payments] captured Razorpay webhook missing a valid amount", { orderId, paymentId });
+          return NextResponse.json({ ok: false }, { status: 400 });
+        }
         await fulfillCapturedPayment({
           razorpayOrderId: orderId,
           razorpayPaymentId: paymentId,
-          amount: payment?.amount,
+          amount: payment.amount,
         });
       }
     } else if (event === "payment.failed") {

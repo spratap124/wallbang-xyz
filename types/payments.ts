@@ -34,6 +34,14 @@ export type PaymentDoc = {
   plan: VipPlanId;
   durationDays: number;
   amount: number;
+  /** Price and offer snapshot captured when the provider order was created. */
+  originalAmount?: number;
+  discountAmount?: number;
+  promotionId?: string | null;
+  promotionName?: string | null;
+  promotionTargetType?: "server" | "bundle" | null;
+  promotionTargetId?: string | null;
+  promotionEndsAt?: Date | null;
   currency: "INR";
   status: PaymentStatus;
   paidAt: Date | null;
@@ -66,6 +74,13 @@ export type VipHistoryDoc = {
   serverIds: string[];
   plan: VipPlanId;
   amount: number;
+  originalAmount?: number;
+  discountAmount?: number;
+  promotionId?: string | null;
+  promotionName?: string | null;
+  promotionTargetType?: "server" | "bundle" | null;
+  promotionTargetId?: string | null;
+  promotionEndsAt?: Date | null;
   durationDays: number;
   startDate: Date;
   endDate: Date;

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Check, Info, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { BuyVipButton } from "@/components/vip/buy-vip-button";
 import { RazorpaySecuredBadge } from "@/components/vip/razorpay-brand";
@@ -111,7 +112,12 @@ function DurationCards({
             <span className="mt-0.5 text-[0.65rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">
               {hostedAccessProduct}
             </span>
-            <span className="mt-2 text-2xl font-semibold tracking-tight">
+            {item.promotion && item.baseAmountPaise ? (
+              <span className="mt-2 text-xs text-muted-foreground line-through">
+                {formatInrFromPaise(item.baseAmountPaise)}
+              </span>
+            ) : null}
+            <span className="mt-1 text-2xl font-semibold tracking-tight">
               {formatInrFromPaise(item.amountPaise)}
             </span>
             {item.perMonthPaise ? (
@@ -122,10 +128,13 @@ function DurationCards({
               <span className="mt-1 min-h-4" aria-hidden />
             )}
             <span className="mt-2 text-xs font-medium text-emerald-500">
-              {oneMonth && item.months > 1
-                ? `Save ${formatInrFromPaise(Math.max(0, oneMonth.amountPaise * item.months - item.amountPaise))}`
+              {item.promotion
+                ? `Save ${formatInrFromPaise(item.promotion.discountAmountPaise)} with ${item.promotion.name}`
+                : oneMonth && item.months > 1
+                ? `Save ${formatInrFromPaise(Math.max(0, (oneMonth.baseAmountPaise ?? oneMonth.amountPaise) * item.months - (item.baseAmountPaise ?? item.amountPaise)))}`
                 : "Save ₹0"}
             </span>
+            {item.promotion ? <span className="mt-1 text-xs text-primary">{item.promotion.discountPercentage}% off</span> : null}
           </button>
         );
       })}
@@ -142,6 +151,7 @@ export function VipShop({
   hideBuy = false,
   renewTarget = null,
 }: VipShopProps) {
+  const router = useRouter();
   const defaultBundle =
     catalog.bundles.find((bundle) => bundle.featured) ?? catalog.bundles[0] ?? null;
   const defaultAccessType: VipAccessType = defaultBundle
@@ -155,8 +165,11 @@ export function VipShop({
   );
   const [durationId, setDurationId] = useState<VipPlanId>("6_months");
   const [bundleId, setBundleId] = useState<string | null>(defaultBundle?.id ?? null);
-  const [shopQuote, setShopQuote] = useState<VipShopQuote>(catalog.quote);
+  const [shopQuote, setShopQuote] = useState<VipShopQuote>(() => defaultBundle
+    ? { accessType: "BUNDLE", serverId: null, bundleId: defaultBundle.id, durations: defaultBundle.durations }
+    : catalog.quote);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteRefreshKey, setQuoteRefreshKey] = useState(0);
 
   useEffect(() => {
     if (accessType === "ALL_RETAKES") {
@@ -327,12 +340,39 @@ export function VipShop({
     return () => {
       cancelled = true;
     };
-  }, [accessType, selectedServerId, bundleId]);
+  }, [accessType, selectedServerId, bundleId, catalog, quoteRefreshKey]);
 
   const duration =
     shopQuote.durations.find((item) => item.id === durationId) ??
     shopQuote.durations[0] ??
     null;
+  const promotionEndsAt = duration?.promotion?.endsAt;
+  const [countdownNow, setCountdownNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setCountdownNow(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const refreshQuote = () => {
+      router.refresh();
+      setQuoteError(null);
+      // Selection dependencies are unchanged; force the authoritative quote fetch.
+      setQuoteRefreshKey((key) => key + 1);
+    };
+    const timer = promotionEndsAt
+      ? window.setTimeout(refreshQuote, Math.max(0, new Date(promotionEndsAt).getTime() - Date.now() + 25))
+      : undefined;
+    const interval = window.setInterval(refreshQuote, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") refreshQuote(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [promotionEndsAt, router]);
 
   const selectedServer =
     accessType === "INDIVIDUAL_SERVER" && selectedServerId
@@ -349,6 +389,19 @@ export function VipShop({
     accessType === "BUNDLE"
       ? (catalog.bundles.find((bundle) => bundle.id === bundleId) ?? null)
       : null;
+
+  const promotionEligibleLabel = selectedBundle
+    ? selectedBundle.name
+    : selectedServer
+      ? serverLabel(selectedServer)
+      : null;
+  const promotionRemainingMs = duration?.promotion
+    ? Math.max(0, new Date(duration.promotion.endsAt).getTime() - countdownNow)
+    : 0;
+  const promotionRemainingSeconds = Math.floor(promotionRemainingMs / 1_000);
+  const promotionCountdown = promotionRemainingMs <= 0
+    ? "Offer ended"
+    : `Ends in ${Math.floor(promotionRemainingSeconds / 86_400)}d ${Math.floor((promotionRemainingSeconds % 86_400) / 3_600)}h ${Math.floor((promotionRemainingSeconds % 3_600) / 60)}m ${promotionRemainingSeconds % 60}s`;
 
   const checkoutReady =
     (accessType === "BUNDLE" && Boolean(selectedBundle)) ||
@@ -373,6 +426,24 @@ export function VipShop({
       className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]"
     >
       <div className="space-y-10">
+        {duration?.promotion ? (
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-4">
+            <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">
+              {duration.promotion.name} — {duration.promotion.discountPercentage}% off
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Limited-time VIP pricing. {promotionEligibleLabel ? `Eligible for ${promotionEligibleLabel}.` : ""}
+            </p>
+            <p className="mt-2 inline-flex rounded-md border border-primary/30 bg-background/60 px-3 py-1.5 font-mono text-sm font-semibold tabular-nums text-foreground" aria-live="off">
+              {promotionCountdown}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Offer ends {new Intl.DateTimeFormat("en-IN", {
+                day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata", timeZoneName: "short",
+              }).format(new Date(duration.promotion.endsAt))}.
+            </p>
+          </div>
+        ) : null}
         {hasAccessChoices ? (
           <section id="choose-access">
             <h2 className="text-lg font-semibold tracking-tight">
@@ -584,7 +655,8 @@ export function VipShop({
                   {serverLabel(selectedServer)}
                 </span>
                 {duration ? (
-                  <span className="text-xs font-medium text-foreground">
+                  <span className="block text-xs font-medium text-foreground">
+                    {duration.promotion && duration.baseAmountPaise ? <span className="mr-1 text-muted-foreground line-through">{formatInrFromPaise(duration.baseAmountPaise)}</span> : null}
                     {formatInrFromPaise(duration.amountPaise)}
                   </span>
                 ) : null}
@@ -613,6 +685,12 @@ export function VipShop({
 
         <div className="py-4">
           <p className="text-xs text-muted-foreground">Total</p>
+          {duration?.promotion && duration.baseAmountPaise ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="line-through">{formatInrFromPaise(duration.baseAmountPaise)}</span>
+              <span className="ml-2 text-emerald-500">−{formatInrFromPaise(duration.promotion.discountAmountPaise)} · {duration.promotion.name}</span>
+            </p>
+          ) : null}
           <p className="mt-1 text-3xl font-semibold tracking-tight">
             {checkoutReady && duration
               ? formatInrFromPaise(duration.amountPaise)
@@ -662,6 +740,24 @@ export function VipShop({
                 }
                 collectContact={checkoutEnabled}
                 amountPaise={duration?.amountPaise ?? null}
+                onPriceChange={(changed) => {
+                  setShopQuote((current) => ({
+                    ...current,
+                    durations: current.durations.map((item) => item.id === changed.plan ? {
+                      ...item,
+                      amountPaise: changed.amount,
+                      baseAmountPaise: changed.originalAmount,
+                      perMonthPaise: item.months > 1 ? Math.round(changed.amount / item.months) : null,
+                      promotion: changed.promotionId && changed.promotionName && changed.promotionEndsAt ? {
+                        id: changed.promotionId,
+                        name: changed.promotionName,
+                        discountAmountPaise: changed.discountAmount,
+                        discountPercentage: changed.originalAmount > 0 ? Math.round(changed.discountAmount / changed.originalAmount * 100) : 0,
+                        endsAt: changed.promotionEndsAt,
+                      } : undefined,
+                    } : item),
+                  }));
+                }}
                 serverShortName={
                   selectedBundle?.name ?? selectedServer?.shortName ?? null
                 }
