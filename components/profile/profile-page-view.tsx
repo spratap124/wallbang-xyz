@@ -98,7 +98,7 @@ function ProfileDashboard({ profile, dashboard }: ProfilePageViewProps) {
           </div>
         ) : null}
 
-        <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <div className="grid items-stretch gap-4">
           <StatsSection profile={profile} />
           <ServerActivityCard activity={profile.serverActivity ?? null} />
         </div>
