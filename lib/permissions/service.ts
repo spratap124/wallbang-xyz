@@ -348,6 +348,8 @@ export type GrantRoleInput = {
   entitlementKeys?: string[];
   /** Offline VIP purchase amount in paise; only used when source is PURCHASE. */
   purchaseAmountPaise?: number;
+  entitlementAmounts?: { key: string; amountPaise: number }[];
+  requestId?: string;
 };
 
 async function resolveGrantTarget(
@@ -390,6 +392,10 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
 
   const expiresAt = input.expiresAt ?? null;
   const col = await userRolesCollection();
+  if (input.requestId) {
+    const existingRequest = await col.findOne({ _id: input.requestId, userId: user._id, roleCode: input.roleCode });
+    if (existingRequest) return resolveFromUser(user);
+  }
 
   // Deactivate any existing active assignment for the same role (replace).
   await col.updateMany(
@@ -398,7 +404,7 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   );
 
   const assignment: UserRoleDoc = {
-    _id: crypto.randomUUID(),
+    _id: input.requestId ?? crypto.randomUUID(),
     userId: user._id,
     roleId: role._id,
     roleCode: input.roleCode,
@@ -409,7 +415,15 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
     active: true,
   };
 
-  await col.insertOne(assignment);
+  try {
+    await col.insertOne(assignment);
+  } catch (err) {
+    if (input.requestId && err && typeof err === "object" && "code" in err && (err as { code: unknown }).code === 11000) {
+      const concurrentRequest = await col.findOne({ _id: input.requestId, userId: user._id, roleCode: input.roleCode });
+      if (concurrentRequest) return resolveFromUser(user);
+    }
+    throw err;
+  }
   invalidatePermissionCache(user.steamId);
 
   if (input.roleCode === "VIP" && input.source === "PURCHASE") {
@@ -438,7 +452,9 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
               : assignment._id,
         entitlementKey: key,
         source: input.source,
-        amountPaise: input.source === "PURCHASE" ? input.purchaseAmountPaise : undefined,
+        amountPaise: input.source === "PURCHASE"
+          ? input.entitlementAmounts?.find((entry) => entry.key === key)?.amountPaise ?? input.purchaseAmountPaise
+          : undefined,
         dedupeGiveaway: input.source === "GIVEAWAY",
       });
     }

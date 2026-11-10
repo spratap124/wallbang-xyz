@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import {
   nextEntitlementKeys,
   VipServerPicker,
   type VipServerOption,
+  type VipBundleOption,
 } from "@/components/admin/vip-server-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,10 +116,12 @@ export function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const grantRequestId = useRef<string | null>(null);
 
   const [roleCode, setRoleCode] = useState<RoleCode>("VIP");
   const [source, setSource] = useState<RoleSource>("MANUAL");
   const [purchaseAmount, setPurchaseAmount] = useState("");
+  const [serverPurchaseAmounts, setServerPurchaseAmounts] = useState<Record<string, string>>({});
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("30");
   const [customExpiry, setCustomExpiry] = useState("");
   const customExpiryInvalid =
@@ -131,26 +134,32 @@ export function AdminDashboard() {
   >([]);
   const [vipServerAccess, setVipServerAccess] = useState<VipServerAccess[]>([]);
   const [vipServers, setVipServers] = useState<VipServerOption[]>([]);
+  const [vipBundles, setVipBundles] = useState<VipBundleOption[]>([]);
   const [roleGrantKeys, setRoleGrantKeys] = useState<string[]>([]);
 
-  const loadVipEntitlements = useCallback((userId: string) => {
+  const loadVipEntitlements = useCallback((target: { userId?: string; steamId?: string }) => {
     startTransition(async () => {
+      const query = target.userId ? `userId=${encodeURIComponent(target.userId)}` : `steamId=${encodeURIComponent(target.steamId ?? "")}`;
       const res = await fetch(
-        `/api/v1/admin/vip-membership?userId=${encodeURIComponent(userId)}`,
+        `/api/v1/admin/vip-membership?${query}`,
       );
       const payload = await readJson<{
         entitlements: VipEntitlementAdminRow[];
         serverAccess: VipServerAccess[];
         servers: VipServerOption[];
+        bundles: VipBundleOption[];
       }>(res);
       if (!payload.ok) {
         setVipEntitlements([]);
+        setVipServerAccess([]);
         setVipServers([]);
+        setVipBundles([]);
         return;
       }
-      setVipEntitlements(payload.data.entitlements);
-      setVipServerAccess(payload.data.serverAccess);
-      setVipServers(payload.data.servers);
+      setVipEntitlements(payload.data.entitlements ?? []);
+      setVipServerAccess(payload.data.serverAccess ?? []);
+      setVipServers(payload.data.servers ?? []);
+      setVipBundles(payload.data.bundles ?? []);
     });
   }, []);
 
@@ -161,6 +170,7 @@ export function AdminDashboard() {
       setVipEntitlements([]);
       setVipServerAccess([]);
       setVipServers([]);
+      setVipBundles([]);
       setRoleGrantKeys([]);
       startTransition(async () => {
         const res = await fetch(
@@ -179,14 +189,14 @@ export function AdminDashboard() {
           setSelected(payload.data.permissions);
           setChatTagDraft(selectableTag(payload.data.permissions.chatTag, CHAT_TAG_OPTIONS));
           setNameTagDraft(selectableTag(payload.data.permissions.nameTag, NAME_TAG_OPTIONS));
-          loadVipEntitlements(payload.data.permissions.userId);
+          loadVipEntitlements({ userId: payload.data.permissions.userId });
         } else {
           const profile = payload.data.profile;
           setUnregisteredTarget(true);
           setSelected({ userId: "", steamId: profile.steamId, personaName: profile.personaName, avatarUrl: profile.avatarUrl, profileUrl: profile.profileUrl, displayRole: "USER", chatTag: null, nameTag: null, roles: [], permissions: [], activeAssignments: [] });
           setVipEntitlements([]);
           setVipServerAccess([]);
-          setVipServers([]);
+          loadVipEntitlements({ steamId: profile.steamId });
         }
       });
     },
@@ -229,13 +239,65 @@ export function AdminDashboard() {
     return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
   }
 
+  const isOfflinePurchase = roleCode === "VIP" && source === "PURCHASE";
+  const selectedBundles = vipBundles.filter((bundle) => roleGrantKeys.includes(bundle.id));
+  const selectedIndividualServers = vipServers.filter((server) => roleGrantKeys.includes(server.id));
+  const selectedPlanKey = ({ "30": "1_month", "90": "3_months", "180": "6_months", "365": "1_year" } as Record<string, "1_month" | "3_months" | "6_months" | "1_year">)[expiryPreset];
+  const serverPurchaseTotalPaise = selectedIndividualServers.reduce((sum, server) => sum + Math.round(Number(serverPurchaseAmounts[server.id]) * 100), 0);
+  const bundleAmountValid = purchaseAmount !== "" && Number.isFinite(Number(purchaseAmount)) && Number(purchaseAmount) > 0;
+  const individualAmountsValid = selectedIndividualServers.length > 0 && selectedIndividualServers.every((server) => {
+    const value = serverPurchaseAmounts[server.id];
+    return value !== undefined && value !== "" && Number.isFinite(Number(value)) && Number(value) > 0;
+  });
+  const purchaseAmountsValid = selectedBundles.length > 0 ? selectedBundles.length === 1 && bundleAmountValid : individualAmountsValid;
+
+  function toggleGrantKey(key: string) {
+    const bundle = vipBundles.find((item) => item.id === key);
+    const server = vipServers.find((item) => item.id === key);
+    setRoleGrantKeys((current) => {
+      const updated = nextEntitlementKeys(current, key);
+      if (updated.includes(key) && bundle) return [key];
+      if (updated.includes(key) && server) return updated.filter((item) => !vipBundles.some((itemBundle) => itemBundle.id === item));
+      return updated;
+    });
+    if (server && serverPurchaseAmounts[key] === undefined) {
+      const configured = selectedPlanKey ? server.pricingByPlan?.[selectedPlanKey] : undefined;
+      setServerPurchaseAmounts((current) => ({ ...current, [key]: configured ? (configured / 100).toFixed(2) : "" }));
+    }
+    if (bundle) {
+      const configured = selectedPlanKey ? bundle.pricingByPlan?.[selectedPlanKey] : undefined;
+      setPurchaseAmount(configured ? (configured / 100).toFixed(2) : "");
+    }
+  }
+
+  function updateExpiryPreset(value: ExpiryPreset) {
+    setExpiryPreset(value);
+    const planKey = ({ "30": "1_month", "90": "3_months", "180": "6_months", "365": "1_year" } as Record<string, "1_month" | "3_months" | "6_months" | "1_year">)[value];
+    if (!planKey) return;
+    const bundle = vipBundles.find((item) => roleGrantKeys.includes(item.id));
+    if (bundle) {
+      const price = bundle.pricingByPlan?.[planKey];
+      setPurchaseAmount(price ? (price / 100).toFixed(2) : "");
+      return;
+    }
+    setServerPurchaseAmounts((current) => {
+      const next = { ...current };
+      for (const server of vipServers.filter((item) => roleGrantKeys.includes(item.id))) {
+        const price = server.pricingByPlan?.[planKey];
+        next[server.id] = price ? (price / 100).toFixed(2) : "";
+      }
+      return next;
+    });
+  }
+
   function grant() {
     if (!selected) return;
     if (roleCode === "VIP" && roleGrantKeys.length === 0) return;
     if (customExpiryInvalid) return;
-    if (roleCode === "VIP" && source === "PURCHASE" && (!purchaseAmount || Number(purchaseAmount) <= 0)) return;
+    if (isOfflinePurchase && !purchaseAmountsValid) return;
     setError(null);
     setMessage(null);
+    grantRequestId.current ??= crypto.randomUUID();
     startTransition(async () => {
       const res = await fetch("/api/v1/admin/grant-role", {
         method: "POST",
@@ -244,7 +306,8 @@ export function AdminDashboard() {
           ...(unregisteredTarget ? { targetSteamId: selected.steamId } : { targetUserId: selected.userId }),
           roleCode,
           source,
-          ...(roleCode === "VIP" && source === "PURCHASE" ? { purchaseAmountPaise: Math.round(Number(purchaseAmount) * 100) } : {}),
+          requestId: grantRequestId.current,
+          ...(isOfflinePurchase ? selectedBundles.length ? { purchaseAmountPaise: Math.round(Number(purchaseAmount) * 100) } : { entitlementAmounts: selectedIndividualServers.map((server) => ({ entitlementKey: server.id, amountPaise: Math.round(Number(serverPurchaseAmounts[server.id]) * 100) })) } : {}),
           expiresAt: resolveExpiresAt(),
           ...(roleCode === "VIP" ? { entitlementKeys: roleGrantKeys } : {}),
         }),
@@ -255,10 +318,11 @@ export function AdminDashboard() {
         return;
       }
       setSelected(payload.data);
+      grantRequestId.current = null;
       setUnregisteredTarget(false);
       if (roleCode === "VIP") {
         setRoleGrantKeys([]);
-        loadVipEntitlements(selected.userId);
+        loadVipEntitlements(unregisteredTarget ? { steamId: selected.steamId } : { userId: payload.data.userId });
       }
       setMessage(`Granted ${roleCode}.`);
     });
@@ -285,7 +349,7 @@ export function AdminDashboard() {
       }
       setSelected(payload.data);
       if (code === "VIP") {
-        loadVipEntitlements(selected.userId);
+        loadVipEntitlements({ userId: selected.userId });
       }
       setMessage(`Revoked ${code}.`);
     });
@@ -328,10 +392,6 @@ export function AdminDashboard() {
     });
   }
 
-  function toggleRoleGrantKey(key: string) {
-    setRoleGrantKeys((keys) => nextEntitlementKeys(keys, key));
-  }
-
   function revokeVipEntitlement(row: VipEntitlementAdminRow) {
     if (!selected) return;
     const ok = window.confirm(
@@ -361,7 +421,7 @@ export function AdminDashboard() {
         return;
       }
       setSelected(payload.data.permissions);
-      loadVipEntitlements(selected.userId);
+      loadVipEntitlements({ userId: selected.userId });
       setMessage(
         `Revoked ${row.label} · ${payload.data.deletedHistoryRows} history row(s)${
           payload.data.vipDeactivated ? " · VIP role cleared" : ""
@@ -590,7 +650,7 @@ export function AdminDashboard() {
                     <h4 className="text-sm font-medium">Final server access</h4>
                     <p className="mt-1 text-xs text-muted-foreground">Final expiry after stacking every bundle and individual term covering each server.</p>
                     <ul className="mt-2 space-y-2">
-                      {vipServerAccess.map((server) => (
+                      {(vipServerAccess ?? []).map((server) => (
                         <li key={server.serverId} className="flex items-center justify-between rounded-md border border-border bg-background/40 px-3 py-2 text-sm">
                           <span>{server.serverName}<span className="ml-2 text-xs text-muted-foreground">{server.sources.join(" + ")}</span></span>
                           <span className="text-xs text-muted-foreground">{server.expiresAt ? `Expires ${formatDate(server.expiresAt)}` : "Never expires"}</span>
@@ -701,12 +761,6 @@ export function AdminDashboard() {
                       ))}
                     </select>
                   </div>
-                  {roleCode === "VIP" && source === "PURCHASE" ? (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="purchaseAmount">Purchase amount (₹)</Label>
-                      <Input id="purchaseAmount" type="number" min="0.01" step="0.01" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="e.g. 299" />
-                    </div>
-                  ) : null}
                   <div className="space-y-1.5">
                     <Label htmlFor="source">Source</Label>
                     <select
@@ -734,9 +788,7 @@ export function AdminDashboard() {
                     <select
                       id="expiry"
                       value={expiryPreset}
-                      onChange={(e) =>
-                        setExpiryPreset(e.target.value as ExpiryPreset)
-                      }
+                      onChange={(e) => updateExpiryPreset(e.target.value as ExpiryPreset)}
                       className="flex h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       {EXPIRY_PRESETS.map((preset) => (
@@ -775,9 +827,26 @@ export function AdminDashboard() {
                     </div>
                     <VipServerPicker
                       servers={vipServers}
+                      bundles={vipBundles}
                       selectedKeys={roleGrantKeys}
-                      onToggle={toggleRoleGrantKey}
+                      onToggle={toggleGrantKey}
                     />
+                  </div>
+                ) : null}
+                {isOfflinePurchase && selectedBundles.length === 1 ? (
+                  <div className="space-y-2 rounded-lg border border-border p-3">
+                    <Label htmlFor="purchaseAmount">Bundle purchase amount (₹)</Label>
+                    <Input id="purchaseAmount" type="number" min="0.01" step="0.01" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="Enter bundle amount" />
+                  </div>
+                ) : null}
+                {isOfflinePurchase && selectedBundles.length === 0 && selectedIndividualServers.length > 0 ? (
+                  <div className="space-y-2 rounded-lg border border-border p-3">
+                    <p className="text-sm font-medium">Individual server prices</p>
+                    {selectedIndividualServers.map((server) => <div key={server.id} className="grid grid-cols-[1fr_10rem] items-center gap-3">
+                      <Label htmlFor={`price-${server.id}`}>{server.label}</Label>
+                      <Input id={`price-${server.id}`} type="number" min="0.01" step="0.01" value={serverPurchaseAmounts[server.id] ?? ""} onChange={(e) => setServerPurchaseAmounts((current) => ({ ...current, [server.id]: e.target.value }))} placeholder="₹ amount" />
+                    </div>)}
+                    <p className="text-right text-sm font-medium">Total: ₹{(serverPurchaseTotalPaise / 100).toFixed(2)}</p>
                   </div>
                 ) : null}
                 <Button
@@ -787,7 +856,7 @@ export function AdminDashboard() {
                     pending ||
                     customExpiryInvalid ||
                     (roleCode === "VIP" && roleGrantKeys.length === 0) ||
-                    (roleCode === "VIP" && source === "PURCHASE" && (!purchaseAmount || Number(purchaseAmount) <= 0))
+                    (isOfflinePurchase && !purchaseAmountsValid)
                   }
                 >
                   Grant

@@ -36,12 +36,19 @@ export async function GET(request: Request): Promise<Response> {
     return jsonError("User not found.", 404);
   }
 
-  const servers = await getGameServers({ includeDisabled: true });
+  const [servers, allBundles] = await Promise.all([
+    getGameServers({ includeDisabled: true }),
+    listVipBundleDocs().catch(() => []),
+  ]);
   const eligibleServers = servers.map((server) => ({
     id: server.id,
     shortName: server.shortName || server.name,
     name: server.name,
+    pricingByPlan: server.vipPricingByPlan ?? {},
   }));
+  const bundles = allBundles
+    .filter((bundle) => bundle.enabled && bundle.serverIds.length > 0 && bundle.serverIds.every((id) => servers.some((server) => server.id === id)))
+    .map((bundle) => ({ id: bundle.id, label: bundle.name, serverCount: bundle.serverIds.length, serverIds: bundle.serverIds, pricingByPlan: bundle.pricingByPlan }));
 
   // Unregistered Steam players still need the fleet list so a first VIP grant
   // (which creates their account) can be scoped to servers.
@@ -56,7 +63,9 @@ export async function GET(request: Request): Promise<Response> {
         id: server.id,
         label: server.shortName || server.name,
         hasAccess: false,
+      pricingByPlan: server.pricingByPlan,
       })),
+      bundles,
     });
   }
 
@@ -90,6 +99,7 @@ export async function GET(request: Request): Promise<Response> {
       serverId: server.id,
       now,
     }),
+    pricingByPlan: server.pricingByPlan,
   }));
 
   return jsonOk({
@@ -100,5 +110,6 @@ export async function GET(request: Request): Promise<Response> {
     serverAccess: membership.serverAccess,
     entitlements,
     servers: serverOptions,
+    bundles,
   });
 }
