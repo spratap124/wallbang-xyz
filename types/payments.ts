@@ -47,6 +47,8 @@ export type PaymentDoc = {
   paidAt: Date | null;
   refundedAt: Date | null;
   fulfilledAt: Date | null;
+  /** Lease timestamp for crash-safe fulfillment recovery. */
+  fulfillmentClaimedAt?: Date | null;
   failureReason: string | null;
   invoiceNumber?: string | null;
   invoiceGeneratedAt?: Date | null;

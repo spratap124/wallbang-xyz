@@ -28,7 +28,7 @@ import {
   trackRefundForPayment,
 } from "@/lib/payments/analytics";
 import {
-  ensureVipCoversUntil,
+  ensureVipRoleCoversUntil,
   getUserPermissions,
   subtractVipExpiry,
 } from "@/lib/permissions/service";
@@ -43,6 +43,7 @@ import type {
 } from "@/types/payments";
 
 const REUSE_ORDER_MS = 30 * 60 * 1000;
+const FULFILLMENT_LEASE_MS = 2 * 60 * 1000;
 
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(
@@ -349,23 +350,27 @@ export async function fulfillCapturedPayment(input: {
   await ready();
   const payments = await paymentsCollection();
   const now = new Date();
+  const staleClaimBefore = new Date(now.getTime() - FULFILLMENT_LEASE_MS);
 
   const claimed = await payments.findOneAndUpdate(
     {
       razorpayOrderId: input.razorpayOrderId,
       fulfilledAt: null,
-      status: { $in: ["created", "authorized", "failed"] },
+      status: { $in: ["created", "authorized", "failed", "captured"] },
+      $or: [
+        { fulfillmentClaimedAt: null },
+        { fulfillmentClaimedAt: { $exists: false } },
+        { fulfillmentClaimedAt: { $lt: staleClaimBefore } },
+      ],
     },
-    {
-      $set: {
-        razorpayPaymentId: input.razorpayPaymentId,
-        status: "captured" satisfies PaymentStatus,
-        paidAt: now,
-        fulfilledAt: now,
-        failureReason: null,
-        updatedAt: now,
-      },
-    },
+    [{ $set: {
+      razorpayPaymentId: input.razorpayPaymentId,
+      status: "captured" satisfies PaymentStatus,
+      paidAt: { $ifNull: ["$paidAt", now] },
+      fulfillmentClaimedAt: now,
+      failureReason: null,
+      updatedAt: now,
+    } }],
     { returnDocument: "after" },
   );
 
@@ -379,6 +384,11 @@ export async function fulfillCapturedPayment(input: {
         razorpayPaymentId: input.razorpayPaymentId,
       });
       return null;
+    }
+    if (existing.fulfilledAt == null) {
+      // Another request may be provisioning, or a prior attempt may have
+      // failed. Return an error so the provider retries after the lease expires.
+      throw new Error("Payment fulfillment is pending recovery.");
     }
     const status = await getVipAccessStatus(existing.userId);
     // Duplicate webhook re-delivery: retry a purchase event that failed to send.
@@ -406,6 +416,7 @@ export async function fulfillCapturedPayment(input: {
         $set: {
           status: "failed",
           fulfilledAt: null,
+          fulfillmentClaimedAt: null,
           failureReason: "amount_mismatch",
           updatedAt: new Date(),
         },
@@ -419,7 +430,7 @@ export async function fulfillCapturedPayment(input: {
     throw new Error(`Payment user ${claimed.userId} not found.`);
   }
 
-  const purchasedAt = new Date();
+  const purchasedAt = claimed.paidAt ?? now;
   const history = await vipHistoryCollection();
   const priorHistory = await history
     .find({ userId: claimed.userId })
@@ -452,19 +463,35 @@ export async function fulfillCapturedPayment(input: {
     bundleId,
     bundleKind,
   });
+  const existingEntitlement = await history.findOne({ paymentId: claimed._id });
+  if (existingEntitlement && (
+    existingEntitlement.userId !== claimed.userId ||
+    existingEntitlement.steamId !== claimed.steamId ||
+    existingEntitlement.plan !== claimed.plan ||
+    existingEntitlement.amount !== claimed.amount ||
+    existingEntitlement.bundleId !== bundleId ||
+    existingEntitlement.accessType !== accessType ||
+    existingEntitlement.serverId !== serverId ||
+    JSON.stringify([...existingEntitlement.serverIds].sort()) !== JSON.stringify([...serverIds].sort())
+  )) {
+    throw new Error(`Payment ${claimed._id} has conflicting entitlement history.`);
+  }
+
   const priorForKey = purchaseKey
     ? priorHistory.filter(
         (record) => entitlementKeyFromRecord(record) === purchaseKey,
       )
     : [];
   const priorExpiry = computeEntitlementExpiry(priorForKey);
-  const extension = computeVipExtension({
-    currentExpiresAt: priorExpiry,
-    now: purchasedAt,
-    durationDays: claimed.durationDays,
-  });
+  const extension = existingEntitlement
+    ? { startDate: existingEntitlement.startDate, endDate: existingEntitlement.endDate }
+    : computeVipExtension({
+        currentExpiresAt: priorExpiry,
+        now: purchasedAt,
+        durationDays: claimed.durationDays,
+      });
 
-  const historyDoc: VipHistoryDoc = {
+  const historyDoc: VipHistoryDoc = existingEntitlement ?? {
     _id: crypto.randomUUID(),
     userId: claimed.userId,
     steamId: claimed.steamId,
@@ -490,22 +517,36 @@ export async function fulfillCapturedPayment(input: {
     createdAt: purchasedAt,
   };
 
-  try {
-    await history.insertOne(historyDoc);
-  } catch (err) {
-    if (!isDuplicateKeyError(err)) throw err;
+  if (!existingEntitlement) {
+    try {
+      await history.insertOne(historyDoc);
+    } catch (err) {
+      if (!isDuplicateKeyError(err)) throw err;
+      const raced = await history.findOne({ paymentId: claimed._id });
+      if (!raced || raced.userId !== claimed.userId || raced.amount !== claimed.amount) throw err;
+      Object.assign(historyDoc, raced);
+    }
   }
 
   // Global VIP covers the furthest per-entitlement end — never sum all purchases.
   const coversUntil =
-    furthestEntitlementExpiry([...priorHistory, historyDoc]) ??
+    furthestEntitlementExpiry(existingEntitlement ? priorHistory : [...priorHistory, historyDoc]) ??
     extension.endDate;
-  const vipRole = await ensureVipCoversUntil({
+  const vipRole = await ensureVipRoleCoversUntil({
     userId: claimed.userId,
     coversUntil,
     source: "PURCHASE",
     grantedBy: null,
   });
+
+  const completedAt = new Date();
+  const finalized = await payments.updateOne(
+    { _id: claimed._id, fulfilledAt: null, fulfillmentClaimedAt: now },
+    { $set: { fulfilledAt: completedAt, updatedAt: completedAt }, $unset: { fulfillmentClaimedAt: "" } },
+  );
+  if (!finalized.modifiedCount) {
+    throw new Error(`Payment ${claimed._id} provisioning completed but could not finalize its claim.`);
+  }
 
   console.info("[payments] VIP granted", {
     userId: claimed.userId,
