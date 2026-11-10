@@ -25,6 +25,19 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatAccessType(value: string) {
+  switch (value) {
+    case "INDIVIDUAL_SERVER":
+      return "Individual servers";
+    case "BUNDLE":
+      return "Bundle";
+    case "ALL_RETAKES":
+      return "All servers";
+    default:
+      return value.replaceAll("_", " ").toLowerCase();
+  }
+}
+
 export function RevenueDashboard() {
   const [data, setData] = useState<AdminRevenueResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,7 +144,7 @@ export function RevenueDashboard() {
             </div>
             <h3 className="border-border mt-6 border-t pt-4 text-sm font-semibold">Sales by plan</h3>
             <div className="mt-3 space-y-3">
-              {revenue?.revenueByPlan.map((row) => <div key={`${row.plan}:${row.accessType}`} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground truncate">{row.plan.replaceAll("_", " ")} · {row.purchases} sales</span><span className="font-semibold tabular-nums">{formatInr(row.grossPaise)}</span></div>)}
+              {revenue?.revenueByPlan.map((row) => <div key={`${row.plan}:${row.accessType}`} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground truncate">{row.plan.replaceAll("_", " ")} · {formatAccessType(row.accessType)} · {row.purchases} sales</span><span className="font-semibold tabular-nums">{formatInr(row.grossPaise)}</span></div>)}
             </div>
           </section>
         </div>
