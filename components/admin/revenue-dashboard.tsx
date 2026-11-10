@@ -25,19 +25,6 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatAccessType(value: string) {
-  switch (value) {
-    case "INDIVIDUAL_SERVER":
-      return "Individual servers";
-    case "BUNDLE":
-      return "Bundle";
-    case "ALL_RETAKES":
-      return "All servers";
-    default:
-      return value.replaceAll("_", " ").toLowerCase();
-  }
-}
-
 export function RevenueDashboard() {
   const [data, setData] = useState<AdminRevenueResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +58,17 @@ export function RevenueDashboard() {
   }, [reload]);
 
   const revenue = data;
+  const salesByCategory = [
+    { key: "INDIVIDUAL_SERVER", title: "Individual servers" },
+    { key: "BUNDLE", title: "Bundles" },
+  ].map((group) => ({
+    ...group,
+    rows: [...(revenue?.revenueByPlan ?? [])]
+      .filter((row) => group.key === "INDIVIDUAL_SERVER"
+        ? row.accessType === "INDIVIDUAL_SERVER"
+        : row.accessType !== "INDIVIDUAL_SERVER")
+      .sort((a, b) => ["1_month", "3_months", "6_months", "1_year"].indexOf(a.plan) - ["1_month", "3_months", "6_months", "1_year"].indexOf(b.plan)),
+  }));
   const metrics = [
     ["Combined revenue", revenue ? formatInr(revenue.grossCapturedPaise) : "—", Wallet],
     ["VIP purchases", revenue?.successfulPurchases.toString() ?? "—", CreditCard],
@@ -143,8 +141,11 @@ export function RevenueDashboard() {
               <div className="flex justify-between"><span className="text-muted-foreground">Checkout conversion</span><span>{revenue?.checkoutConversionPercent == null ? "—" : `${revenue.checkoutConversionPercent}%`}</span></div>
             </div>
             <h3 className="border-border mt-6 border-t pt-4 text-sm font-semibold">Sales by plan</h3>
-            <div className="mt-3 space-y-3">
-              {revenue?.revenueByPlan.map((row) => <div key={`${row.plan}:${row.accessType}`} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground truncate">{row.plan.replaceAll("_", " ")} · {formatAccessType(row.accessType)} · {row.purchases} sales</span><span className="font-semibold tabular-nums">{formatInr(row.grossPaise)}</span></div>)}
+            <div className="mt-3 space-y-4">
+              {salesByCategory.map((group) => <section key={group.key} className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</h4>
+                {group.rows.length ? group.rows.map((row) => <div key={`${row.plan}:${row.accessType}`} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground truncate">{row.plan.replaceAll("_", " ")} · {row.purchases} sales</span><span className="font-semibold tabular-nums">{formatInr(row.grossPaise)}</span></div>) : <p className="text-xs text-muted-foreground">No sales in this period.</p>}
+              </section>)}
             </div>
           </section>
         </div>
