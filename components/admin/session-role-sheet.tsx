@@ -54,6 +54,10 @@ const ROLE_LABELS: Record<RoleCode, string> = {
 };
 
 type ExpiryPreset = "never" | "30" | "90" | "custom";
+type UserPermissionsLookup = {
+  registered: boolean;
+  permissions?: ResolvedPermissions;
+};
 
 async function readJson<T>(res: Response): Promise<ApiResult<T>> {
   return (await res.json()) as ApiResult<T>;
@@ -137,14 +141,16 @@ export function SessionRoleSheet({
       const res = await fetch(
         `/api/v1/users?steamId=${encodeURIComponent(steamId)}`,
       );
-      const payload = await readJson<ResolvedPermissions>(res);
+      const payload = await readJson<UserPermissionsLookup>(res);
       if (cancelled) return;
       if (!payload.ok) {
         if (res.status !== 404) setError(payload.error);
         setLoaded(true);
         return;
       }
-      setResolved(payload.data);
+      setResolved(
+        payload.data.registered ? payload.data.permissions ?? null : null,
+      );
       setLoaded(true);
     });
 
@@ -301,7 +307,7 @@ export function SessionRoleSheet({
               <div>
                 <h3 className="mb-2 text-sm font-medium">Active roles</h3>
                 <ul className="space-y-2">
-                  {resolved.activeAssignments.map((assignment) => (
+                  {(resolved.activeAssignments ?? []).map((assignment) => (
                     <li
                       key={assignment.id}
                       className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
