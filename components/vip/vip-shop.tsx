@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Info, Sparkles } from "lucide-react";
+import { Check, ExternalLink, Info, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { BuyVipButton } from "@/components/vip/buy-vip-button";
+import { buttonVariants } from "@/components/ui/button";
 import { RazorpaySecuredBadge } from "@/components/vip/razorpay-brand";
 import { trackGaEvent } from "@/lib/analytics/gtag";
 import { vipGaItem } from "@/lib/analytics/items";
@@ -18,6 +19,7 @@ import {
 import { vipPerks } from "@/content/vip";
 import type { ApiResult } from "@/lib/api/waitlist";
 import { formatInrFromPaise } from "@/lib/payments/format";
+import { getVipPurchaseMode } from "@/lib/payments/vip-purchase-mode";
 import { cn } from "@/lib/utils";
 import type {
   VipAccessType,
@@ -49,6 +51,7 @@ type VipShopProps = {
   purchasesEnabled: boolean;
   paymentProvider: PaymentProvider;
   checkoutEnabled?: boolean;
+  discordVipTicketUrl: string;
   hideBuy?: boolean;
   renewTarget?: VipShopRenewTarget | null;
 };
@@ -148,9 +151,11 @@ export function VipShop({
   purchasesEnabled,
   paymentProvider,
   checkoutEnabled = false,
+  discordVipTicketUrl,
   hideBuy = false,
   renewTarget = null,
 }: VipShopProps) {
+  const purchaseMode = getVipPurchaseMode(checkoutEnabled);
   const router = useRouter();
   const defaultBundle =
     catalog.bundles.find((bundle) => bundle.featured) ?? catalog.bundles[0] ?? null;
@@ -721,7 +726,7 @@ export function VipShop({
             <p className="text-sm text-muted-foreground">
               You already have lifetime VIP access.
             </p>
-          ) : purchasesEnabled || checkoutEnabled ? (
+          ) : purchaseMode === "online" ? (
             <div>
               <BuyVipButton
                 accessType={accessType}
@@ -733,7 +738,6 @@ export function VipShop({
                 loggedIn={loggedIn}
                 paymentProvider={paymentProvider}
                 disabled={
-                  !checkoutEnabled ||
                   !checkoutReady ||
                   !duration ||
                   !purchasesEnabled
@@ -762,11 +766,7 @@ export function VipShop({
                   selectedBundle?.name ?? selectedServer?.shortName ?? null
                 }
                 label={
-                  checkoutEnabled
-                    ? loggedIn
-                      ? "Continue to Payment"
-                      : "Sign in to continue"
-                    : "Checkout coming soon"
+                  loggedIn ? "Continue to Payment" : "Sign in to continue"
                 }
               />
               {paymentProvider === "razorpay" && checkoutEnabled && loggedIn ? (
@@ -774,10 +774,25 @@ export function VipShop({
               ) : null}
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-secondary/50 px-4 py-3 text-center">
-              <p className="text-sm font-semibold text-foreground">
-                Checkout <span className="text-primary">— Coming Soon</span>
-              </p>
+            <div className="space-y-3">
+              <a
+                href={discordVipTicketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(buttonVariants({ size: "lg" }), "w-full gap-2")}
+              >
+                Buy via Discord <ExternalLink aria-hidden="true" />
+              </a>
+              <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3">
+                <p className="text-sm font-semibold">How to purchase VIP</p>
+                <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-muted-foreground">
+                  <li>Select your preferred plan and duration.</li>
+                  <li>Click “Buy via Discord” and create a support ticket.</li>
+                  <li>Share your Steam profile/Steam ID and selected plan.</li>
+                  <li>Complete payment using instructions from WallBang support.</li>
+                  <li>Our team will verify payment and activate your VIP.</li>
+                </ol>
+              </div>
             </div>
           )}
         </div>

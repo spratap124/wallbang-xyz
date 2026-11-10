@@ -4,6 +4,9 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://wallbang.xyz",
   discordUrl:
     process.env.NEXT_PUBLIC_DISCORD_URL ?? "https://discord.gg/KY2dRw8Yh4",
+  discordVipTicketUrl:
+    process.env.DISCORD_VIP_TICKET_URL?.trim() ||
+    "https://discord.gg/qReBMvBF9A",
   tagline:
     "India-hosted game server infrastructure for Counter-Strike 2 community servers.",
   heroSubtitle: "India-Hosted Game Server Infrastructure",

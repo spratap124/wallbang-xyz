@@ -205,12 +205,23 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
           )}
 
           <LiveServersProvider>
+            {!checkoutEnabled ? (
+              <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 px-5 py-4">
+                <p className="font-semibold text-foreground">VIP Purchases via Discord</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  We're currently experiencing a high number of payment failures with Razorpay, so online payments are temporarily unavailable. We're working to restore them as soon as possible.
+                  <br /><br />
+                  In the meantime, you can still purchase VIP by creating a support ticket on our Discord server. Our team will help you complete your purchase and activate your VIP.
+                </p>
+              </div>
+            ) : null}
             <VipShop
               catalog={catalog}
               loggedIn={Boolean(session)}
               purchasesEnabled={purchasesEnabled}
               paymentProvider={paymentProvider}
               checkoutEnabled={checkoutEnabled}
+              discordVipTicketUrl={siteConfig.discordVipTicketUrl}
               hideBuy={lifetime}
               renewTarget={renewTarget}
             />
