@@ -18,6 +18,7 @@ type SearchUser = {
   role: RoleCode;
   lastLoginAt: string;
   createdAt: string;
+  vipSource?: string | null;
 };
 type PlayersPage = {
   items: SearchUser[];
@@ -42,14 +43,18 @@ export function AdminPlayersPanel() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [submittedQuery, setSubmittedQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [vipSourceFilter, setVipSourceFilter] = useState("");
   const [totals, setTotals] = useState<Pick<PlayersPage, "total" | "vipGiveawayTotal" | "vipPurchaseTotal">>({});
 
-  const load = useCallback((q: string, nextPage: number) => {
+  const load = useCallback((q: string, nextPage: number, role: string, vipSource: string) => {
     setError(null);
     startTransition(async () => {
       const params = new URLSearchParams();
       const trimmed = q.trim();
       if (trimmed) params.set("q", trimmed);
+      if (role && !vipSource) params.set("role", role);
+      if (vipSource) params.set("vipSource", vipSource);
       params.set("page", String(nextPage));
       params.set("pageSize", "25");
       const res = await fetch(`/api/v1/users?${params}`);
@@ -73,8 +78,8 @@ export function AdminPlayersPanel() {
   }, []);
 
   useEffect(() => {
-    load(submittedQuery, page);
-  }, [load, page, submittedQuery]);
+    load(submittedQuery, page, roleFilter, vipSourceFilter);
+  }, [load, page, submittedQuery, roleFilter, vipSourceFilter]);
 
   function search() {
     setSubmittedQuery(query.trim());
@@ -113,6 +118,24 @@ export function AdminPlayersPanel() {
         ) : null}
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <select className="border-input bg-background h-10 rounded-md border px-3 text-sm" value={roleFilter} onChange={(event) => { setRoleFilter(event.target.value); setPage(1); }} aria-label="Filter by role">
+          <option value="">All roles</option>
+          <option value="USER">User</option>
+          <option value="VIP">VIP</option>
+          <option value="FOUNDING_MEMBER">Founding member</option>
+          <option value="MODERATOR">Moderator</option>
+          <option value="ADMIN">Admin</option>
+          <option value="OWNER">Owner</option>
+        </select>
+        <select className="border-input bg-background h-10 rounded-md border px-3 text-sm" value={vipSourceFilter} onChange={(event) => { setVipSourceFilter(event.target.value); if (event.target.value) setRoleFilter("VIP"); setPage(1); }} aria-label="Filter VIP source">
+          <option value="">All VIP sources</option>
+          <option value="PURCHASE">Paid</option>
+          <option value="GIVEAWAY">Giveaway</option>
+          <option value="OTHER">Other / manual</option>
+        </select>
+      </div>
+
       {error ? (
         <p className="text-destructive text-sm" role="alert">
           {error}
@@ -136,6 +159,7 @@ export function AdminPlayersPanel() {
             <tr>
               <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Player</th>
               <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Role</th>
+              <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">VIP source</th>
               <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3">Last login</th>
               <th className="px-3 py-2.5 font-medium sm:px-4 sm:py-3" />
             </tr>
@@ -143,7 +167,7 @@ export function AdminPlayersPanel() {
           <tbody className="divide-border/60 divide-y">
             {results.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-muted-foreground px-4 py-10 text-center">
+                <td colSpan={5} className="text-muted-foreground px-4 py-10 text-center">
                   {pending
                     ? "Loading…"
                     : query.trim()
@@ -190,6 +214,9 @@ export function AdminPlayersPanel() {
                   </td>
                   <td className="text-muted-foreground px-3 py-2.5 sm:px-4 sm:py-3">
                     {user.role}
+                  </td>
+                  <td className="text-muted-foreground px-3 py-2.5 sm:px-4 sm:py-3">
+                    {user.role !== "VIP" ? "—" : user.vipSource === "PURCHASE" ? "Paid" : user.vipSource === "GIVEAWAY" ? "Giveaway" : user.vipSource ? "Other / manual" : "Unknown"}
                   </td>
                   <td className="text-muted-foreground px-3 py-2.5 text-xs sm:px-4 sm:py-3">
                     {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "—"}

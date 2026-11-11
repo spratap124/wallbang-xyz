@@ -6,9 +6,10 @@ import {
 } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 import { userRolesCollection } from "@/lib/permissions/collections";
-import type { UserRoleDoc } from "@/types/permissions";
+import type { RoleSource, UserRoleDoc } from "@/types/permissions";
 import { fetchSteamPlayerSummary } from "@/lib/auth/steam-api";
 import { isValidSteamId64 } from "@/lib/profile/public";
+import type { RoleCode } from "@/types/permissions";
 
 export async function GET(request: Request): Promise<Response> {
   if (!isMongoConfigured()) {
@@ -27,6 +28,14 @@ export async function GET(request: Request): Promise<Response> {
   const pageSize = Number.isFinite(pageSizeRaw)
     ? Math.min(Math.max(Math.floor(pageSizeRaw), 1), 100)
     : 25;
+  const roleParam = searchParams.get("role") ?? "";
+  const role = ["USER", "FOUNDING_MEMBER", "VIP", "MODERATOR", "ADMIN", "OWNER"].includes(roleParam)
+    ? roleParam as RoleCode
+    : undefined;
+  const vipSourceParam = searchParams.get("vipSource") ?? "";
+  const vipSource = ["PURCHASE", "GIVEAWAY", "OTHER"].includes(vipSourceParam)
+    ? vipSourceParam as "PURCHASE" | "GIVEAWAY" | "OTHER"
+    : undefined;
 
   if (steamId) {
     const resolved = await getUserPermissions({ steamId });
@@ -41,19 +50,36 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (!q) {
-    const result = await listUsers({ skip: (page - 1) * pageSize, limit: pageSize });
-    const activeVipFilter: import("mongodb").Filter<UserRoleDoc> = {
-      roleCode: "VIP",
-      active: true,
-      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
-    };
     const roles = await userRolesCollection();
+    const now = new Date();
+    const activeVipFilter: import("mongodb").Filter<UserRoleDoc> = {
+      roleCode: "VIP", active: true,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+    };
+    if (vipSource) {
+      const sources: RoleSource[] = vipSource === "OTHER"
+        ? ["MANUAL", "TOURNAMENT", "PROMOTION", "FOUNDING", "SYSTEM"]
+        : [vipSource];
+      const matchingIds = await roles.distinct("userId", { ...activeVipFilter, source: { $in: sources } });
+      const result = await listUsers({ skip: (page - 1) * pageSize, limit: pageSize, role: "VIP", userIds: matchingIds });
+      const pageUsers = result.users;
+      const pageIds = pageUsers.map((user) => user.id);
+      const sourceRows = pageIds.length ? await roles.find({ ...activeVipFilter, userId: { $in: pageIds }, source: { $in: sources } }).toArray() : [];
+      const sourceById = new Map(sourceRows.map((assignment) => [assignment.userId, assignment.source]));
+      return jsonOk({
+        items: pageUsers.map((user) => ({ ...user, vipSource: sourceById.get(user.id) ?? null })),
+        page, pageSize, hasMore: result.hasMore,
+        total: result.total,
+      });
+    }
+
+    const result = await listUsers({ skip: (page - 1) * pageSize, limit: pageSize, role });
     const [vipGiveawayPlayers, vipPurchasePlayers] = await Promise.all([
       roles.distinct("userId", { ...activeVipFilter, source: "GIVEAWAY" }),
       roles.distinct("userId", { ...activeVipFilter, source: "PURCHASE" }),
     ]);
     return jsonOk({
-      items: result.users,
+      items: result.users.map((user) => ({ ...user, vipSource: null })),
       page,
       pageSize,
       hasMore: result.hasMore,
@@ -63,6 +89,19 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  const result = await searchUsers(q, { skip: (page - 1) * pageSize, limit: pageSize });
-  return jsonOk({ items: result.users, page, pageSize, hasMore: result.hasMore });
+  const roles = await userRolesCollection();
+  const now = new Date();
+  const activeVipFilter: import("mongodb").Filter<UserRoleDoc> = {
+    userId: { $exists: true }, roleCode: "VIP", active: true,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+  };
+  const sources: RoleSource[] | undefined = vipSource
+    ? vipSource === "OTHER" ? ["MANUAL", "TOURNAMENT", "PROMOTION", "FOUNDING", "SYSTEM"] : [vipSource]
+    : undefined;
+  const matchingIds = sources ? await roles.distinct("userId", { ...activeVipFilter, source: { $in: sources } }) : undefined;
+  const result = await searchUsers(q, { skip: (page - 1) * pageSize, limit: pageSize, role: vipSource ? "VIP" : role, userIds: matchingIds });
+  const ids = result.users.map((user) => user.id);
+  const activeRoles = ids.length ? await roles.find({ userId: { $in: ids }, roleCode: "VIP", active: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }).toArray() : [];
+  const sourceById = new Map(activeRoles.map((assignment) => [assignment.userId, assignment.source]));
+  return jsonOk({ items: result.users.map((user) => ({ ...user, vipSource: sourceById.get(user.id) ?? null })), page, pageSize, hasMore: result.hasMore });
 }
