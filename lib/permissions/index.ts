@@ -3,8 +3,6 @@ export {
   hasPermission,
   grantRole,
   ensureVipCoversUntil,
-  extendVipExpiry,
-  subtractVipExpiry,
   revokeRole,
   revokeAllVipAccess,
   revokeVipEntitlement,

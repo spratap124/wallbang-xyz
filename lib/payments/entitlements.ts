@@ -1,11 +1,12 @@
 import "server-only";
 
+import type { ClientSession } from "mongodb";
+
 import {
   buildMembershipFromHistory,
   buildGrantedEntitlementRecord,
   buildSummary,
   COMPLIMENTARY_LIFETIME_DURATION_DAYS,
-  COMPLIMENTARY_VIP_SERVER_ID,
   ALL_RETAKES_ENTITLEMENT_KEY,
   LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
   computeEntitlementExpiry,
@@ -23,6 +24,7 @@ import {
 import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { durationDaysToMs } from "@/lib/payments/expiry";
 import { getVipAccessStatus } from "@/lib/payments/service";
+import { loadEffectiveVipHistory } from "@/lib/payments/effective-vip-history";
 import type { VipMembershipView } from "@/types/vip";
 
 function isDuplicateKeyError(err: unknown): boolean {
@@ -35,12 +37,9 @@ function isDuplicateKeyError(err: unknown): boolean {
 }
 
 /**
- * Ensure giveaway / admin VIP has a `vip_history` row for the complimentary
- * server (default `retake-3-mumbai`). Game-server `?serverId=` scoping reads
- * this collection — the global VIP role alone is not enough.
- *
- * Does not stack on top of an already-covering individual entitlement.
- * Admin-entered offline purchases use this path with source `PURCHASE`.
+ * Persist one explicit manual/giveaway entitlement. This helper has no server
+ * default and must only be called by the manual grant workflow. The online
+ * purchase service writes payment-linked history through its own path.
  */
 export async function ensureComplimentaryVipEntitlement(input: {
   userId: string;
@@ -62,16 +61,14 @@ export async function ensureComplimentaryVipEntitlement(input: {
   source?: string;
   amountPaise?: number;
   now?: Date;
+  session?: ClientSession;
 }): Promise<"inserted" | "skipped"> {
   await ensurePaymentIndexes();
 
   const now = input.now ?? new Date();
-  const key = (
-    input.entitlementKey ??
-    input.serverId ??
-    COMPLIMENTARY_VIP_SERVER_ID
-  ).trim();
-  if (!key || !input.paymentId.trim()) return "skipped";
+  const key = (input.entitlementKey ?? input.serverId ?? "").trim();
+  if (!key) throw new Error("An explicit VIP entitlement key is required.");
+  if (!input.paymentId.trim()) return "skipped";
   if (
     input.dedupeGiveaway &&
     key === ALL_RETAKES_ENTITLEMENT_KEY
@@ -93,18 +90,35 @@ export async function ensureComplimentaryVipEntitlement(input: {
   }
 
   const col = await vipHistoryCollection();
+  const existingPayment = await col.findOne(
+    { paymentId: input.paymentId },
+    { session: input.session },
+  );
+  if (existingPayment) {
+    if (existingPayment.userId !== input.userId) {
+      throw new Error("Manual grant request ID is already assigned to another player.");
+    }
+    return "skipped";
+  }
   if (input.dedupeGiveaway && input.grantId) {
     const escaped = input.grantId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const existing = await col.findOne({
       userId: input.userId,
       paymentId: { $regex: `^complimentary:${escaped}(?::|$)` },
       status: { $ne: "SUPERSEDED" },
-    });
+    }, { session: input.session });
     if (existing) return "skipped";
   }
-  const history = await col.find({ userId: input.userId }).toArray();
+  const history = await loadEffectiveVipHistory(input.userId, input.session);
+  // Named bundles are keyed by their server snapshot, just like online
+  // purchases; comparing a bundle ID directly would miss existing coverage.
+  const coverageKey = entitlementKeyFromRecord(buildGrantedEntitlementRecord({
+    id: "probe", userId: input.userId, steamId: input.steamId,
+    entitlementKey: key, durationDays: 1, paymentId: "probe",
+    currentExpiry: null, now, serverIds: input.serverIds,
+  }));
   const currentExpiry = computeEntitlementExpiry(
-    history.filter((record) => entitlementKeyFromRecord(record) === key),
+    history.filter((record) => entitlementKeyFromRecord(record) === coverageKey),
   );
   const durationDays = durationDaysToCoverUntil({
     currentExpiry,
@@ -128,10 +142,12 @@ export async function ensureComplimentaryVipEntitlement(input: {
   if (input.bundleName) doc.bundleName = input.bundleName;
   if (input.amountPaise != null) doc.amount = input.amountPaise;
   doc.grantId = input.grantId ?? null;
+  doc.calculationVersion = 2;
+  doc.lifetimeGrant = input.expiresAt === null;
   doc.status = "ACTIVE";
 
   try {
-    await col.insertOne(doc);
+    await col.insertOne(doc, { session: input.session });
     return "inserted";
   } catch (err) {
     if (isDuplicateKeyError(err)) return "skipped";
@@ -146,12 +162,13 @@ export {
   buildMembershipFromHistory,
   bundleLabelFromRecord,
   isCustomBundleRecord,
-  COMPLIMENTARY_VIP_SERVER_ID,
   normalizeAdminEntitlementKeys,
   computeEntitlementExpiry,
+  persistedEntitlementExpiry,
   entitlementKeyFromPurchase,
   entitlementKeyFromRecord,
   furthestEntitlementExpiry,
+  furthestPersistedEntitlementExpiry,
   hasActiveVipEntitlementForServer,
   isAllRetakesRecord,
   serverIdsFromRecord,
@@ -161,9 +178,9 @@ export async function getUserVipMembership(input: {
   userId: string;
   eligibleServers: VipMembershipServer[];
 }): Promise<VipMembershipView> {
-  const [status, historyCol, bundleDocs] = await Promise.all([
+  const [status, history, bundleDocs] = await Promise.all([
     getVipAccessStatus(input.userId),
-    vipHistoryCollection(),
+    loadEffectiveVipHistory(input.userId),
     listVipBundleDocs().catch(() => []),
   ]);
 
@@ -171,11 +188,6 @@ export async function getUserVipMembership(input: {
   for (const bundle of bundleDocs) {
     bundleLabels[bundle.id] = bundle.name;
   }
-
-  const history = await historyCol
-    .find({ userId: input.userId })
-    .sort({ createdAt: 1 })
-    .toArray();
 
   const now = new Date();
   const { entitlements, purchaseHistory } = buildMembershipFromHistory({

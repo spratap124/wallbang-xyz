@@ -77,9 +77,10 @@ export function formatPayuAmount(amountPaise: number): string {
 }
 
 export function parsePayuAmountToPaise(amount: string): number {
-  const parsed = Number.parseFloat(amount);
-  if (!Number.isFinite(parsed)) return NaN;
-  return Math.round(parsed * 100);
+  if (typeof amount !== "string" || !/^\d+(?:\.\d{1,2})?$/.test(amount)) return NaN;
+  const [whole, fraction = ""] = amount.split(".");
+  const paise = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  return Number.isSafeInteger(paise) && paise > 0 ? paise : NaN;
 }
 
 export function generatePayuRequestHash(input: {

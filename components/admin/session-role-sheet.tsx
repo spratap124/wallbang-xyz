@@ -328,7 +328,8 @@ export function SessionRoleSheet({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          disabled={pending}
+                          disabled={pending || assignment.roleCode === "VIP"}
+                          title={assignment.roleCode === "VIP" ? "Revoke an individual grant in VIP management" : undefined}
                           onClick={() =>
                             revoke(assignment.id, assignment.roleCode)
                           }

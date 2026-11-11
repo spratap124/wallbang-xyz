@@ -1,16 +1,13 @@
 import { z } from "zod";
 
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
-import {
-  revokeAllVipAccess,
-  revokeVipEntitlement,
-} from "@/lib/permissions/service";
+import { revokeVipEntitlement } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 
 const bodySchema = z.object({
   targetUserId: z.string().min(1).optional(),
   targetSteamId: z.string().regex(/^\d{17}$/).optional(),
-  /** Omit to revoke all VIP. Pass a server id or `all_retakes` for one entitlement. */
+  entitlementId: z.string().min(1).optional(),
   entitlementKey: z.string().min(1).optional(),
 });
 
@@ -34,7 +31,7 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError("Invalid request body.", 400);
   }
 
-  const { targetUserId, targetSteamId, entitlementKey } = parsed.data;
+  const { targetUserId, targetSteamId, entitlementId, entitlementKey } = parsed.data;
   if (!targetUserId && !targetSteamId) {
     return jsonError("targetUserId or targetSteamId is required.", 400);
   }
@@ -42,22 +39,14 @@ export async function POST(request: Request): Promise<Response> {
   const revokedBy = { id: auth.user.id, steamId: auth.user.steamId };
 
   try {
-    if (entitlementKey) {
-      const result = await revokeVipEntitlement({
+    const result = await revokeVipEntitlement({
         targetUserId,
         targetSteamId,
+        entitlementId,
         entitlementKey,
         revokedBy,
       });
-      return jsonOk({ scope: "entitlement" as const, ...result });
-    }
-
-    const result = await revokeAllVipAccess({
-      targetUserId,
-      targetSteamId,
-      revokedBy,
-    });
-    return jsonOk({ scope: "all" as const, ...result });
+    return jsonOk({ scope: "entitlement" as const, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Revoke VIP failed.";
     return jsonError(message, 400);

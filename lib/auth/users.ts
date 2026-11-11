@@ -31,6 +31,8 @@ export type UserDoc = {
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date;
+  /** Transaction write fence for serialized VIP entitlement mutations. */
+  vipEntitlementVersion?: number;
 };
 
 let indexesReady: Promise<void> | null = null;

@@ -89,6 +89,10 @@ export type VipHistoryDoc = {
   source?: string;
   /** Stable originating role/grant id for complimentary entitlements. */
   grantId?: string | null;
+  /** New grants use explicit stacking semantics; absent means legacy history. */
+  calculationVersion?: 2;
+  /** Explicit lifetime flag on newly created manual grants. */
+  lifetimeGrant?: boolean;
   /** Superseded rows remain for audit but never contribute to access. */
   status?: "ACTIVE" | "SUPERSEDED" | "REVOKED";
   supersededBy?: string | null;

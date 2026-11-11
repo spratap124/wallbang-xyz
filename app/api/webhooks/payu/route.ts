@@ -8,7 +8,7 @@ import {
   type PayuResponseParams,
 } from "@/lib/payments/payu";
 import {
-  fulfillCapturedPayment,
+  fulfillOnlineVipPurchase,
   markPaymentFailed,
   markPaymentRefunded,
   recordPayuWebhookEventId,
@@ -114,10 +114,13 @@ export async function POST(request: Request): Promise<Response> {
   try {
     if (params.status === "success") {
       const amountPaise = parsePayuAmountToPaise(params.amount);
-      await fulfillCapturedPayment({
+      if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0) {
+        return NextResponse.json({ ok: false }, { status: 400 });
+      }
+      await fulfillOnlineVipPurchase({
         razorpayOrderId: params.txnid,
         razorpayPaymentId: params.mihpayid ?? params.txnid,
-        amount: Number.isFinite(amountPaise) ? amountPaise : undefined,
+        amount: amountPaise,
       });
     } else if (params.status === "failure") {
       await markPaymentFailed({

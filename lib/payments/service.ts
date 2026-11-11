@@ -15,11 +15,12 @@ import {
   isRazorpayConfigured,
 } from "@/lib/payments/razorpay";
 import {
-  computeEntitlementExpiry,
   entitlementKeyFromPurchase,
   entitlementKeyFromRecord,
-  furthestEntitlementExpiry,
+  computeEntitlementExpiry,
 } from "@/lib/payments/entitlements-logic";
+import { loadEffectiveVipHistory } from "@/lib/payments/effective-vip-history";
+import { withVipEntitlementTransaction } from "@/lib/payments/entitlement-transaction";
 import { computeVipExtension } from "@/lib/payments/expiry";
 import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { resolveVipPrice } from "@/lib/payments/promotions";
@@ -28,10 +29,13 @@ import {
   trackRefundForPayment,
 } from "@/lib/payments/analytics";
 import {
-  ensureVipCoversUntil,
   getUserPermissions,
-  subtractVipExpiry,
 } from "@/lib/permissions/service";
+import {
+  ensureVipRoleServiceReady,
+  refreshVipRolePresentation,
+  synchronizeVipRole,
+} from "@/lib/permissions/vip-role-service";
 import { rateLimit } from "@/lib/rate-limit";
 import { getGameServers } from "@/lib/servers/registry";
 import { checkoutProductDescription } from "@/content/business";
@@ -341,12 +345,16 @@ export type FulfillPaymentResult = {
   lifetime: boolean;
 };
 
-export async function fulfillCapturedPayment(input: {
+export async function fulfillOnlineVipPurchase(input: {
   razorpayOrderId: string;
   razorpayPaymentId: string;
   amount?: number;
 }): Promise<FulfillPaymentResult | null> {
+  if (!Number.isSafeInteger(input.amount) || input.amount! <= 0) {
+    throw new Error("A valid captured payment amount is required.");
+  }
   await ready();
+  await ensureVipRoleServiceReady();
   const payments = await paymentsCollection();
   const now = new Date();
 
@@ -354,18 +362,26 @@ export async function fulfillCapturedPayment(input: {
     {
       razorpayOrderId: input.razorpayOrderId,
       fulfilledAt: null,
-      status: { $in: ["created", "authorized", "failed"] },
+      status: { $in: ["created", "authorized", "failed", "captured", "disputed"] },
+      razorpayPaymentId: { $in: [null, input.razorpayPaymentId] },
     },
-    {
-      $set: {
+    [
+      {
+        $set: {
         razorpayPaymentId: input.razorpayPaymentId,
-        status: "captured" satisfies PaymentStatus,
-        paidAt: now,
-        fulfilledAt: now,
+        status: {
+          $cond: [
+            { $eq: ["$status", "disputed"] },
+            "disputed",
+            "captured" satisfies PaymentStatus,
+          ],
+        },
+        paidAt: { $ifNull: ["$paidAt", now] },
         failureReason: null,
         updatedAt: now,
+        },
       },
-    },
+    ],
     { returnDocument: "after" },
   );
 
@@ -380,15 +396,38 @@ export async function fulfillCapturedPayment(input: {
       });
       return null;
     }
-    const status = await getVipAccessStatus(existing.userId);
-    // Duplicate webhook re-delivery: retry a purchase event that failed to send.
-    await trackPurchaseForPayment(existing);
-    return {
-      alreadyFulfilled: true,
-      paymentId: existing._id,
-      expiresAt: status.expiresAt,
-      lifetime: status.lifetime,
-    };
+    if (input.amount !== existing.amount) {
+      throw new Error("Captured payment amount does not match the order.");
+    }
+    if (existing.fulfilledAt) {
+      const status = await getVipAccessStatus(existing.userId);
+      // Duplicate webhook re-delivery: retry idempotent post-fulfillment work.
+      await refreshVipRolePresentation({
+        userId: existing.userId,
+        steamId: existing.steamId,
+        source: "PURCHASE",
+      });
+      try {
+        const { ensurePaymentInvoice } = await import("@/lib/payments/payu-invoice");
+        await ensurePaymentInvoice(existing._id);
+      } catch (err) {
+        console.error("[payments] invoice generation failed", existing._id, err);
+      }
+      await trackPurchaseForPayment(existing);
+      return {
+        alreadyFulfilled: true,
+        paymentId: existing._id,
+        expiresAt: status.expiresAt,
+        lifetime: status.lifetime,
+      };
+    }
+    if (existing.status === "refunded") return null;
+    if (existing.razorpayPaymentId && existing.razorpayPaymentId !== input.razorpayPaymentId) {
+      throw new Error("Payment order is already linked to a different provider payment.");
+    }
+    // Another invocation may be processing it. Continue through the idempotent
+    // entitlement transaction so failures and interrupted workers are recoverable.
+    throw new Error("Captured payment is pending fulfillment retry.");
   }
 
   if (
@@ -419,13 +458,8 @@ export async function fulfillCapturedPayment(input: {
     throw new Error(`Payment user ${claimed.userId} not found.`);
   }
 
-  const purchasedAt = new Date();
+  const purchasedAt = claimed.paidAt ?? now;
   const history = await vipHistoryCollection();
-  const priorHistory = await history
-    .find({ userId: claimed.userId })
-    .sort({ createdAt: 1 })
-    .toArray();
-
   const accessType =
     claimed.accessType ??
     (claimed.serverId || (claimed.serverIds?.length ?? 0) > 0
@@ -452,18 +486,6 @@ export async function fulfillCapturedPayment(input: {
     bundleId,
     bundleKind,
   });
-  const priorForKey = purchaseKey
-    ? priorHistory.filter(
-        (record) => entitlementKeyFromRecord(record) === purchaseKey,
-      )
-    : [];
-  const priorExpiry = computeEntitlementExpiry(priorForKey);
-  const extension = computeVipExtension({
-    currentExpiresAt: priorExpiry,
-    now: purchasedAt,
-    durationDays: claimed.durationDays,
-  });
-
   const historyDoc: VipHistoryDoc = {
     _id: crypto.randomUUID(),
     userId: claimed.userId,
@@ -484,27 +506,93 @@ export async function fulfillCapturedPayment(input: {
     promotionTargetId: claimed.promotionTargetId ?? null,
     promotionEndsAt: claimed.promotionEndsAt ?? null,
     durationDays: claimed.durationDays,
-    startDate: extension.startDate,
-    endDate: extension.endDate,
+    startDate: purchasedAt,
+    endDate: purchasedAt,
     paymentId: claimed._id,
+    calculationVersion: 2,
     createdAt: purchasedAt,
   };
 
-  try {
-    await history.insertOne(historyDoc);
-  } catch (err) {
-    if (!isDuplicateKeyError(err)) throw err;
-  }
-
-  // Global VIP covers the furthest per-entitlement end — never sum all purchases.
-  const coversUntil =
-    furthestEntitlementExpiry([...priorHistory, historyDoc]) ??
-    extension.endDate;
-  const vipRole = await ensureVipCoversUntil({
+  const completion = await withVipEntitlementTransaction({
     userId: claimed.userId,
-    coversUntil,
+    run: async ({ session }) => {
+      const existingEntitlement = await history.findOne(
+        { paymentId: claimed._id },
+        { session },
+      );
+      let persistedEntitlement = existingEntitlement;
+      if (existingEntitlement) {
+        if (
+          existingEntitlement.userId !== claimed.userId ||
+          existingEntitlement.amount !== claimed.amount ||
+          existingEntitlement.bundleId !== bundleId ||
+          existingEntitlement.accessType !== accessType ||
+          existingEntitlement.serverId !== serverId ||
+          JSON.stringify([...(existingEntitlement.serverIds ?? [])].sort()) !==
+            JSON.stringify([...serverIds].sort())
+        ) {
+          throw new Error(`Payment ${claimed._id} has conflicting entitlement history.`);
+        }
+      } else {
+        const priorHistory = await loadEffectiveVipHistory(claimed.userId, session);
+        const priorForKey = purchaseKey
+          ? priorHistory.filter((record) => entitlementKeyFromRecord(record) === purchaseKey)
+          : [];
+        const priorExpiry = computeEntitlementExpiry(priorForKey);
+        const extension = computeVipExtension({
+          currentExpiresAt: priorExpiry,
+          now: purchasedAt,
+          durationDays: claimed.durationDays,
+        });
+        persistedEntitlement = {
+          ...historyDoc,
+          startDate: extension.startDate,
+          endDate: extension.endDate,
+        };
+        await history.insertOne(persistedEntitlement, { session });
+      }
+
+      const vipRole = await synchronizeVipRole({
+        userId: claimed.userId,
+        steamId: claimed.steamId,
+        personaName: user.personaName,
+        source: "PURCHASE",
+        grantedBy: null,
+        mode: "extend",
+        session,
+      });
+      if (!persistedEntitlement) {
+        throw new Error(`Payment ${claimed._id} entitlement was not persisted.`);
+      }
+      const currentPayment = await payments.findOne({ _id: claimed._id }, { session });
+      if (!currentPayment || !["captured", "disputed"].includes(currentPayment.status)) {
+        throw new Error(`Payment ${claimed._id} is no longer eligible for fulfillment.`);
+      }
+      const completedAt = new Date();
+      if (!currentPayment.fulfilledAt) {
+        const completionUpdate = await payments.updateOne(
+          { _id: claimed._id, fulfilledAt: null, status: { $in: ["captured", "disputed"] } },
+          {
+            $set: {
+              fulfilledAt: completedAt,
+              failureReason: null,
+              updatedAt: completedAt,
+            },
+          },
+          { session },
+        );
+        if (!completionUpdate.matchedCount) {
+          throw new Error(`Payment ${claimed._id} changed before fulfillment completed.`);
+        }
+      }
+      return { entitlement: persistedEntitlement, role: vipRole };
+    },
+  });
+
+  await refreshVipRolePresentation({
+    userId: claimed.userId,
+    steamId: claimed.steamId,
     source: "PURCHASE",
-    grantedBy: null,
   });
 
   console.info("[payments] VIP granted", {
@@ -516,10 +604,10 @@ export async function fulfillCapturedPayment(input: {
     amount: claimed.amount,
     razorpayOrderId: claimed.razorpayOrderId,
     razorpayPaymentId: claimed.razorpayPaymentId,
-    startDate: extension.startDate.toISOString(),
-    endDate: extension.endDate.toISOString(),
-    vipCoversUntil: vipRole.expiresAt?.toISOString() ?? null,
-    lifetime: vipRole.lifetime,
+    startDate: completion.entitlement.startDate.toISOString(),
+    endDate: completion.entitlement.endDate.toISOString(),
+    vipCoversUntil: completion.role.expiresAt?.toISOString() ?? null,
+    lifetime: completion.role.lifetime,
   });
 
   try {
@@ -534,9 +622,18 @@ export async function fulfillCapturedPayment(input: {
   return {
     alreadyFulfilled: false,
     paymentId: claimed._id,
-    expiresAt: vipRole.lifetime ? null : (vipRole.expiresAt ?? extension.endDate),
-    lifetime: vipRole.lifetime,
+    expiresAt: completion.role.lifetime ? null : (completion.role.expiresAt ?? completion.entitlement.endDate),
+    lifetime: completion.role.lifetime,
   };
+}
+
+/** Backwards-compatible name for existing online provider adapters. */
+export async function fulfillCapturedPayment(input: {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  amount?: number;
+}): Promise<FulfillPaymentResult | null> {
+  return fulfillOnlineVipPurchase(input);
 }
 
 export async function markPaymentFailed(input: {
@@ -570,27 +667,55 @@ export async function markPaymentRefunded(input: {
   await ready();
   const payments = await paymentsCollection();
   const now = new Date();
-  const payment = await payments.findOneAndUpdate(
-    {
-      razorpayPaymentId: input.razorpayPaymentId,
-      status: { $in: ["captured", "disputed"] },
-    },
-    {
-      $set: {
-        status: "refunded" satisfies PaymentStatus,
-        refundedAt: now,
-        updatedAt: now,
+  const existing = await payments.findOne({ razorpayPaymentId: input.razorpayPaymentId });
+  if (!existing) return;
+  const user = await findUserById(existing.userId);
+  if (!user) throw new Error(`Payment user ${existing.userId} not found.`);
+
+  let payment = existing;
+  if (existing.status !== "refunded") {
+    const refund = await withVipEntitlementTransaction({
+      userId: existing.userId,
+      run: async ({ session }) => {
+        const updated = await payments.updateOne(
+          { _id: existing._id, status: { $in: ["captured", "disputed"] } },
+          {
+            $set: {
+              status: "refunded" satisfies PaymentStatus,
+              refundedAt: now,
+              updatedAt: now,
+            },
+          },
+          { session },
+        );
+        if (!updated.matchedCount) {
+          const latest = await payments.findOne({ _id: existing._id }, { session });
+          if (!latest || latest.status !== "refunded") return null;
+        }
+        const history = await vipHistoryCollection();
+        await history.updateOne(
+          { paymentId: existing._id, userId: existing.userId },
+          { $set: { status: "REVOKED" } },
+          { session },
+        );
+        const role = await synchronizeVipRole({
+          userId: user._id,
+          steamId: user.steamId,
+          personaName: user.personaName,
+          source: "PURCHASE",
+          grantedBy: null,
+          mode: "reconcile",
+          session,
+        });
+        const latest = await payments.findOne({ _id: existing._id }, { session });
+        return latest ? { payment: latest, role } : null;
       },
-    },
-    { returnDocument: "after" },
-  );
+    });
+    if (!refund) return;
+    payment = refund.payment;
+  }
 
-  if (!payment) return;
-
-  await subtractVipExpiry({
-    userId: payment.userId,
-    durationDays: payment.durationDays,
-  });
+  await refreshVipRolePresentation({ userId: user._id, steamId: user.steamId });
 
   console.info("[payments] VIP refund applied", {
     userId: payment.userId,

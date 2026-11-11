@@ -2,9 +2,10 @@ import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 import { getUserVipMembership } from "@/lib/payments/entitlements";
 import {
   buildAdminVipEntitlementRows,
+  buildAdminVipGrantRows,
   hasActiveVipEntitlementForServer,
 } from "@/lib/payments/entitlements-logic";
-import { vipHistoryCollection } from "@/lib/payments/collections";
+import { loadEffectiveVipHistory } from "@/lib/payments/effective-vip-history";
 import { listVipBundleDocs } from "@/lib/payments/bundles";
 import { findUserById, findUserBySteamId } from "@/lib/auth/users";
 import { isMongoConfigured } from "@/lib/mongo";
@@ -59,6 +60,7 @@ export async function GET(request: Request): Promise<Response> {
       personaName: null,
       membership: null,
       entitlements: [],
+      grants: [],
       servers: eligibleServers.map((server) => ({
         id: server.id,
         label: server.shortName || server.name,
@@ -74,9 +76,8 @@ export async function GET(request: Request): Promise<Response> {
     eligibleServers,
   });
 
-  const historyCol = await vipHistoryCollection();
   const [history, bundleDocs] = await Promise.all([
-    historyCol.find({ userId: user._id }).sort({ createdAt: 1 }).toArray(),
+    loadEffectiveVipHistory(user._id),
     listVipBundleDocs().catch(() => []),
   ]);
   const bundleLabels: Record<string, string> = {};
@@ -109,6 +110,7 @@ export async function GET(request: Request): Promise<Response> {
     membership,
     serverAccess: membership.serverAccess,
     entitlements,
+    grants: buildAdminVipGrantRows({ history, eligibleServers, bundleLabels, now }),
     servers: serverOptions,
     bundles,
   });

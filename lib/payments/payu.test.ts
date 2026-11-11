@@ -95,5 +95,9 @@ describe("invoice number", () => {
       generateInvoiceNumber(paidAt, paymentId),
       "WB-20260829-ED4C71F7",
     );
+    assert.equal(
+      generateInvoiceNumber(paidAt, paymentId, 16),
+      "WB-20260829-ED4C71F773CA4CAC",
+    );
   });
 });

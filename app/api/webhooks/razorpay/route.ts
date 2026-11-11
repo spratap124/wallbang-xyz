@@ -6,7 +6,7 @@ import {
   verifyWebhookSignature,
 } from "@/lib/payments/razorpay";
 import {
-  fulfillCapturedPayment,
+  fulfillOnlineVipPurchase,
   markPaymentDisputed,
   markPaymentFailed,
   markPaymentRefunded,
@@ -74,7 +74,7 @@ export async function POST(request: Request): Promise<Response> {
           console.error("[payments] captured Razorpay webhook missing a valid amount", { orderId, paymentId });
           return NextResponse.json({ ok: false }, { status: 400 });
         }
-        await fulfillCapturedPayment({
+        await fulfillOnlineVipPurchase({
           razorpayOrderId: orderId,
           razorpayPaymentId: paymentId,
           amount: payment.amount,

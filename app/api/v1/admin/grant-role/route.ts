@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { jsonError, jsonOk, requirePermission } from "@/lib/permissions/authz";
 import { isRoleCode, isRoleSource } from "@/lib/permissions/constants";
+import { grantManualVip } from "@/lib/payments/manual-vip-service";
 import { grantRole } from "@/lib/permissions/service";
 import { normalizeAdminEntitlementKeys } from "@/lib/payments/entitlements-logic";
 import { validateManualPurchaseAmounts } from "@/lib/payments/manual-purchase";
@@ -110,7 +111,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const resolved = await grantRole({
+    const resolved = await (roleCode === "VIP" ? grantManualVip : grantRole)({
       targetUserId,
       targetSteamId,
       roleCode,

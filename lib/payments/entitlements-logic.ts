@@ -11,9 +11,6 @@ import type {
 } from "@/types/vip";
 import { computeVipExtension, durationDaysToMs } from "@/lib/payments/expiry";
 
-/** Complimentary VIP (giveaway / admin grant) — same server as the global-VIP backfill. */
-export const COMPLIMENTARY_VIP_SERVER_ID = "retake-3-mumbai";
-
 /** Entitlement key covering every retake server. */
 export const ALL_RETAKES_ENTITLEMENT_KEY = "all_retakes";
 
@@ -21,13 +18,13 @@ export const ALL_RETAKES_ENTITLEMENT_KEY = "all_retakes";
 export const LAUNCH_GIVEAWAY_ENTITLEMENT_KEY = "mumbai-retake-bundle-all";
 
 export function isSupersededHistoryRecord(record: VipHistoryDoc): boolean {
-  return record.status === "SUPERSEDED";
+  return record.status === "SUPERSEDED" || record.status === "REVOKED";
 }
 
 function isGiveawayHistoryRecord(record: VipHistoryDoc): boolean {
   return (
     record.source === "GIVEAWAY" ||
-    record.paymentId.startsWith("complimentary:")
+    ((record.calculationVersion !== 2 || !record.source) && record.paymentId.startsWith("complimentary:"))
   );
 }
 
@@ -113,6 +110,48 @@ export type AdminVipEntitlementRow = {
   sources: string[];
   expiresAt: string | null;
 };
+
+export type AdminVipGrantRow = {
+  id: string;
+  key: string;
+  label: string;
+  source: string;
+  amountPaise: number;
+  grantedAt: string;
+  expiresAt: string;
+  lifetime: boolean;
+  status: "active" | "scheduled" | "expired" | "revoked" | "superseded";
+};
+
+/** Individual history records, including revoked and expired grants, for staff. */
+export function buildAdminVipGrantRows(input: {
+  history: VipHistoryDoc[];
+  eligibleServers: VipMembershipServer[];
+  bundleLabels?: Record<string, string | undefined> | null;
+  now?: Date;
+}): AdminVipGrantRow[] {
+  const now = input.now ?? new Date();
+  const names = new Map(input.eligibleServers.map((server) => [server.id, server.shortName || server.name]));
+  return input.history.map((record) => {
+    const key = entitlementKeyFromRecord(record) ?? record.bundleId;
+    const ids = serverIdsFromRecord(record);
+    const label = isAllRetakesRecord(record) ? "All Retakes Bundle"
+      : isCustomBundleRecord(record) ? bundleLabelFromRecord(record, input.bundleLabels)
+      : ids.map((id) => names.get(id) ?? id).join(" + ") || record.bundleId;
+    return {
+      id: record._id, key, label,
+      source: record.source === "GIVEAWAY" ? "GIVEAWAY"
+        : record.source === "MANUAL" || record.source === "ADMIN" ? "MANUAL / COMPLIMENTARY"
+        : entitlementSource(record), amountPaise: record.amount,
+      grantedAt: record.createdAt.toISOString(), expiresAt: record.endDate.toISOString(),
+      lifetime: record.lifetimeGrant === true,
+      status: record.status === "REVOKED" ? "revoked" as const
+        : record.status === "SUPERSEDED" ? "superseded" as const
+        : record.endDate <= now ? "expired" as const
+        : record.startDate > now ? "scheduled" as const : "active" as const,
+    };
+  }).sort((a, b) => b.grantedAt.localeCompare(a.grantedAt));
+}
 
 function entitlementSource(record: VipHistoryDoc): string {
   if (record.source) return record.source;
@@ -276,9 +315,23 @@ export function computeEntitlementExpiry(
     );
   }
 
-  const sorted = [...activeRecords].sort(
-    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-  );
+  const legacy = activeRecords.filter((record) => record.calculationVersion !== 2);
+  const current = activeRecords.filter((record) => record.calculationVersion === 2);
+  if (current.length) {
+    let expiry = legacy.length ? computeEntitlementExpiry(legacy) : null;
+    for (const record of current) {
+      // Versioned writes record the specific purchased period. Retain that
+      // period when another grant is revoked, but reject malformed intervals.
+      if (record.endDate.getTime() - record.startDate.getTime() !== durationDaysToMs(record.durationDays) ||
+          record.startDate.getTime() < record.createdAt.getTime()) {
+        throw new Error(`Invalid versioned VIP entitlement interval: ${record._id}`);
+      }
+      if (!expiry || record.endDate > expiry) expiry = record.endDate;
+    }
+    return expiry;
+  }
+
+  const sorted = [...activeRecords].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
   let expiry: Date | null = null;
   for (const record of sorted) {
@@ -319,6 +372,48 @@ export function furthestEntitlementExpiry(
 }
 
 /**
+ * Read the exact persisted expiry values for entitlement writes and role sync.
+ * Purchase history stores the result of stacking in `endDate`; recomputing it
+ * from `createdAt + durationDays` can drift by milliseconds across transactions.
+ */
+export function persistedEntitlementExpiry(
+  records: VipHistoryDoc[],
+): Date | null {
+  const valid = records.filter((record) => !isSupersededHistoryRecord(record));
+  if (!valid.length) return null;
+  if (valid.every(isGiveawayHistoryRecord)) {
+    return valid.reduce(
+      (earliest, record) => record.endDate < earliest ? record.endDate : earliest,
+      valid[0]!.endDate,
+    );
+  }
+  return valid.reduce(
+    (latest, record) => record.endDate > latest ? record.endDate : latest,
+    valid[0]!.endDate,
+  );
+}
+
+/** Furthest stored end date across currently persisted entitlement keys. */
+export function furthestPersistedEntitlementExpiry(
+  history: VipHistoryDoc[],
+): Date | null {
+  const byKey = new Map<string, VipHistoryDoc[]>();
+  for (const record of history) {
+    const key = entitlementKeyFromRecord(record);
+    if (!key) continue;
+    const records = byKey.get(key) ?? [];
+    records.push(record);
+    byKey.set(key, records);
+  }
+  let furthest: Date | null = null;
+  for (const records of byKey.values()) {
+    const expiry = persistedEntitlementExpiry(records);
+    if (expiry && (!furthest || expiry > furthest)) furthest = expiry;
+  }
+  return furthest;
+}
+
+/**
  * True when purchase history grants VIP on this game server right now:
  * active All Retakes bundle, or an active individual entitlement for serverId.
  */
@@ -331,12 +426,24 @@ export function hasActiveVipEntitlementForServer(input: {
   if (!serverId) return false;
   const now = input.now ?? new Date();
 
-  const serverRecords = input.history.filter(
-    (record) =>
-      isAllRetakesRecord(record) || serverIdsFromRecord(record).includes(serverId),
-  );
-  const serverExpiry = computeEntitlementExpiry(serverRecords);
+  const serverExpiry = serverEntitlementExpiry(input.history, serverId);
   return Boolean(serverExpiry && serverExpiry.getTime() > now.getTime());
+}
+
+/** Preserve legacy server coverage while keeping new purchases on their own key. */
+function serverEntitlementExpiry(history: VipHistoryDoc[], serverId: string): Date | null {
+  const records = history.filter((record) =>
+    isAllRetakesRecord(record) || serverIdsFromRecord(record).includes(serverId),
+  );
+  const legacy = records.filter((record) => record.calculationVersion !== 2);
+  let expiry = computeEntitlementExpiry(legacy);
+  const newKeys = new Set(records.filter((record) => record.calculationVersion === 2)
+    .map(entitlementKeyFromRecord).filter((key): key is string => Boolean(key)));
+  for (const key of newKeys) {
+    const keyExpiry = computeEntitlementExpiry(records.filter((record) => entitlementKeyFromRecord(record) === key));
+    if (keyExpiry && (!expiry || keyExpiry > expiry)) expiry = keyExpiry;
+  }
+  return expiry;
 }
 
 export function pickComplimentaryVipPlan(durationDays: number): VipPlanId {
@@ -498,7 +605,7 @@ export function buildServerAccess(input: {
         !isSupersededHistoryRecord(record) &&
         (isAllRetakesRecord(record) || serverIdsFromRecord(record).includes(server.id)),
     );
-    const expiry = computeEntitlementExpiry(records);
+    const expiry = serverEntitlementExpiry(input.history, server.id);
     if (!expiry) return [];
     return [{
       serverId: server.id,

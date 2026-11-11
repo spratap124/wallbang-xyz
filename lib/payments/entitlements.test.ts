@@ -15,6 +15,7 @@ import {
   hasActiveVipEntitlementForServer,
   normalizeAdminEntitlementKeys,
   pickComplimentaryVipPlan,
+  persistedEntitlementExpiry,
 } from "@/lib/payments/entitlements-logic";
 import { computeVipExtension } from "@/lib/payments/expiry";
 import type { VipHistoryDoc } from "@/types/payments";
@@ -246,6 +247,73 @@ describe("VIP entitlement expiry rules", () => {
         now: purchasedAt,
       }),
       true,
+    );
+  });
+
+  it("represents a paid bundle as one entitlement with its server snapshot", () => {
+    const createdAt = new Date("2026-11-01T10:00:00.000Z");
+    const record = buildGrantedEntitlementRecord({
+      id: "bundle-entitlement",
+      userId: "user",
+      steamId: "steam",
+      entitlementKey: "mumbai-retake-bundle-all",
+      durationDays: 30,
+      paymentId: "payment-1",
+      currentExpiry: null,
+      now: createdAt,
+      serverIds: ["retake-1-mumbai-giganodes", "retake-3-mumbai-giganodes"],
+    });
+
+    assert.equal(record.accessType, "BUNDLE");
+    assert.equal(record.bundleKind, "custom");
+    assert.equal(record.serverId, null);
+    assert.deepEqual(record.serverIds, [
+      "retake-1-mumbai-giganodes",
+      "retake-3-mumbai-giganodes",
+    ]);
+    assert.equal(
+      hasActiveVipEntitlementForServer({
+        history: [record],
+        serverId: "retake-3-mumbai-giganodes",
+        now: createdAt,
+      }),
+      true,
+    );
+  });
+
+  it("keeps the global role expiry at the furthest independent entitlement", () => {
+    const purchasedAt = new Date("2026-11-01T10:00:00.000Z");
+    const retakeOne = history({
+      bundleId: "retake-1-mumbai-giganodes",
+      serverId: "retake-1-mumbai-giganodes",
+      accessType: "INDIVIDUAL_SERVER",
+      durationDays: 30,
+      createdAt: purchasedAt,
+    });
+    const retakeThree = history({
+      bundleId: "retake-3-mumbai-giganodes",
+      serverId: "retake-3-mumbai-giganodes",
+      accessType: "INDIVIDUAL_SERVER",
+      durationDays: 90,
+      createdAt: purchasedAt,
+    });
+
+    assert.equal(furthestEntitlementExpiry([retakeOne, retakeThree])?.toISOString(),
+      "2027-01-30T10:00:00.000Z");
+  });
+
+  it("uses the exact persisted end date for role synchronization", () => {
+    const record = history({
+      bundleId: "retake-1-mumbai-giganodes",
+      serverId: "retake-1-mumbai-giganodes",
+      accessType: "INDIVIDUAL_SERVER",
+      durationDays: 30,
+      createdAt: new Date("2026-11-01T00:00:00.000Z"),
+      endDate: new Date("2026-12-01T00:00:00.001Z"),
+    });
+    assert.equal(
+      persistedEntitlementExpiry([record])?.toISOString(),
+      "2026-12-01T00:00:00.001Z",
     );
   });
 });

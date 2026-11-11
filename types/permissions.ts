@@ -72,6 +72,8 @@ export type UserRoleDoc = {
   grantedAt: Date;
   expiresAt: Date | null;
   active: boolean;
+  /** Lifetime was created by the versioned VIP grant workflow. */
+  lifetimeManaged?: boolean;
 };
 
 export type AuditAction =

@@ -78,26 +78,40 @@ export async function ensurePaymentInvoice(
   }
 
   const paidAt = payment.paidAt ?? new Date();
-  const invoiceNumber = generateInvoiceNumber(paidAt, payment._id);
   const now = new Date();
 
-  const updated = await payments.findOneAndUpdate(
-    {
-      _id: payment._id,
-      $or: [{ invoiceNumber: { $exists: false } }, { invoiceNumber: null }],
-    },
-    {
-      $set: {
-        invoiceNumber,
-        invoiceGeneratedAt: now,
-        updatedAt: now,
-      },
-    },
-    { returnDocument: "after" },
-  );
+  let saved: PaymentDoc | null = null;
+  for (const suffixLength of [8, 12, 16, 24, 32]) {
+    const invoiceNumber = generateInvoiceNumber(paidAt, payment._id, suffixLength);
+    try {
+      const updated = await payments.findOneAndUpdate(
+        {
+          _id: payment._id,
+          $or: [{ invoiceNumber: { $exists: false } }, { invoiceNumber: null }],
+        },
+        {
+          $set: {
+            invoiceNumber,
+            invoiceGeneratedAt: now,
+            updatedAt: now,
+          },
+        },
+        { returnDocument: "after" },
+      );
+      saved = updated ?? (await payments.findOne({ _id: payment._id }));
+      if (saved?.invoiceNumber) break;
+    } catch (error) {
+      if (!(error && typeof error === "object" && "code" in error && error.code === 11000)) {
+        throw error;
+      }
+      // Distinct UUIDs can share the short human-readable suffix. Widen the
+      // deterministic suffix and retry against the unique invoice index.
+      saved = await payments.findOne({ _id: payment._id });
+      if (saved?.invoiceNumber) break;
+    }
+  }
 
-  const saved = updated ?? (await payments.findOne({ _id: payment._id }));
-  const finalInvoiceNumber = saved?.invoiceNumber ?? invoiceNumber;
+  const finalInvoiceNumber = saved?.invoiceNumber ?? null;
   if (!finalInvoiceNumber) return null;
 
   if (payment.provider === "payu" && !saved?.payuInvoiceSyncedAt) {

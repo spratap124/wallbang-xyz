@@ -45,17 +45,14 @@ import type {
   RoleSource,
   UserRoleDoc,
 } from "@/types/permissions";
-import { durationDaysToMs } from "@/lib/payments/expiry";
 import { getGameLoadoutForPlayer } from "@/lib/loadout/service";
-
-function isDuplicateKeyError(err: unknown): boolean {
-  return Boolean(
-    err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as { code: unknown }).code === 11000,
-  );
-}
+import { withVipEntitlementTransaction } from "@/lib/payments/entitlement-transaction";
+import { loadEffectiveVipHistory } from "@/lib/payments/effective-vip-history";
+import { entitlementKeyFromRecord, furthestEntitlementExpiry } from "@/lib/payments/entitlements-logic";
+import {
+  refreshVipRolePresentation,
+  synchronizeVipRole,
+} from "@/lib/permissions/vip-role-service";
 
 async function ready(): Promise<void> {
   await ensurePermissionIndexes();
@@ -352,7 +349,7 @@ export type GrantRoleInput = {
   requestId?: string;
 };
 
-async function resolveGrantTarget(
+export async function resolveGrantTarget(
   input: Pick<GrantRoleInput, "targetUserId" | "targetSteamId">,
 ): Promise<UserDoc | null> {
   if (input.targetUserId) {
@@ -372,6 +369,14 @@ async function resolveGrantTarget(
 }
 
 export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissions> {
+  if (input.roleCode === "VIP") {
+    if (!input.entitlementKeys?.length) {
+      throw new Error("Select explicit VIP servers or bundles before granting VIP.");
+    }
+    const { grantManualVip } = await import("@/lib/payments/manual-vip-service");
+    return grantManualVip(input);
+  }
+
   await ready();
 
   if (!isRoleCode(input.roleCode)) {
@@ -426,40 +431,6 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   }
   invalidatePermissionCache(user.steamId);
 
-  if (input.roleCode === "VIP" && input.source === "PURCHASE") {
-    await updateUserDisplayTags(user._id, { chatTag: "[VIP]", nameTag: "VIP" });
-  }
-
-  const vipEntitlementKeys =
-    input.roleCode === "VIP"
-      ? input.entitlementKeys && input.entitlementKeys.length > 0
-        ? input.entitlementKeys
-        : undefined
-      : undefined;
-
-  if (input.roleCode === "VIP") {
-    const keys = vipEntitlementKeys ?? [undefined];
-    for (const key of keys) {
-      await syncComplimentaryVipEntitlement({
-        userId: user._id,
-        steamId: user.steamId,
-        expiresAt,
-        assignmentId:
-          input.source === "GIVEAWAY"
-            ? assignment._id
-            : key
-              ? `${assignment._id}:${key}`
-              : assignment._id,
-        entitlementKey: key,
-        source: input.source,
-        amountPaise: input.source === "PURCHASE"
-          ? input.entitlementAmounts?.find((entry) => entry.key === key)?.amountPaise ?? input.purchaseAmountPaise
-          : undefined,
-        dedupeGiveaway: input.source === "GIVEAWAY",
-      });
-    }
-  }
-
   await writeAudit({
     adminId: input.grantedBy?.id ?? null,
     adminSteamId: input.grantedBy?.steamId ?? null,
@@ -473,7 +444,6 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
       source: input.source,
       expiresAt,
       assignmentId: assignment._id,
-      ...(vipEntitlementKeys ? { entitlementKeys: vipEntitlementKeys } : {}),
     },
     timestamp: new Date(),
   });
@@ -496,21 +466,6 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   return resolved;
 }
 
-export type ExtendVipExpiryInput = {
-  userId: string;
-  durationDays: number;
-  source: RoleSource;
-  amountPaise?: number;
-  grantedBy: { id: string; steamId: string } | null;
-};
-
-export type VipExtensionResult = {
-  startDate: Date;
-  endDate: Date;
-  assignmentId: string;
-  lifetime: boolean;
-};
-
 export type EnsureVipCoversUntilInput = {
   userId: string;
   coversUntil: Date;
@@ -519,388 +474,38 @@ export type EnsureVipCoversUntilInput = {
 };
 
 /**
- * Ensure the global VIP role lasts at least until `coversUntil`.
- * Does not add days blindly — used after per-entitlement stacking so buying
- * Retake #2 does not inflate Retake #1 remaining onto the role calendar.
- *
- * Important: never create a second VIP row via grantRole while any VIP assignment
- * exists — grantRole deactivates prior VIP and drops remaining paid time.
+ * Legacy signature retained for compatibility. `coversUntil` is deliberately
+ * ignored: role expiry is derived from persisted vip_history in the shared
+ * role-only synchronizer.
  */
 export async function ensureVipCoversUntil(
   input: EnsureVipCoversUntilInput,
 ): Promise<{ assignmentId: string; expiresAt: Date | null; lifetime: boolean }> {
   await ready();
-
   const user = await findUserById(input.userId);
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  const now = new Date();
-  const coversUntil = input.coversUntil;
-  const col = await userRolesCollection();
-
-  const lifetime = await col.findOne({
+  if (!user) throw new Error("User not found.");
+  const result = await withVipEntitlementTransaction({
     userId: user._id,
-    roleCode: "VIP",
-    active: true,
-    expiresAt: null,
-  });
-  if (lifetime) {
-    return {
-      assignmentId: lifetime._id,
-      expiresAt: null,
-      lifetime: true,
-    };
-  }
-
-  const active = await col.findOne({
-    userId: user._id,
-    roleCode: "VIP",
-    active: true,
-    expiresAt: { $gt: now },
-  });
-
-  if (active?.expiresAt && active.expiresAt.getTime() >= coversUntil.getTime()) {
-    return {
-      assignmentId: active._id,
-      expiresAt: active.expiresAt,
-      lifetime: false,
-    };
-  }
-
-  if (active) {
-    await col.updateOne(
-      { _id: active._id },
-      { $set: { expiresAt: coversUntil, source: input.source } },
-    );
-    invalidatePermissionCache(user.steamId);
-    await writeAudit({
-      adminId: input.grantedBy?.id ?? null,
-      adminSteamId: input.grantedBy?.steamId ?? null,
-      action: "GRANT_ROLE",
-      targetUserId: user._id,
-      targetSteamId: user.steamId,
-      targetPersonaName: user.personaName,
-      oldValue: {
-        roleCode: "VIP",
-        expiresAt: active.expiresAt,
-        assignmentId: active._id,
-      },
-      newValue: {
-        roleCode: "VIP",
-        source: input.source,
-        expiresAt: coversUntil,
-        assignmentId: active._id,
-        coversUntil: true,
-      },
-      timestamp: new Date(),
-    });
-    const resolved = await resolveFromUser(user);
-    await syncDisplayRole(user._id, resolved.roles);
-    return {
-      assignmentId: active._id,
-      expiresAt: coversUntil,
-      lifetime: false,
-    };
-  }
-
-  const existingVip = await col.findOne(
-    { userId: user._id, roleCode: "VIP" },
-    { sort: { expiresAt: -1, grantedAt: -1 } },
-  );
-
-  if (existingVip) {
-    await col.updateMany(
-      {
-        userId: user._id,
-        roleCode: "VIP",
-        _id: { $ne: existingVip._id },
-        active: true,
-      },
-      { $set: { active: false } },
-    );
-    await col.updateOne(
-      { _id: existingVip._id },
-      {
-        $set: {
-          active: true,
-          expiresAt: coversUntil,
-          source: input.source,
-        },
-      },
-    );
-    invalidatePermissionCache(user.steamId);
-    await writeAudit({
-      adminId: input.grantedBy?.id ?? null,
-      adminSteamId: input.grantedBy?.steamId ?? null,
-      action: "GRANT_ROLE",
-      targetUserId: user._id,
-      targetSteamId: user.steamId,
-      targetPersonaName: user.personaName,
-      oldValue: {
-        roleCode: "VIP",
-        expiresAt: existingVip.expiresAt,
-        assignmentId: existingVip._id,
-        active: existingVip.active,
-      },
-      newValue: {
-        roleCode: "VIP",
-        source: input.source,
-        expiresAt: coversUntil,
-        assignmentId: existingVip._id,
-        revived: true,
-      },
-      timestamp: new Date(),
-    });
-    const resolved = await resolveFromUser(user);
-    await syncDisplayRole(user._id, resolved.roles);
-    return {
-      assignmentId: existingVip._id,
-      expiresAt: coversUntil,
-      lifetime: false,
-    };
-  }
-
-  const resolved = await grantRole({
-    targetUserId: user._id,
-    roleCode: "VIP",
-    source: input.source,
-    grantedBy: input.grantedBy,
-    expiresAt: coversUntil,
-  });
-  const assignment = resolved.activeAssignments.find((a) => a.roleCode === "VIP");
-  return {
-    assignmentId: assignment?.id ?? resolved.userId,
-    expiresAt: assignment?.expiresAt ?? coversUntil,
-    lifetime: false,
-  };
-}
-
-/**
- * Stack prepaid VIP onto an active VIP expiry, or grant VIP from now if expired.
- * Concurrent captured payments serialize on the user_roles document via pipeline $add.
- *
- * Prefer ensureVipCoversUntil for purchases: VIP days are per entitlement (server /
- * All Retakes), and the global role should only cover the furthest entitlement end.
- *
- * Important: never create a second VIP row via grantRole while any VIP assignment
- * exists — grantRole deactivates prior VIP and drops remaining paid time.
- */
-export async function extendVipExpiry(
-  input: ExtendVipExpiryInput,
-): Promise<VipExtensionResult> {
-  await ready();
-
-  const user = await findUserById(input.userId);
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  const durationMs = durationDaysToMs(input.durationDays);
-  const now = new Date();
-  const col = await userRolesCollection();
-
-  const extendActive = async (): Promise<UserRoleDoc | null> => {
-    return col.findOneAndUpdate(
-      {
-        userId: user._id,
-        roleCode: "VIP",
-        active: true,
-        expiresAt: { $gt: now },
-      },
-      [{ $set: { expiresAt: { $add: ["$expiresAt", durationMs] } } }],
-      { returnDocument: "after" },
-    );
-  };
-
-  const updated = await extendActive();
-  if (updated?.expiresAt) {
-    invalidatePermissionCache(user.steamId);
-    const startDate = new Date(updated.expiresAt.getTime() - durationMs);
-    await writeAudit({
-      adminId: input.grantedBy?.id ?? null,
-      adminSteamId: input.grantedBy?.steamId ?? null,
-      action: "GRANT_ROLE",
-      targetUserId: user._id,
-      targetSteamId: user.steamId,
-      targetPersonaName: user.personaName,
-      oldValue: {
-        roleCode: "VIP",
-        expiresAt: startDate,
-        assignmentId: updated._id,
-      },
-      newValue: {
-        roleCode: "VIP",
-        source: updated.source,
-        expiresAt: updated.expiresAt,
-        assignmentId: updated._id,
-        stacked: true,
-      },
-      timestamp: new Date(),
-    });
-    const resolved = await resolveFromUser(user);
-    await syncDisplayRole(user._id, resolved.roles);
-    return {
-      startDate,
-      endDate: updated.expiresAt,
-      assignmentId: updated._id,
-      lifetime: false,
-    };
-  }
-
-  const lifetime = await col.findOne({
-    userId: user._id,
-    roleCode: "VIP",
-    active: true,
-    expiresAt: null,
-  });
-  if (lifetime) {
-    return {
-      startDate: now,
-      endDate: new Date(now.getTime() + durationMs),
-      assignmentId: lifetime._id,
-      lifetime: true,
-    };
-  }
-
-  // Revive the best existing VIP row (including inactive) instead of grantRole,
-  // which would deactivate prior paid VIP and start a fresh shorter term.
-  const existingVip = await col.findOne(
-    { userId: user._id, roleCode: "VIP" },
-    { sort: { expiresAt: -1, grantedAt: -1 } },
-  );
-
-  if (existingVip) {
-    const base =
-      existingVip.expiresAt && existingVip.expiresAt.getTime() > now.getTime()
-        ? existingVip.expiresAt
-        : now;
-    const endDate = new Date(base.getTime() + durationMs);
-
-    await col.updateMany(
-      {
-        userId: user._id,
-        roleCode: "VIP",
-        _id: { $ne: existingVip._id },
-        active: true,
-      },
-      { $set: { active: false } },
-    );
-
-    await col.updateOne(
-      { _id: existingVip._id },
-      {
-        $set: {
-          active: true,
-          expiresAt: endDate,
-          source: input.source,
-        },
-      },
-    );
-
-    invalidatePermissionCache(user.steamId);
-    await writeAudit({
-      adminId: input.grantedBy?.id ?? null,
-      adminSteamId: input.grantedBy?.steamId ?? null,
-      action: "GRANT_ROLE",
-      targetUserId: user._id,
-      targetSteamId: user.steamId,
-      targetPersonaName: user.personaName,
-      oldValue: {
-        roleCode: "VIP",
-        expiresAt: existingVip.expiresAt,
-        assignmentId: existingVip._id,
-        active: existingVip.active,
-      },
-      newValue: {
-        roleCode: "VIP",
-        source: input.source,
-        expiresAt: endDate,
-        assignmentId: existingVip._id,
-        revived: !existingVip.active,
-        stacked: Boolean(
-          existingVip.expiresAt &&
-            existingVip.expiresAt.getTime() > now.getTime(),
-        ),
-      },
-      timestamp: new Date(),
-    });
-
-    const resolved = await resolveFromUser(user);
-    await syncDisplayRole(user._id, resolved.roles);
-    return {
-      startDate: base,
-      endDate,
-      assignmentId: existingVip._id,
-      lifetime: false,
-    };
-  }
-
-  try {
-    const resolved = await grantRole({
-      targetUserId: user._id,
-      roleCode: "VIP",
+    run: ({ session }) => synchronizeVipRole({
+      userId: user._id,
+      steamId: user.steamId,
+      personaName: user.personaName,
       source: input.source,
       grantedBy: input.grantedBy,
-      expiresAt: new Date(now.getTime() + durationMs),
-    });
-    const assignment = resolved.activeAssignments.find(
-      (a) => a.roleCode === "VIP",
-    );
-    return {
-      startDate: now,
-      endDate: assignment?.expiresAt ?? new Date(now.getTime() + durationMs),
-      assignmentId: assignment?.id ?? resolved.userId,
-      lifetime: false,
-    };
-  } catch (err) {
-    if (!isDuplicateKeyError(err)) throw err;
-    const retried = await extendActive();
-    if (!retried?.expiresAt) throw err;
-    invalidatePermissionCache(user.steamId);
-    return {
-      startDate: new Date(retried.expiresAt.getTime() - durationMs),
-      endDate: retried.expiresAt,
-      assignmentId: retried._id,
-      lifetime: false,
-    };
-  }
-}
-
-/** Pull VIP expiry back by a captured term (refunds / lost disputes). */
-export async function subtractVipExpiry(input: {
-  userId: string;
-  durationDays: number;
-}): Promise<Date | null> {
-  await ready();
-  const durationMs = durationDaysToMs(input.durationDays);
-  const now = new Date();
-  const col = await userRolesCollection();
-  const user = await findUserById(input.userId);
-  if (!user) return null;
-
-  const updated = await col.findOneAndUpdate(
-    {
-      userId: input.userId,
-      roleCode: "VIP",
-      active: true,
-      expiresAt: { $type: "date" },
-    },
-    [{ $set: { expiresAt: { $add: ["$expiresAt", -durationMs] } } }],
-    { returnDocument: "after" },
-  );
-
-  if (!updated) return null;
-
-  if (updated.expiresAt && updated.expiresAt <= now) {
-    await col.updateOne({ _id: updated._id }, { $set: { active: false } });
-  }
-
-  invalidatePermissionCache(user.steamId);
-  const resolved = await resolveFromUser(user);
-  await syncDisplayRole(user._id, resolved.roles);
-  return updated.expiresAt;
+      mode: "extend",
+      session,
+    }),
+  });
+  await refreshVipRolePresentation({
+    userId: user._id,
+    steamId: user.steamId,
+    source: input.source,
+  });
+  return {
+    assignmentId: result.assignmentId ?? user._id,
+    expiresAt: result.expiresAt,
+    lifetime: result.lifetime,
+  };
 }
 
 export type RevokeRoleInput = {
@@ -945,6 +550,10 @@ export async function revokeRole(
 
   if (!assignment) {
     throw new Error("Active role assignment not found.");
+  }
+
+  if (assignment.roleCode === "VIP") {
+    throw new Error("Select a specific VIP grant in VIP management.");
   }
 
   if (assignment.roleCode === "USER") {
@@ -992,237 +601,103 @@ export type RevokeAllVipAccessResult = {
   deletedHistoryRows: number;
 };
 
-async function clearPurchasedVipRoles(userId: string): Promise<number> {
-  const col = await userRolesCollection();
-  const deactivate = await col.updateMany(
-    { userId, roleCode: "VIP", active: true },
-    { $set: { active: false } },
-  );
-  await col.updateMany(
-    { userId, roleCode: "VIP" },
-    { $set: { expiresAt: new Date(0) } },
-  );
-  return deactivate.modifiedCount;
-}
-
-/**
- * Align global VIP role expiry with remaining entitlements (may shorten).
- * Deactivates VIP when nothing remains.
- */
-async function syncVipRoleToFurthestExpiry(input: {
-  userId: string;
-  steamId: string;
-  furthest: Date | null;
-  source: RoleSource;
-}): Promise<{ deactivated: boolean; expiresAt: Date | null }> {
-  const now = new Date();
-  const col = await userRolesCollection();
-
-  const lifetime = await col.findOne({
-    userId: input.userId,
-    roleCode: "VIP",
-    active: true,
-    expiresAt: null,
-  });
-  if (lifetime) {
-    return { deactivated: false, expiresAt: null };
-  }
-
-  if (!input.furthest || input.furthest.getTime() <= now.getTime()) {
-    const deactivated = await clearPurchasedVipRoles(input.userId);
-    if (deactivated > 0) {
-      invalidatePermissionCache(input.steamId);
-    }
-    return { deactivated: true, expiresAt: null };
-  }
-
-  const active = await col.findOne({
-    userId: input.userId,
-    roleCode: "VIP",
-    active: true,
-  });
-
-  if (active) {
-    await col.updateOne(
-      { _id: active._id },
-      { $set: { expiresAt: input.furthest, source: input.source } },
-    );
-    invalidatePermissionCache(input.steamId);
-    return { deactivated: false, expiresAt: input.furthest };
-  }
-
-  await ensureVipCoversUntil({
-    userId: input.userId,
-    coversUntil: input.furthest,
-    source: input.source,
-    grantedBy: null,
-  });
-  return { deactivated: false, expiresAt: input.furthest };
-}
-
 /**
  * Testing / support: strip purchased VIP so membership UI and role match a clean slate.
  * Deactivates every VIP role row and deletes vip_history for the user.
  * Does not refund payments or touch FOUNDING_MEMBER.
  */
 export async function revokeAllVipAccess(
-  input: RevokeAllVipAccessInput,
+  _input: RevokeAllVipAccessInput,
 ): Promise<RevokeAllVipAccessResult> {
-  await ready();
-
-  const user = input.targetUserId
-    ? await findUserById(input.targetUserId)
-    : input.targetSteamId
-      ? await findUserBySteamId(input.targetSteamId)
-      : null;
-
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  const col = await userRolesCollection();
-  const vipRows = await col
-    .find({ userId: user._id, roleCode: "VIP" })
-    .toArray();
-
-  const deactivatedVipRoles = await clearPurchasedVipRoles(user._id);
-
-  const { vipHistoryCollection } = await import("@/lib/payments/collections");
-  const history = await vipHistoryCollection();
-  const deleted = await history.deleteMany({ userId: user._id });
-
-  invalidatePermissionCache(user.steamId);
-
-  await writeAudit({
-    adminId: input.revokedBy?.id ?? null,
-    adminSteamId: input.revokedBy?.steamId ?? null,
-    action: "REVOKE_VIP_ACCESS",
-    targetUserId: user._id,
-    targetSteamId: user.steamId,
-    targetPersonaName: user.personaName,
-    oldValue: {
-      scope: "all",
-      vipAssignments: vipRows.map((row) => ({
-        id: row._id,
-        active: row.active,
-        source: row.source,
-        expiresAt: row.expiresAt,
-      })),
-      historyRows: deleted.deletedCount,
-    },
-    newValue: {
-      deactivatedVipRoles,
-      deletedHistoryRows: deleted.deletedCount,
-    },
-    timestamp: new Date(),
-  });
-
-  const permissions = await resolveFromUser(user);
-  await syncDisplayRole(user._id, permissions.roles);
-  return {
-    permissions,
-    deactivatedVipRoles,
-    deletedHistoryRows: deleted.deletedCount,
-  };
+  void _input;
+  throw new Error("Select a specific VIP grant in VIP management.");
 }
 
 export type RevokeVipEntitlementInput = {
   targetUserId?: string;
   targetSteamId?: string;
-  /** Server id or `all_retakes`. */
-  entitlementKey: string;
+  /** Exact vip_history identifier. A key is supported only when unambiguous. */
+  entitlementId?: string;
+  entitlementKey?: string;
   revokedBy: { id: string; steamId: string } | null;
 };
 
 export type RevokeVipEntitlementResult = {
   permissions: ResolvedPermissions;
+  entitlementId: string;
   entitlementKey: string;
+  alreadyRevoked: boolean;
   deletedHistoryRows: number;
   vipExpiresAt: Date | null;
   vipDeactivated: boolean;
 };
 
-/**
- * Testing / support: remove one server or All Retakes entitlement.
- * Deletes matching vip_history rows and resyncs the global VIP role to what remains.
- */
+/** Revoke one explicitly selected grant through an immutable audit record. */
 export async function revokeVipEntitlement(
   input: RevokeVipEntitlementInput,
 ): Promise<RevokeVipEntitlementResult> {
   await ready();
-
-  const key = input.entitlementKey.trim();
-  if (!key) {
-    throw new Error("entitlementKey is required.");
-  }
-
+  if (!input.revokedBy) throw new Error("An authorized administrator is required.");
   const user = input.targetUserId
     ? await findUserById(input.targetUserId)
-    : input.targetSteamId
-      ? await findUserBySteamId(input.targetSteamId)
-      : null;
+    : input.targetSteamId ? await findUserBySteamId(input.targetSteamId) : null;
+  if (!user) throw new Error("User not found.");
+  const id = input.entitlementId?.trim();
+  const key = input.entitlementKey?.trim();
+  if (!id && !key) throw new Error("Select a specific VIP grant.");
 
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  const {
-    entitlementKeyFromRecord,
-    furthestEntitlementExpiry,
-  } = await import("@/lib/payments/entitlements-logic");
-  const { vipHistoryCollection } = await import("@/lib/payments/collections");
-  const historyCol = await vipHistoryCollection();
-  const history = await historyCol.find({ userId: user._id }).toArray();
-  const matchingIds = history
-    .filter((record) => entitlementKeyFromRecord(record) === key)
-    .map((record) => record._id);
-
-  if (matchingIds.length === 0) {
-    throw new Error(`No VIP history found for entitlement "${key}".`);
-  }
-
-  const deleted = await historyCol.deleteMany({
+  const result = await withVipEntitlementTransaction({
     userId: user._id,
-    _id: { $in: matchingIds },
-  });
+    run: async ({ session }) => {
+      const history = await loadEffectiveVipHistory(user._id, session);
+      const matches = id ? history.filter((row) => row._id === id)
+        : history.filter((row) => entitlementKeyFromRecord(row) === key);
+      if (matches.length !== 1) {
+        throw new Error(matches.length ? "Multiple grants match this entitlement; select a specific grant." : "VIP grant not found for this player.");
+      }
+      const selected = matches[0]!;
+      if (id && key && entitlementKeyFromRecord(selected) !== key) throw new Error("VIP grant does not match the selected entitlement.");
+      const assignment = await (await userRolesCollection()).findOne({ userId: user._id, roleCode: "VIP", active: true }, { session });
+      const alreadyRevoked = selected.status === "REVOKED" || selected.status === "SUPERSEDED";
+      if (alreadyRevoked) return { selected, alreadyRevoked, role: null };
 
-  const remaining = await historyCol.find({ userId: user._id }).toArray();
-  const furthest = furthestEntitlementExpiry(remaining);
-  const synced = await syncVipRoleToFurthestExpiry({
-    userId: user._id,
-    steamId: user.steamId,
-    furthest,
-    source: "MANUAL",
-  });
-
-  await writeAudit({
-    adminId: input.revokedBy?.id ?? null,
-    adminSteamId: input.revokedBy?.steamId ?? null,
-    action: "REVOKE_VIP_ACCESS",
-    targetUserId: user._id,
-    targetSteamId: user.steamId,
-    targetPersonaName: user.personaName,
-    oldValue: {
-      scope: "entitlement",
-      entitlementKey: key,
-      historyIds: matchingIds,
+      const before = furthestEntitlementExpiry(history);
+      if (assignment?.expiresAt && assignment.expiresAt > new Date() && (!before || assignment.expiresAt > before)) {
+        throw new Error("VIP role has additional coverage that cannot be attributed safely; review before revocation.");
+      }
+      if (assignment?.expiresAt === null && selected.lifetimeGrant === true && !assignment.lifetimeManaged) {
+        throw new Error("Lifetime VIP ownership is ambiguous; review before revocation.");
+      }
+      if (assignment?.expiresAt === null && selected.calculationVersion !== 2 && selected.amount === 0 && selected.source !== "PURCHASE") {
+        throw new Error("Historical lifetime VIP ownership is ambiguous; review before revocation.");
+      }
+      const audit = await auditLogsCollection();
+      const timestamp = new Date();
+      await audit.insertOne({
+        _id: `vip-grant-revoke:${selected._id}`,
+        adminId: input.revokedBy?.id ?? null, adminSteamId: input.revokedBy?.steamId ?? null,
+        action: "REVOKE_VIP_ACCESS", targetUserId: user._id, targetSteamId: user.steamId,
+        targetPersonaName: user.personaName,
+        oldValue: { scope: "grant", historyId: selected._id, entitlementKey: entitlementKeyFromRecord(selected) },
+        newValue: { revoked: true }, timestamp,
+      }, { session });
+      const role = await synchronizeVipRole({
+        userId: user._id, steamId: user.steamId, personaName: user.personaName,
+        source: "MANUAL", grantedBy: input.revokedBy, mode: "reconcile",
+        reconcileManagedLifetime: selected.lifetimeGrant === true,
+        session,
+      });
+      return { selected, alreadyRevoked, role };
     },
-    newValue: {
-      deletedHistoryRows: deleted.deletedCount,
-      vipExpiresAt: synced.expiresAt,
-      vipDeactivated: synced.deactivated,
-    },
-    timestamp: new Date(),
   });
-
+  await refreshVipRolePresentation({ userId: user._id, steamId: user.steamId });
   const permissions = await resolveFromUser(user);
-  await syncDisplayRole(user._id, permissions.roles);
   return {
-    permissions,
-    entitlementKey: key,
-    deletedHistoryRows: deleted.deletedCount,
-    vipExpiresAt: synced.expiresAt,
-    vipDeactivated: synced.deactivated,
+    permissions, entitlementId: result.selected._id,
+    entitlementKey: entitlementKeyFromRecord(result.selected) ?? result.selected.bundleId,
+    alreadyRevoked: result.alreadyRevoked, deletedHistoryRows: 0,
+    vipExpiresAt: result.role?.expiresAt ?? permissions.activeAssignments.find((row) => row.roleCode === "VIP")?.expiresAt ?? null,
+    vipDeactivated: result.role ? !result.role.active : !permissions.roles.includes("VIP"),
   };
 }
 
@@ -1343,47 +818,14 @@ async function scopePermissionsForGameServer(
 
   if (hasGlobalVipAccess) return resolved;
 
-  const { vipHistoryCollection } = await import("@/lib/payments/collections");
   const { hasActiveVipEntitlementForServer } = await import(
     "@/lib/payments/entitlements-logic"
   );
-  const loadHistory = () =>
-    vipHistoryCollection().then((col) =>
-      col.find({ userId: resolved.userId }).toArray(),
-    );
-
-  let history = await loadHistory();
-  let entitled = hasActiveVipEntitlementForServer({
+  const history = await loadEffectiveVipHistory(resolved.userId);
+  const entitled = hasActiveVipEntitlementForServer({
     history,
     serverId: trimmed,
   });
-
-  if (!entitled) {
-    const vipAssignment = resolved.activeAssignments.find(
-      (assignment) =>
-        assignment.roleCode === "VIP" && assignment.source !== "PURCHASE",
-    );
-    if (vipAssignment) {
-      await syncComplimentaryVipEntitlement({
-        userId: resolved.userId,
-        steamId: resolved.steamId,
-        expiresAt: vipAssignment.expiresAt,
-        assignmentId: vipAssignment.id,
-        // Legacy giveaway VIPs predate server selection: use the configured
-        // Mumbai bundle instead of granting the global All Retakes entitlement.
-        entitlementKey:
-          vipAssignment.source === "GIVEAWAY"
-            ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
-            : undefined,
-        dedupeGiveaway: vipAssignment.source === "GIVEAWAY",
-      });
-      history = await loadHistory();
-      entitled = hasActiveVipEntitlementForServer({
-        history,
-        serverId: trimmed,
-      });
-    }
-  }
 
   if (entitled) return resolved;
 
@@ -1584,45 +1026,6 @@ export async function getLaunchGiveawayPlayers(): Promise<
   });
 }
 
-/**
- * Giveaway / admin VIP must write `vip_history` or in-game `?serverId=`
- * scoping treats the player as unentitled. Purchases already insert history.
- */
-async function syncComplimentaryVipEntitlement(input: {
-  userId: string;
-  steamId: string;
-  expiresAt: Date | null;
-  assignmentId: string;
-  entitlementKey?: string;
-  source?: RoleSource;
-  amountPaise?: number;
-  dedupeGiveaway?: boolean;
-}): Promise<void> {
-  try {
-    const { ensureComplimentaryVipEntitlement } = await import(
-      "@/lib/payments/entitlements"
-    );
-    const bundle = input.entitlementKey
-      ? (await import("@/lib/payments/bundles")).listVipBundleDocs().then((rows) => rows.find((row) => row.id === input.entitlementKey))
-      : null;
-    await ensureComplimentaryVipEntitlement({
-      userId: input.userId,
-      steamId: input.steamId,
-      expiresAt: input.expiresAt,
-      paymentId: `${input.source === "PURCHASE" ? "offline-purchase" : "complimentary"}:${input.assignmentId}`,
-      entitlementKey: input.entitlementKey,
-      serverIds: (await bundle)?.serverIds,
-      bundleName: (await bundle)?.name,
-      grantId: input.assignmentId,
-      source: input.source ?? (input.dedupeGiveaway ? "GIVEAWAY" : "ADMIN"),
-      amountPaise: input.amountPaise,
-      dedupeGiveaway: input.dedupeGiveaway,
-    });
-  } catch (err) {
-    console.error("[vip] complimentary vip_history sync failed", err);
-  }
-}
-
 function toLegacyGiveawayResult(result: LaunchGiveawayResult): GiveawayEntryResult {
   return {
     steamId: result.steamId,
@@ -1701,21 +1104,16 @@ export async function processLaunchGiveaway(input: {
           })
         : [];
 
-    if (existingVip.roleCode === "VIP" && existingVip.source !== "PURCHASE") {
-      await syncComplimentaryVipEntitlement({
-        userId: user._id,
-        steamId: user.steamId,
-        expiresAt:
-          existingVip.expiresAt ??
-          (existingVip.source === "GIVEAWAY"
-            ? giveawayVipExpiresAt(existingVip.grantedAt)
-            : null),
-        assignmentId: existingVip._id,
-        entitlementKey:
-          existingVip.source === "GIVEAWAY"
-            ? LAUNCH_GIVEAWAY_ENTITLEMENT_KEY
-            : undefined,
-        dedupeGiveaway: existingVip.source === "GIVEAWAY",
+    if (existingVip.roleCode === "VIP" && existingVip.source === "GIVEAWAY") {
+      const { grantManualVip } = await import("@/lib/payments/manual-vip-service");
+      await grantManualVip({
+        targetUserId: user._id,
+        roleCode: "VIP",
+        source: "GIVEAWAY",
+        grantedBy: null,
+        expiresAt: existingVip.expiresAt ?? giveawayVipExpiresAt(existingVip.grantedAt),
+        entitlementKeys: [LAUNCH_GIVEAWAY_ENTITLEMENT_KEY],
+        requestId: existingVip._id,
       });
     }
 
@@ -1841,13 +1239,15 @@ export async function processLaunchGiveaway(input: {
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
   });
   if (raced) {
-    await syncComplimentaryVipEntitlement({
-      userId: user._id,
-      steamId: user.steamId,
+    const { grantManualVip } = await import("@/lib/payments/manual-vip-service");
+    await grantManualVip({
+      targetUserId: user._id,
+      roleCode: "VIP",
+      source: "GIVEAWAY",
+      grantedBy: null,
       expiresAt: raced.expiresAt ?? giveawayVipExpiresAt(raced.grantedAt),
-      assignmentId: raced._id,
-      entitlementKey: LAUNCH_GIVEAWAY_ENTITLEMENT_KEY,
-      dedupeGiveaway: true,
+      entitlementKeys: [LAUNCH_GIVEAWAY_ENTITLEMENT_KEY],
+      requestId: raced._id,
     });
     return {
       steamId: user.steamId,
@@ -1863,7 +1263,9 @@ export async function processLaunchGiveaway(input: {
 
   const expiresAt = giveawayVipExpiresAt(now);
 
-  await grantRole({
+  const { grantManualVip } = await import("@/lib/payments/manual-vip-service");
+  await grantManualVip({
+    targetUserId: user._id,
     targetSteamId: user.steamId,
     roleCode: "VIP",
     source: "GIVEAWAY",
@@ -1872,6 +1274,7 @@ export async function processLaunchGiveaway(input: {
     // Launch VIP covers every retake server, matching the offer copy
     // ("priority access to all VIP server features").
     entitlementKeys: [LAUNCH_GIVEAWAY_ENTITLEMENT_KEY],
+    requestId: crypto.randomUUID(),
   });
 
   try {
