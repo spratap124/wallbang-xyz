@@ -371,7 +371,10 @@ async function resolveGrantTarget(
   return created;
 }
 
-export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissions> {
+async function grantRoleInternal(
+  input: GrantRoleInput,
+  options: { syncVipEntitlement: boolean },
+): Promise<ResolvedPermissions> {
   await ready();
 
   if (!isRoleCode(input.roleCode)) {
@@ -437,7 +440,7 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
         : undefined
       : undefined;
 
-  if (input.roleCode === "VIP") {
+  if (input.roleCode === "VIP" && options.syncVipEntitlement) {
     const keys = vipEntitlementKeys ?? [undefined];
     for (const key of keys) {
       await syncComplimentaryVipEntitlement({
@@ -496,6 +499,10 @@ export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissi
   return resolved;
 }
 
+export async function grantRole(input: GrantRoleInput): Promise<ResolvedPermissions> {
+  return grantRoleInternal(input, { syncVipEntitlement: true });
+}
+
 export type ExtendVipExpiryInput = {
   userId: string;
   durationDays: number;
@@ -528,6 +535,20 @@ export type EnsureVipCoversUntilInput = {
  */
 export async function ensureVipCoversUntil(
   input: EnsureVipCoversUntilInput,
+): Promise<{ assignmentId: string; expiresAt: Date | null; lifetime: boolean }> {
+  return ensureVipRoleCoversUntilInternal(input, true);
+}
+
+/** Synchronize global VIP role state without creating entitlement history. */
+export async function ensureVipRoleCoversUntil(
+  input: EnsureVipCoversUntilInput,
+): Promise<{ assignmentId: string; expiresAt: Date | null; lifetime: boolean }> {
+  return ensureVipRoleCoversUntilInternal(input, false);
+}
+
+async function ensureVipRoleCoversUntilInternal(
+  input: EnsureVipCoversUntilInput,
+  syncVipEntitlement: boolean,
 ): Promise<{ assignmentId: string; expiresAt: Date | null; lifetime: boolean }> {
   await ready();
 
@@ -570,10 +591,17 @@ export async function ensureVipCoversUntil(
   }
 
   if (active) {
-    await col.updateOne(
-      { _id: active._id },
+    const extended = await col.updateOne(
+      { _id: active._id, expiresAt: { $lt: coversUntil }, active: true },
       { $set: { expiresAt: coversUntil, source: input.source } },
     );
+    if (!extended.modifiedCount) {
+      const latest = await col.findOne({ _id: active._id });
+      if (latest?.expiresAt && latest.expiresAt.getTime() >= coversUntil.getTime()) {
+        return { assignmentId: latest._id, expiresAt: latest.expiresAt, lifetime: false };
+      }
+      throw new Error("VIP role changed during expiry synchronization; retry fulfillment.");
+    }
     invalidatePermissionCache(user.steamId);
     await writeAudit({
       adminId: input.grantedBy?.id ?? null,
@@ -662,13 +690,13 @@ export async function ensureVipCoversUntil(
     };
   }
 
-  const resolved = await grantRole({
+  const resolved = await grantRoleInternal({
     targetUserId: user._id,
     roleCode: "VIP",
     source: input.source,
     grantedBy: input.grantedBy,
     expiresAt: coversUntil,
-  });
+  }, { syncVipEntitlement });
   const assignment = resolved.activeAssignments.find((a) => a.roleCode === "VIP");
   return {
     assignmentId: assignment?.id ?? resolved.userId,

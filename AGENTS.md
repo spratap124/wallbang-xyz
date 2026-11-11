@@ -34,6 +34,8 @@ npm run test:moderation
 
 Run the narrowest relevant check after a change. Run `npm run lint` and
 `npm run typecheck` for TypeScript or UI changes when practical.
+Before creating a pull request, always run `npm run build` locally and resolve
+any build failures.
 
 ## Application conventions
 
