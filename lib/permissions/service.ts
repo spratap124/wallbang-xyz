@@ -1226,7 +1226,7 @@ export async function revokeVipEntitlement(
   };
 }
 
-export async function searchUsers(query: string, options?: { skip?: number; limit?: number }) {
+export async function searchUsers(query: string, options?: { skip?: number; limit?: number; role?: RoleCode; userIds?: string[] }) {
   await ready();
   const result = await searchUserDocs(query, options);
   return { ...result, users: result.users.map((doc) => ({
@@ -1237,7 +1237,7 @@ export async function searchUsers(query: string, options?: { skip?: number; limi
   })) };
 }
 
-export async function listUsers(options?: { skip?: number; limit?: number }) {
+export async function listUsers(options?: { skip?: number; limit?: number; role?: RoleCode; userIds?: string[] }) {
   await ready();
   const result = await listUserDocs(options);
   return { ...result, users: result.users.map((doc) => ({

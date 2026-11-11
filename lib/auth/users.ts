@@ -196,7 +196,7 @@ export async function updateUserDisplayTags(
 
 export async function searchUsers(
   query: string,
-  options: { skip?: number; limit?: number } = {},
+  options: { skip?: number; limit?: number; role?: RoleCode; userIds?: string[] } = {},
 ): Promise<{ users: UserDoc[]; hasMore: boolean }> {
   await ensureIndexes();
   const col = await users();
@@ -211,6 +211,11 @@ export async function searchUsers(
           { personaName: { $regex: q, $options: "i" } },
         ],
       };
+  if (options.role) filter.role = options.role;
+  if (options.userIds) {
+    if (options.userIds.length === 0) return { users: [], hasMore: false };
+    filter._id = { $in: options.userIds };
+  }
 
   const limit = Math.min(Math.max(options.limit ?? 25, 1), 100);
   const skip = Math.max(options.skip ?? 0, 0);
@@ -220,15 +225,21 @@ export async function searchUsers(
 
 /** List users for admin directory (newest login first). */
 export async function listUsers(
-  options: { skip?: number; limit?: number } = {},
+  options: { skip?: number; limit?: number; role?: RoleCode; userIds?: string[] } = {},
 ): Promise<{ users: UserDoc[]; hasMore: boolean; total: number }> {
   await ensureIndexes();
   const col = await users();
   const limit = Math.min(Math.max(options.limit ?? 25, 1), 100);
   const skip = Math.max(options.skip ?? 0, 0);
+  const filter: Filter<UserDoc> = {};
+  if (options.role) filter.role = options.role;
+  if (options.userIds) {
+    if (options.userIds.length === 0) return { users: [], hasMore: false, total: 0 };
+    filter._id = { $in: options.userIds };
+  }
   const [docs, total] = await Promise.all([
-    col.find({}).sort({ lastLoginAt: -1 }).skip(skip).limit(limit + 1).toArray(),
-    col.countDocuments({}),
+    col.find(filter).sort({ lastLoginAt: -1 }).skip(skip).limit(limit + 1).toArray(),
+    col.countDocuments(filter),
   ]);
   return { users: docs.slice(0, limit), hasMore: docs.length > limit, total };
 }
