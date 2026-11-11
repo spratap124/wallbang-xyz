@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CreditCard, RefreshCw, TrendingUp, Users, Wallet } from "lucide-react";
 
 import { VipBadge } from "@/components/profile/vip-badge";
@@ -120,7 +121,7 @@ export function RevenueDashboard() {
                 <tbody className="divide-border/60 divide-y">
                   {revenue?.recentPurchases.map((purchase) => (
                     <tr key={purchase.id} className="hover:bg-secondary/20">
-                      <td className="px-4 py-3"><div className="flex items-center gap-2">{purchase.avatarUrl ? <img src={purchase.avatarUrl} alt="" className="size-7 rounded-full" /> : null}<span className="font-medium">{purchase.playerName}</span><VipBadge compact /></div><span className="text-muted-foreground font-mono text-[10px]">{purchase.steamId}</span></td>
+                      <td className="px-4 py-3"><div className="flex items-center gap-2">{purchase.avatarUrl ? <img src={purchase.avatarUrl} alt="" className="size-7 rounded-full" /> : null}<Link href={`/admin/permissions?steamId=${encodeURIComponent(purchase.steamId)}`} className="font-medium hover:text-primary hover:underline">{purchase.playerName}</Link><VipBadge compact /></div><span className="text-muted-foreground font-mono text-[10px]">{purchase.steamId}</span></td>
                       <td className="text-muted-foreground px-4 py-3">{purchase.bundleName ?? purchase.plan.replaceAll("_", " ")} · {purchase.durationDays}d</td>
                       <td className="text-muted-foreground px-4 py-3 text-xs">{formatDate(purchase.paidAt)}</td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatInr(purchase.amountPaise)}</td>
@@ -162,7 +163,7 @@ export function RevenueDashboard() {
               <tbody className="divide-border/60 divide-y">
                 {revenue?.offlinePurchases.map((purchase) => (
                   <tr key={purchase.id} className="hover:bg-secondary/20">
-                    <td className="px-4 py-3"><div className="flex items-center gap-2">{purchase.avatarUrl ? <img src={purchase.avatarUrl} alt="" className="size-7 rounded-full" /> : null}<span className="font-medium">{purchase.playerName}</span><VipBadge compact /></div><span className="text-muted-foreground font-mono text-[10px]">{purchase.steamId}</span></td>
+                    <td className="px-4 py-3"><div className="flex items-center gap-2">{purchase.avatarUrl ? <img src={purchase.avatarUrl} alt="" className="size-7 rounded-full" /> : null}<Link href={`/admin/permissions?steamId=${encodeURIComponent(purchase.steamId)}`} className="font-medium hover:text-primary hover:underline">{purchase.playerName}</Link><VipBadge compact /></div><span className="text-muted-foreground font-mono text-[10px]">{purchase.steamId}</span></td>
                     <td className="text-muted-foreground px-4 py-3">{purchase.bundleName ?? purchase.plan.replaceAll("_", " ")} · {purchase.durationDays}d</td>
                     <td className="text-muted-foreground px-4 py-3 text-xs">{formatDate(purchase.paidAt)}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatInr(purchase.amountPaise)}</td>
