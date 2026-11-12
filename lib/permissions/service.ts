@@ -1583,19 +1583,19 @@ export async function getLaunchGiveawayStatus(): Promise<{
   };
 }
 
-/** Public-safe avatar list for players with active launch giveaway VIP. */
+/** Public-safe roster of players who claimed a launch giveaway slot.
+ * Role assignments are retained when VIP expires or is revoked, so the roster
+ * reflects permanent claims rather than current VIP access.
+ */
 export async function getLaunchGiveawayPlayers(): Promise<
   Array<{ personaName: string; avatarUrl: string }>
 > {
   await ready();
-  const now = new Date();
   const col = await userRolesCollection();
   const assignments = await col
     .find({
       roleCode: "VIP",
       source: "GIVEAWAY",
-      active: true,
-      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
     })
     .sort({ grantedAt: 1 })
     .toArray();
