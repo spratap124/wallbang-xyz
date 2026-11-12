@@ -14,6 +14,19 @@ export function registerRoleSync(client, config) {
   }
 
   let syncing = false;
+  const removeManagedName = (name) =>
+    name
+      .replace(/^\[VIP\]\s*/i, "")
+      .replace(/\s+#(?:[1-9]|10)$/, "")
+      .trim();
+  const formatManagedName = (name, isVip, rank) => {
+    const prefix = isVip ? "[VIP] " : "";
+    const suffix = rank ? ` #${rank}` : "";
+    const availableLength = Math.max(1, 32 - prefix.length - suffix.length);
+    const base = removeManagedName(name).slice(0, availableLength).trimEnd();
+    return `${prefix}${base || "Player"}${suffix}`;
+  };
+
   const sync = async () => {
     if (syncing) return;
     syncing = true;
@@ -29,9 +42,23 @@ export function registerRoleSync(client, config) {
 
       const vipIds = new Set(envelope.data?.vipDiscordUserIds);
       const topTenIds = new Set(envelope.data?.topTenDiscordUserIds);
+      const rankByDiscordId = new Map(
+        (envelope.data?.topTenMembers ?? []).map((entry) => [
+          entry.discordUserId,
+          entry.rank,
+        ]),
+      );
       if (
         [...vipIds, ...topTenIds].some(
           (id) => typeof id !== "string" || !/^\d{17,20}$/.test(id),
+        )
+        || [...rankByDiscordId].some(
+          ([id, rank]) =>
+            typeof id !== "string" ||
+            !/^\d{17,20}$/.test(id) ||
+            !Number.isInteger(rank) ||
+            rank < 1 ||
+            rank > 10,
         )
       ) {
         throw new Error("WallBang role-sync API returned invalid Discord IDs");
@@ -54,15 +81,36 @@ export function registerRoleSync(client, config) {
         guild.members.fetch(),
       ]);
 
-      const desiredByLabel = new Map([
-        ["VIP", vipIds],
-        ["Top 10", topTenIds],
-      ]);
       let changes = 0;
       for (const member of members.values()) {
         if (member.user.bot) continue;
+        const isVip = vipIds.has(member.id);
+        const rank = rankByDiscordId.get(member.id) ?? null;
+        const isTopTen = topTenIds.has(member.id);
+        const hasManagedRole = roles.some(({ role }) =>
+          member.roles.cache.has(role.id),
+        );
+        const currentName = member.displayName;
+        const hasManagedName =
+          /^\[VIP\]\s+/i.test(currentName) || /\s+#(?:[1-9]|10)$/.test(currentName);
+        const shouldHaveManagedName = isVip || rank !== null;
+        if (shouldHaveManagedName || hasManagedRole || hasManagedName) {
+          const nickname = shouldHaveManagedName
+            ? formatManagedName(currentName, isVip, rank)
+            : removeManagedName(currentName);
+          if (nickname !== member.nickname) {
+            try {
+              await member.setNickname(nickname, "WallBang VIP and rank sync");
+            } catch (err) {
+              console.warn(
+                `[role-sync] Could not update nickname for ${member.id}; check Manage Nicknames and role hierarchy`,
+                err,
+              );
+            }
+          }
+        }
         for (const { label, role } of roles) {
-          const shouldHaveRole = desiredByLabel.get(label)?.has(member.id) ?? false;
+          const shouldHaveRole = label === "VIP" ? isVip : isTopTen;
           const hasRole = member.roles.cache.has(role.id);
           if (shouldHaveRole === hasRole) continue;
           try {
