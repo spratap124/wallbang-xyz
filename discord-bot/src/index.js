@@ -5,6 +5,7 @@ import {
   registerGuildMemberAdd,
   registerReadyLog,
 } from "./events/guildMemberAdd.js";
+import { registerRoleSync } from "./roleSync.js";
 
 const client = new Client({
   intents: [
@@ -17,6 +18,7 @@ const client = new Client({
 
 registerReadyLog(client, config);
 registerGuildMemberAdd(client, config);
+registerRoleSync(client, config);
 
 client.on("error", (err) => {
   console.error("[bot] Client error", err);
