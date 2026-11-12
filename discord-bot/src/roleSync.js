@@ -16,15 +16,20 @@ export function registerRoleSync(client, config) {
   let syncing = false;
   const removeManagedName = (name) =>
     name
+      .replace(/\s+\|\s+WallBang$/i, "")
       .replace(/^\[VIP\]\s*/i, "")
       .replace(/\s+#(?:[1-9]|10)$/, "")
       .trim();
   const formatManagedName = (name, isVip, rank) => {
     const prefix = isVip ? "[VIP] " : "";
-    const suffix = rank ? ` #${rank}` : "";
-    const availableLength = Math.max(1, 32 - prefix.length - suffix.length);
+    const rankSuffix = rank ? ` #${rank}` : "";
+    const brandSuffix = " | WallBang";
+    const availableLength = Math.max(
+      1,
+      32 - prefix.length - rankSuffix.length - brandSuffix.length,
+    );
     const base = removeManagedName(name).slice(0, availableLength).trimEnd();
-    return `${prefix}${base || "Player"}${suffix}`;
+    return `${prefix}${base || "Player"}${rankSuffix}${brandSuffix}`;
   };
 
   const sync = async () => {
@@ -82,25 +87,23 @@ export function registerRoleSync(client, config) {
       ]);
 
       let changes = 0;
+      let nicknameChanges = 0;
       for (const member of members.values()) {
         if (member.user.bot) continue;
         const isVip = vipIds.has(member.id);
         const rank = rankByDiscordId.get(member.id) ?? null;
         const isTopTen = topTenIds.has(member.id);
-        const hasManagedRole = roles.some(({ role }) =>
-          member.roles.cache.has(role.id),
-        );
         const currentName = member.displayName;
-        const hasManagedName =
-          /^\[VIP\]\s+/i.test(currentName) || /\s+#(?:[1-9]|10)$/.test(currentName);
-        const shouldHaveManagedName = isVip || rank !== null;
-        if (shouldHaveManagedName || hasManagedRole || hasManagedName) {
-          const nickname = shouldHaveManagedName
-            ? formatManagedName(currentName, isVip, rank)
-            : removeManagedName(currentName);
-          if (nickname !== member.nickname) {
+        const nickname = formatManagedName(currentName, isVip, rank);
+        if (nickname !== member.nickname) {
+          if (!member.manageable) {
+            console.warn(
+              `[role-sync] Cannot brand nickname for ${member.id}; move the bot role above this member`,
+            );
+          } else {
             try {
-              await member.setNickname(nickname, "WallBang VIP and rank sync");
+              await member.setNickname(nickname, "WallBang community name and rank sync");
+              nicknameChanges += 1;
             } catch (err) {
               console.warn(
                 `[role-sync] Could not update nickname for ${member.id}; check Manage Nicknames and role hierarchy`,
@@ -128,7 +131,9 @@ export function registerRoleSync(client, config) {
           }
         }
       }
-      console.log(`[role-sync] Completed; ${changes} role change(s)`);
+      console.log(
+        `[role-sync] Completed; ${changes} role change(s), ${nicknameChanges} nickname change(s)`,
+      );
     } catch (err) {
       console.error("[role-sync] Reconciliation failed", err);
     } finally {
