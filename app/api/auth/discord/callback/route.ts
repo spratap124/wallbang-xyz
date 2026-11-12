@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { linkDiscordAccount } from "@/lib/auth/users";
 import { getSiteUrl } from "@/lib/auth/config";
-import { isDiscordLinkConfigured } from "@/lib/discord/config";
+import { isDiscordOAuthConfigured } from "@/lib/discord/config";
 import { announceLaunchGiveawayGrant } from "@/lib/discord/giveaway-announce";
 import {
   discordOfferReturnUrl,
@@ -15,8 +15,18 @@ import { processLaunchGiveaway } from "@/lib/permissions/service";
 import { isMongoConfigured } from "@/lib/mongo";
 import { rateLimit } from "@/lib/rate-limit";
 
+function isOffersReturnTo(returnTo: string): boolean {
+  return new URL(returnTo, getSiteUrl()).pathname === "/offers";
+}
+
 function redirectOffers(status: string): NextResponse {
   return NextResponse.redirect(discordOfferReturnUrl(status));
+}
+
+function redirectToProfile(returnTo: string, status: string): NextResponse {
+  const target = new URL(returnTo, getSiteUrl());
+  target.searchParams.set("discord", status);
+  return NextResponse.redirect(target);
 }
 
 /**
@@ -24,7 +34,7 @@ function redirectOffers(status: string): NextResponse {
  * GET /api/auth/discord/callback?code=...&state=...
  */
 export async function GET(request: Request): Promise<Response> {
-  if (!isDiscordLinkConfigured()) {
+  if (!isDiscordOAuthConfigured()) {
     return redirectOffers("unavailable");
   }
   if (!isMongoConfigured()) {
@@ -59,8 +69,10 @@ export async function GET(request: Request): Promise<Response> {
     return redirectOffers("failed");
   }
 
+  let returnTo = "/offers";
   try {
     const state = parseDiscordOAuthState(stateRaw);
+    returnTo = state.returnTo;
     if (state.userId !== session.id) {
       return redirectOffers("session_mismatch");
     }
@@ -74,6 +86,12 @@ export async function GET(request: Request): Promise<Response> {
       discordUserId: identity.id,
       discordUsername: displayName,
     });
+
+    // Discord linking is also available from the player profile. Keep that
+    // account-link action independent of the expired launch giveaway flow.
+    if (!isOffersReturnTo(state.returnTo)) {
+      return redirectToProfile(state.returnTo, "linked");
+    }
 
     const giveaway = await processLaunchGiveaway({
       steamId: session.steamId,
@@ -108,6 +126,12 @@ export async function GET(request: Request): Promise<Response> {
   } catch (err) {
     console.error("[discord/callback]", err);
     const message = err instanceof Error ? err.message : "";
+    if (!isOffersReturnTo(returnTo)) {
+      return redirectToProfile(
+        returnTo,
+        message.includes("already linked") ? "already_linked" : "failed",
+      );
+    }
     if (message.includes("already linked")) {
       return redirectOffers("already_linked");
     }

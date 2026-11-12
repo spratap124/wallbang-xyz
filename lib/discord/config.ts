@@ -18,11 +18,15 @@ export function getDiscordClientSecret(): string | null {
   return process.env.DISCORD_CLIENT_SECRET?.trim() || null;
 }
 
-/** True when Discord OAuth linking + guild checks can run. */
+/** True when users can authorize Discord and link their account. */
+export function isDiscordOAuthConfigured(): boolean {
+  return Boolean(getDiscordClientId() && getDiscordClientSecret());
+}
+
+/** True when Discord OAuth linking and bot-based guild checks can run. */
 export function isDiscordLinkConfigured(): boolean {
   return Boolean(
-    getDiscordClientId() &&
-      getDiscordClientSecret() &&
+    isDiscordOAuthConfigured() &&
       getDiscordBotToken() &&
       getDiscordGuildId(),
   );

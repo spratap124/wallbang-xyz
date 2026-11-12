@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth/session";
-import { isDiscordLinkConfigured } from "@/lib/discord/config";
+import { isDiscordOAuthConfigured } from "@/lib/discord/config";
 import {
   buildDiscordAuthorizeUrl,
   createDiscordOAuthState,
@@ -14,17 +14,19 @@ import { rateLimit } from "@/lib/rate-limit";
  * GET /api/auth/discord?returnTo=/offers
  */
 export async function GET(request: Request): Promise<Response> {
-  if (!isDiscordLinkConfigured()) {
+  if (!isDiscordOAuthConfigured()) {
     return NextResponse.json(
       { ok: false, error: "Discord linking is not configured." },
       { status: 503 },
     );
   }
 
+  const { searchParams } = new URL(request.url);
+  const returnTo = sanitizeReturnTo(searchParams.get("returnTo") ?? "/offers");
   const session = await getSession();
   if (!session) {
     const login = new URL("/api/auth/steam", request.url);
-    login.searchParams.set("returnTo", "/offers");
+    login.searchParams.set("returnTo", returnTo);
     return NextResponse.redirect(login);
   }
 
@@ -40,8 +42,6 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const { searchParams } = new URL(request.url);
-  const returnTo = sanitizeReturnTo(searchParams.get("returnTo") ?? "/offers");
   const state = createDiscordOAuthState({
     userId: session.id,
     returnTo,

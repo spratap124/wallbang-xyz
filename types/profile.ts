@@ -529,6 +529,8 @@ export type PlayerProfileView = {
   lastLoginAt: string;
   profileViews: number;
   isOwner: boolean;
+  /** Whether this account has linked Discord; only emitted for the owner view. */
+  discordLinked?: boolean;
   summary: PlayerSummary;
   stats: QuickStats;
   /** True when the owner keeps their stats private and the viewer is not them. */
@@ -589,6 +591,8 @@ export type ProfilePageProfile = PublicPlayerProfile & {
   isOwner: boolean;
   showSteamId: boolean;
   accountLinked: boolean;
+  /** Owner-only connection status; never included in the public projection. */
+  discordLinked?: boolean;
 };
 
 export type PatchProfileInput = {
