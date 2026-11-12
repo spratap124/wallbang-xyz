@@ -165,6 +165,25 @@ export async function findUsersBySteamIds(
   return col.find({ steamId: { $in: ids } }).toArray();
 }
 
+/** Return only linked Discord IDs for the supplied registered WallBang users. */
+export async function findDiscordUserIdsByUserIds(
+  ids: string[],
+): Promise<string[]> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+  await ensureIndexes();
+  const col = await users();
+  const docs = await col
+    .find(
+      { _id: { $in: uniqueIds }, discordUserId: { $type: "string" } },
+      { projection: { _id: 0, discordUserId: 1 } },
+    )
+    .toArray();
+  return docs.flatMap((doc) =>
+    typeof doc.discordUserId === "string" ? [doc.discordUserId] : [],
+  );
+}
+
 export async function findUsersByIds(
   ids: string[],
 ): Promise<Array<Pick<UserDoc, "_id" | "personaName" | "avatarUrl">>> {

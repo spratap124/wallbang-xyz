@@ -5,6 +5,7 @@ Handles **launch VIP offer** community onboarding:
 1. **Welcome DM** — when someone joins the server, they get a DM with the claim steps (Steam + Discord link).
 2. **Member-joined notify** — calls the Next.js API so VIP can unlock if Discord was already linked after Steam login.
 3. **#launch-giveaway announcements** — handled by the Next.js app via `DISCORD_GIVEAWAY_WEBHOOK_URL` when VIP is claimed.
+4. **Role sync** — periodically gives linked, active VIPs the configured VIP role and gives linked players in the WallBang leaderboard's top 10 a Top 10 role. Roles are removed when eligibility ends or the account is unlinked.
 
 ## Setup
 
@@ -19,6 +20,7 @@ Handles **launch VIP offer** community onboarding:
 6. **OAuth2 → URL Generator** — scopes: `bot`. Permissions:
    - View Channels
    - Send Messages (for DMs)
+   - Manage Roles
 7. Invite the bot to your WallBang server.
 
 ### 2. Discord server
@@ -26,6 +28,7 @@ Handles **launch VIP offer** community onboarding:
 1. Create `#launch-giveaway` (or use an existing channel) for VIP claim announcements.
 2. **Channel Settings → Integrations → Webhooks** → create webhook → `DISCORD_GIVEAWAY_WEBHOOK_URL` (used by Next.js, not the bot).
 3. Copy server (guild) ID → `DISCORD_GUILD_ID` (Developer Mode → right-click server → Copy ID).
+4. Create the roles to manage (for example `[VIP]` and `Top 10`) and copy their IDs. Move both roles below the bot's highest role in Server Settings → Roles.
 
 ### 3. Environment
 
@@ -38,6 +41,9 @@ DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
 DISCORD_GIVEAWAY_WEBHOOK_URL=...   # in root .env — posts to #launch-giveaway when VIP is claimed
 PLUGIN_API_KEY=...                 # bot uses this to call /api/v1/discord/member-joined
+DISCORD_VIP_ROLE_ID=...            # linked users with active WallBang VIP
+DISCORD_TOP10_ROLE_ID=...          # linked players ranked 1–10 on WallBang
+DISCORD_ROLE_SYNC_INTERVAL_MS=300000 # optional; defaults to five minutes
 GIVEAWAY_MAX_WINNERS=50
 GIVEAWAY_VIP_MONTHS=3
 ```
@@ -47,10 +53,13 @@ GIVEAWAY_VIP_MONTHS=3
 ```bash
 cd discord-bot
 npm install
-DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... PLUGIN_API_KEY=... npm start
+DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... PLUGIN_API_KEY=... \
+  DISCORD_VIP_ROLE_ID=... DISCORD_TOP10_ROLE_ID=... npm start
 ```
 
 Run the Next.js app separately. By default VIP is granted on **Steam login alone** (`GIVEAWAY_REQUIRE_DISCORD` unset/false). Set `GIVEAWAY_REQUIRE_DISCORD=true` to also require Discord membership verification at `/offers`. Discord bot + OAuth paths stay available either way.
+
+Role sync runs when the bot starts and every five minutes after that. It needs the Server Members intent, Manage Roles permission, and role IDs for the roles to sync. The bot treats configured roles as managed and removes them from members who are no longer eligible. Unconfigured role IDs are skipped.
 
 ### 5. Production (Docker)
 
