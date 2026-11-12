@@ -8,6 +8,7 @@ import { userRolesCollection } from "@/lib/permissions/collections";
 export async function getDiscordRoleSyncTargets(): Promise<{
   vipDiscordUserIds: string[];
   topTenDiscordUserIds: string[];
+  topTenMembers: Array<{ discordUserId: string; rank: number }>;
 }> {
   const now = new Date();
   const assignments = await userRolesCollection()
@@ -36,12 +37,18 @@ export async function getDiscordRoleSyncTargets(): Promise<{
   const topTenUsers = await findUsersBySteamIds(
     players.map((player) => player.steamId),
   );
-  const topTenDiscordUserIds = await findDiscordUserIdsByUserIds(
-    topTenUsers.map((user) => user._id),
+  const userBySteamId = new Map(
+    topTenUsers.map((user) => [user.steamId, user]),
   );
-
+  const topTenMembers = players.flatMap((player, index) => {
+    const discordUserId = userBySteamId.get(player.steamId)?.discordUserId;
+    return discordUserId ? [{ discordUserId, rank: index + 1 }] : [];
+  });
   return {
     vipDiscordUserIds: [...new Set(vipDiscordUserIds)],
-    topTenDiscordUserIds: [...new Set(topTenDiscordUserIds)],
+    topTenDiscordUserIds: [
+      ...new Set(topTenMembers.map((member) => member.discordUserId)),
+    ],
+    topTenMembers,
   };
 }
