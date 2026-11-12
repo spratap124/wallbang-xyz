@@ -333,6 +333,7 @@ export async function getPlayerProfile(
     lastLoginAt: user.lastLoginAt.toISOString(),
     profileViews: profile.profileViews,
     isOwner,
+    ...(isOwner ? { discordLinked: Boolean(user.discordUserId) } : {}),
     summary: {
       steamId: user.steamId,
       memberSince: user.createdAt.toISOString(),

@@ -1,6 +1,8 @@
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 
+import { DiscordAccountControl } from "@/components/profile/discord-account-control";
+import { SteamIcon } from "@/components/shared/brand-icons";
 import { VipBadge } from "@/components/profile/vip-badge";
 import { Button } from "@/components/ui/button";
 
@@ -10,15 +12,27 @@ type ProfileHeroIdentity = {
   personaName?: string;
   avatarUrl: string;
   steamProfileUrl: string;
+  steamId: string;
+  isOwner: boolean;
 };
 
 type ProfileHeroProps = {
   profile: ProfileHeroIdentity;
   isVip: boolean;
   joinedLabel: string;
+  discordLinked: boolean;
+  discordLinkConfigured: boolean;
+  discordStatus?: string;
 };
 
-export function ProfileHero({ profile, isVip, joinedLabel }: ProfileHeroProps) {
+export function ProfileHero({
+  profile,
+  isVip,
+  joinedLabel,
+  discordLinked,
+  discordLinkConfigured,
+  discordStatus,
+}: ProfileHeroProps) {
   const steamName =
     profile.personaName && profile.displayName !== profile.personaName
       ? profile.personaName
@@ -83,21 +97,42 @@ export function ProfileHero({ profile, isVip, joinedLabel }: ProfileHeroProps) {
             </p>
           ) : null}
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-background/40 mt-3"
-            render={
-              <a
-                href={profile.steamProfileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-background/40 mt-0"
+              render={
+                <a
+                  href={profile.steamProfileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              }
+            >
+              <SteamIcon className="size-3.5" />
+              View Steam Profile
+              <ExternalLink data-icon="inline-end" />
+            </Button>
+            {profile.isOwner ? (
+              <DiscordAccountControl
+                linked={discordLinked}
+                configured={discordLinkConfigured}
+                returnTo={`/profile/${profile.steamId}`}
+                className="mt-0"
               />
-            }
-          >
-            View Steam Profile
-            <ExternalLink data-icon="inline-end" />
-          </Button>
+            ) : null}
+          </div>
+          {profile.isOwner && !discordLinked && discordStatus === "already_linked" ? (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              That Discord account is already linked to another WallBang account.
+            </p>
+          ) : null}
+          {profile.isOwner && !discordLinked && discordStatus === "failed" ? (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              Could not link Discord. Please try again.
+            </p>
+          ) : null}
         </div>
       </div>
     </section>

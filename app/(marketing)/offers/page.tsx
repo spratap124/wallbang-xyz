@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 
 import { DiscordVerifyButton } from "@/components/offers/discord-verify-button";
+import { DiscordAccountControl } from "@/components/profile/discord-account-control";
 import { Container } from "@/components/shared/primitives";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buttonVariants } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
 } from "@/content/offer";
 import { siteConfig } from "@/config/site";
 import { getSession } from "@/lib/auth/session";
-import { isDiscordLinkConfigured } from "@/lib/discord/config";
+import { isDiscordOAuthConfigured } from "@/lib/discord/config";
 import { isMongoConfigured } from "@/lib/mongo";
 import {
   getLaunchGiveawayMaxWinners,
@@ -178,7 +179,7 @@ export default async function LaunchOfferPage({
   const session = await getSession();
   const { discord: discordParam } = await searchParams;
   const flash = discordFlashMessage(discordParam);
-  const discordReady = isDiscordLinkConfigured();
+  const discordReady = isDiscordOAuthConfigured();
   const requireDiscord = isLaunchGiveawayDiscordRequired();
   const totalSteps = requireDiscord ? 2 : 1;
   const [showVip, showProfile, showPricing] = await Promise.all([
@@ -196,6 +197,7 @@ export default async function LaunchOfferPage({
   } | null = null;
   let giveawayPlayers: Array<{ personaName: string; avatarUrl: string }> = [];
   let userGiveaway: UserGiveawayState | null = null;
+  let discordLinked = false;
 
   if (isMongoConfigured()) {
     [giveawayStatus, giveawayPlayers] = await Promise.all([
@@ -205,6 +207,7 @@ export default async function LaunchOfferPage({
 
     if (session) {
       const result = await processLaunchGiveaway({ steamId: session.steamId });
+      discordLinked = Boolean(result.discordUserId);
       if (result.status === "granted") {
         userGiveaway = {
           kind: "active",
@@ -387,6 +390,23 @@ export default async function LaunchOfferPage({
           </div>
         ) : null}
 
+        {session && isMongoConfigured() ? (
+          <section className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card/70 px-5 py-4">
+            <div>
+              <h2 className="text-sm font-semibold">Discord account</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Link Discord to your WallBang profile for community features.
+              </p>
+            </div>
+            <DiscordAccountControl
+              linked={discordLinked}
+              configured={discordReady}
+              returnTo="/offers"
+              className="mt-0"
+            />
+          </section>
+        ) : null}
+
         {isIneligible ? (
           <div className="mx-auto mt-10 max-w-3xl rounded-2xl border border-border bg-card px-6 py-8 sm:px-8">
             <h2 className="text-xl font-semibold">Staff account</h2>
@@ -422,7 +442,7 @@ export default async function LaunchOfferPage({
                 </>
               ) : null}
               .{showPricingCta
-                ? " You can get prepaid hosted server access anytime, or join Discord for community updates."
+                ? " You can get VIP access anytime, or join Discord for community updates."
                 : " Join Discord for community updates."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
@@ -431,7 +451,7 @@ export default async function LaunchOfferPage({
                   href="/pricing"
                   className={cn(buttonVariants())}
                 >
-                  Get hosted server access
+                  VIP access
                 </a>
               ) : null}
               <a

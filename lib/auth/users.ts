@@ -137,6 +137,24 @@ export async function linkDiscordAccount(input: {
   return result;
 }
 
+/** Remove the Discord identity linked to a WallBang user account. */
+export async function unlinkDiscordAccount(userId: string): Promise<boolean> {
+  await ensureIndexes();
+  const col = await users();
+  const result = await col.updateOne(
+    { _id: userId },
+    {
+      $unset: {
+        discordUserId: "",
+        discordUsername: "",
+        discordLinkedAt: "",
+      },
+      $set: { updatedAt: new Date() },
+    },
+  );
+  return result.matchedCount > 0;
+}
+
 export async function findUsersBySteamIds(
   steamIds: string[],
 ): Promise<UserDoc[]> {

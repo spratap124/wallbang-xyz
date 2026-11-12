@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ProfilePageView } from "@/components/profile/profile-page-view";
 import { getSession } from "@/lib/auth/session";
+import { isDiscordOAuthConfigured } from "@/lib/discord/config";
 import { isMongoConfigured } from "@/lib/mongo";
 import { isProfilePageEnabled } from "@/lib/platform/feature-flags";
 import { getPlayerProfile, isValidSteamId64, loadPlayerProfilePage } from "@/lib/profile";
@@ -9,6 +10,7 @@ import { createPageMetadata } from "@/seo/metadata";
 
 type PageProps = {
   params: Promise<{ steamId: string }>;
+  searchParams: Promise<{ discord?: string }>;
 };
 
 export async function generateMetadata({ params }: PageProps) {
@@ -44,12 +46,15 @@ export async function generateMetadata({ params }: PageProps) {
   });
 }
 
-export default async function PublicProfilePage({ params }: PageProps) {
+export default async function PublicProfilePage({ params, searchParams }: PageProps) {
   if (!(await isProfilePageEnabled()) || !isMongoConfigured()) {
     redirect("/");
   }
 
-  const { steamId } = await params;
+  const [{ steamId }, { discord: discordStatus }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   if (!isValidSteamId64(steamId)) {
     notFound();
   }
@@ -63,6 +68,11 @@ export default async function PublicProfilePage({ params }: PageProps) {
   }
 
   return (
-    <ProfilePageView profile={page.profile} dashboard={page.dashboard} />
+    <ProfilePageView
+      profile={page.profile}
+      dashboard={page.dashboard}
+      discordLinkConfigured={isDiscordOAuthConfigured()}
+      discordStatus={discordStatus}
+    />
   );
 }

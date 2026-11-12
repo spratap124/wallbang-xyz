@@ -16,6 +16,8 @@ import {
   useLiveServers,
 } from "@/components/servers/live-servers-provider";
 import { Container } from "@/components/shared/primitives";
+import { siteConfig } from "@/config/site";
+import { DiscordIcon } from "@/components/shared/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,8 @@ import type { ProfileDashboardExtras } from "@/types/profile-dashboard";
 type ProfilePageViewProps = {
   profile: ProfilePageProfile;
   dashboard: ProfileDashboardExtras;
+  discordLinkConfigured: boolean;
+  discordStatus?: string;
 };
 
 function StatsSection({ profile }: { profile: ProfilePageProfile }) {
@@ -50,7 +54,12 @@ function StatsSection({ profile }: { profile: ProfilePageProfile }) {
   return <ProfileStats stats={profile.stats} />;
 }
 
-function ProfileDashboard({ profile, dashboard }: ProfilePageViewProps) {
+function ProfileDashboard({
+  profile,
+  dashboard,
+  discordLinkConfigured,
+  discordStatus,
+}: ProfilePageViewProps) {
   const { servers, hasLoaded } = useLiveServers();
 
   return (
@@ -60,6 +69,9 @@ function ProfileDashboard({ profile, dashboard }: ProfilePageViewProps) {
           profile={profile}
           isVip={dashboard.vip.active}
           joinedLabel={dashboard.joinedLabel}
+          discordLinked={profile.discordLinked ?? false}
+          discordLinkConfigured={discordLinkConfigured}
+          discordStatus={discordStatus}
         />
 
         {profile.showSteamId ? (
@@ -77,17 +89,35 @@ function ProfileDashboard({ profile, dashboard }: ProfilePageViewProps) {
         ) : null}
 
         {profile.isOwner ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
             <p className="text-muted-foreground text-xs">
-              This is how other players see your public profile.
+              This is how other players see your public profile. Join opens the
+              community invite; linking connects Discord to this WallBang
+              account.
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              render={<Link href={`/profile/${profile.steamId}`} />}
-            >
-              View public profile
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                render={
+                  <a
+                    href={siteConfig.discordUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                <DiscordIcon className="size-4" />
+                Join WallBang Discord
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                render={<Link href={`/profile/${profile.steamId}`} />}
+              >
+                View public profile
+              </Button>
+            </div>
           </div>
         ) : null}
 
