@@ -74,6 +74,16 @@ const DurationBars = dynamic(
     loading: () => <div className="h-[175px] animate-pulse rounded bg-secondary/30" />,
   },
 );
+const GiveawayConversionPanel = dynamic(
+  () =>
+    import("@/components/admin/giveaway-conversion-panel").then(
+      (module) => module.GiveawayConversionPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 animate-pulse rounded-xl bg-secondary/30" />,
+  },
+);
 
 type Props = { canManageServers: boolean };
 type ActivityMetric = "players" | "sessions" | "playtime" | "concurrent";
@@ -738,6 +748,8 @@ export function AnalyticsDashboard({ canManageServers }: Props) {
               />
             </Panel>
           </div>
+
+          <GiveawayConversionPanel />
         </>
       ) : !loading && !error ? (
         <EmptyState
