@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Collection } from "mongodb";
+import { revalidateTag, unstable_cache } from "next/cache";
 
 import {
   featureFlags as staticFeatureFlags,
@@ -70,6 +71,12 @@ async function readOverrides(): Promise<FeatureFlagDoc | null> {
   }
 }
 
+const readCachedOverrides = unstable_cache(
+  readOverrides,
+  ["feature-flag-overrides-v1"],
+  { revalidate: 60, tags: ["feature-flag-overrides"] },
+);
+
 function resolveFlag(
   envName: string,
   mongoValue: boolean | undefined,
@@ -83,7 +90,7 @@ function resolveFlag(
 }
 
 export async function getRuntimeFeatureFlags(): Promise<FeatureFlags> {
-  const overrides = await readOverrides();
+  const overrides = await readCachedOverrides();
   const runtime: { -readonly [K in keyof FeatureFlags]: boolean } = {
     ...staticFeatureFlags,
   };
@@ -187,6 +194,7 @@ async function setFeatureFlag(
     },
     { upsert: true },
   );
+  revalidateTag("feature-flag-overrides");
 
   return enabled;
 }
