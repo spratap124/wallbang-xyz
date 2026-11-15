@@ -884,7 +884,6 @@ export async function getFleetConnectionStats(input: {
     presenceCol,
     live,
     lifetime,
-    firstSeenRows,
     payments,
     freeVipRows,
     serverCreationRows,
@@ -897,10 +896,6 @@ export async function getFleetConnectionStats(input: {
     playerPresenceCollection(),
     getLiveServers().catch(() => []),
     getLifetimeSessionStats(),
-    db
-      .collection<{ steamId: string; firstSeenAt: Date }>("session_unique_players")
-      .find({}, { projection: { _id: 0, steamId: 1, firstSeenAt: 1 } })
-      .toArray(),
     db
       .collection<AnalyticsPayment>("payments")
       .find(
@@ -945,6 +940,37 @@ export async function getFleetConnectionStats(input: {
       .collection<{ id: string; createdAt: Date }>("game_servers")
       .find({}, { projection: { _id: 0, id: 1, createdAt: 1 } })
       .toArray(),
+  ]);
+
+  const uniqueSteamIds = [...new Set(allSessions.map((session) => session.steamId))];
+  const uniquePlayersCol = db.collection<{
+    _id: string;
+    steamId: string;
+    firstSeenAt: Date;
+  }>("session_unique_players");
+  const cohortStart = new Date(
+    Math.min(periods.current.start.getTime(), periods.previous.start.getTime()),
+  );
+  const cohortEnd = new Date(
+    Math.max(periods.current.end.getTime(), periods.previous.end.getTime()),
+  );
+  const firstSeenFilter = {
+    $or: [
+      { _id: { $in: uniqueSteamIds } },
+      { firstSeenAt: { $gte: cohortStart, $lt: cohortEnd } },
+    ],
+  };
+  const [firstSeenRows, earliestFirstSeen] = await Promise.all([
+    uniquePlayersCol
+      .find(firstSeenFilter, {
+        projection: { _id: 0, steamId: 1, firstSeenAt: 1 },
+      })
+      .toArray(),
+    uniquePlayersCol
+      .find({}, { projection: { _id: 0, firstSeenAt: 1 } })
+      .sort({ firstSeenAt: 1 })
+      .limit(1)
+      .next(),
   ]);
 
   const playerByUserId = new Map(
@@ -1135,13 +1161,9 @@ export async function getFleetConnectionStats(input: {
 
   // Tracking starts at the earliest first-ever session on record; days before
   // it have no observation history and must not be averaged in as zeros.
-  let earliestFirstSeen: Date | null = null;
-  for (const firstSeen of firstSeenBySteam.values()) {
-    if (!earliestFirstSeen || firstSeen < earliestFirstSeen) {
-      earliestFirstSeen = firstSeen;
-    }
-  }
-  const observedFromDay = earliestFirstSeen ? istDayKey(earliestFirstSeen) : null;
+  const observedFromDay = earliestFirstSeen
+    ? istDayKey(earliestFirstSeen.firstSeenAt)
+    : null;
   const currentDailyReturning = averageDailyReturningPlayers(
     dayBuckets.map(({ date, complete, returningPlayers }) => ({
       date,

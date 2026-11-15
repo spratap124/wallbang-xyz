@@ -13,6 +13,8 @@ const STATS = "fleet_session_stats";
 const UNIQUES = "session_unique_players";
 const LIFETIME_ID = "lifetime";
 
+let uniquePlayerIndexesReady: Promise<void> | null = null;
+
 export type FleetSessionStatsDoc = {
   _id: typeof LIFETIME_ID;
   totalSessions: number;
@@ -41,6 +43,22 @@ async function uniquesCollection(): Promise<
   return db.collection<SessionUniquePlayerDoc>(UNIQUES);
 }
 
+async function ensureUniquePlayerIndexes(): Promise<void> {
+  if (!uniquePlayerIndexesReady) {
+    uniquePlayerIndexesReady = (async () => {
+      const uniques = await uniquesCollection();
+      await uniques.createIndex(
+        { firstSeenAt: 1 },
+        { name: "firstSeenAt_1" },
+      );
+    })().catch((err) => {
+      uniquePlayerIndexesReady = null;
+      throw err;
+    });
+  }
+  return uniquePlayerIndexesReady;
+}
+
 function emptyStats(now = new Date()): FleetSessionStatsDoc {
   return {
     _id: LIFETIME_ID,
@@ -54,6 +72,7 @@ function emptyStats(now = new Date()): FleetSessionStatsDoc {
 /** Seed lifetime counters from current sessions if missing (one-time). */
 export async function ensureLifetimeSessionStats(): Promise<void> {
   await ensureProfileIndexes();
+  await ensureUniquePlayerIndexes();
   const stats = await statsCollection();
   const existing = await stats.findOne({ _id: LIFETIME_ID });
   if (existing?.seededAt) return;
