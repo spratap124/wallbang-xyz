@@ -1,6 +1,7 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
+import { fetchSteamPlayerSummaries } from "@/lib/auth/steam-api";
 import { ensurePlayerIndexes, playersCollection } from "@/lib/rating/RatingRepository";
 import type { PlayerDoc } from "@/types/rating";
 
@@ -42,7 +43,21 @@ const getCachedGlobalLeaderboard = unstable_cache(
       .sort({ rating: -1, steamId: 1 })
       .limit(limit)
       .toArray();
-    return { players };
+    const missingAvatars = players
+      .filter((player) => !player.avatar)
+      .map((player) => player.steamId);
+    if (!missingAvatars.length) return { players };
+
+    const summaries = await fetchSteamPlayerSummaries(missingAvatars).catch(() => []);
+    const avatarBySteamId = new Map(
+      summaries.map((summary) => [summary.steamId, summary.avatarUrl]),
+    );
+    return {
+      players: players.map((player) => ({
+        ...player,
+        avatar: player.avatar || avatarBySteamId.get(player.steamId) || "",
+      })),
+    };
   },
   ["global-leaderboard-v1"],
   { revalidate: 60, tags: ["global-leaderboard"] },
