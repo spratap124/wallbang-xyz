@@ -18,18 +18,18 @@ export function registerRoleSync(client, config) {
     name
       .replace(/\s+\|\s+WallBang$/i, "")
       .replace(/^\[VIP\]\s*/i, "")
+      .replace(/^\[#(?:[1-9]|10)\]\s*/i, "")
       .replace(/\s+#(?:[1-9]|10)$/, "")
       .trim();
   const formatManagedName = (name, isVip, rank) => {
-    const prefix = isVip ? "[VIP] " : "";
-    const rankSuffix = rank ? ` #${rank}` : "";
+    const prefix = `${isVip ? "[VIP]" : ""}${rank ? `[#${rank}]` : ""}${isVip || rank ? " " : ""}`;
     const brandSuffix = " | WallBang";
     const availableLength = Math.max(
       1,
-      32 - prefix.length - rankSuffix.length - brandSuffix.length,
+      32 - prefix.length - brandSuffix.length,
     );
     const base = removeManagedName(name).slice(0, availableLength).trimEnd();
-    return `${prefix}${base || "Player"}${rankSuffix}${brandSuffix}`;
+    return `${prefix}${base || "Player"}${brandSuffix}`;
   };
 
   const sync = async () => {
