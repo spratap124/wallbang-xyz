@@ -251,12 +251,14 @@ export async function createReport(input: {
 export async function listReports(input: {
   status?: ReportStatus;
   targetSteamId?: string;
+  assignedTo?: string;
   limit: number;
 }) {
   await ensureModerationIndexes();
   const filter: Filter<PlayerReportDoc> = {};
   if (input.status) filter.status = input.status;
   if (input.targetSteamId) filter.targetSteamId = input.targetSteamId;
+  if (input.assignedTo) filter.assignedTo = input.assignedTo;
   const docs = await (
     await reportsCollection()
   )
