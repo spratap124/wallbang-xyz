@@ -11,7 +11,7 @@ import { ModerationBansPanel } from "./moderation-bans-panel";
 import { ModerationPlayerPanel } from "./moderation-player-panel";
 import { ModerationReportsPanel } from "./moderation-reports-panel";
 
-type Section = "reports" | "bans" | "player" | "audit";
+type Section = "reports" | "assigned" | "bans" | "player" | "audit";
 
 export function ModerationDashboard({
   userId,
@@ -27,6 +27,7 @@ export function ModerationDashboard({
 
   const sections: { id: Section; label: string; visible: boolean }[] = [
     { id: "reports", label: "Reports inbox", visible: capabilities.reviewReports },
+    { id: "assigned", label: "My assigned reports", visible: capabilities.reviewReports },
     { id: "bans", label: "Ban management", visible: true },
     { id: "player", label: "Player history", visible: true },
     { id: "audit", label: "Moderation audit", visible: capabilities.adminAudit },
@@ -63,6 +64,9 @@ export function ModerationDashboard({
       >
         {activeSection === "reports" && capabilities.reviewReports ? (
           <ModerationReportsPanel viewerId={userId} />
+        ) : null}
+        {activeSection === "assigned" && capabilities.reviewReports ? (
+          <ModerationReportsPanel viewerId={userId} assignedOnly />
         ) : null}
         {activeSection === "bans" ? (
           <ModerationBansPanel

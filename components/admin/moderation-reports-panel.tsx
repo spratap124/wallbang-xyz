@@ -38,7 +38,13 @@ function statusLabel(status: ReportStatus): string {
   return status[0]!.toUpperCase() + status.slice(1);
 }
 
-export function ModerationReportsPanel({ viewerId }: { viewerId: string }) {
+export function ModerationReportsPanel({
+  viewerId,
+  assignedOnly = false,
+}: {
+  viewerId: string;
+  assignedOnly?: boolean;
+}) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [targetDraft, setTargetDraft] = useState("");
   const [targetFilter, setTargetFilter] = useState("");
@@ -65,8 +71,9 @@ export function ModerationReportsPanel({ viewerId }: { viewerId: string }) {
         return;
       }
 
-      const statuses =
-        statusFilter === "pending"
+      const statuses = assignedOnly
+        ? REPORT_STATUSES
+        : statusFilter === "pending"
           ? (["open", "assigned"] as const)
           : statusFilter === "all"
             ? REPORT_STATUSES
@@ -76,6 +83,7 @@ export function ModerationReportsPanel({ viewerId }: { viewerId: string }) {
         const responses = await Promise.all(
           statuses.map(async (status) => {
             const params = new URLSearchParams({ status, limit: "200" });
+            if (assignedOnly) params.set("myAssigned", "true");
             if (targetFilter) params.set("targetSteamId", targetFilter);
             const response = await fetch(`/api/v1/reports?${params}`, {
               cache: "no-store",
@@ -104,7 +112,7 @@ export function ModerationReportsPanel({ viewerId }: { viewerId: string }) {
         if (isCurrent()) setLoading(false);
       }
     },
-    [statusFilter, targetFilter],
+    [statusFilter, targetFilter, assignedOnly],
   );
 
   const reload = useCallback(async () => {
@@ -188,6 +196,12 @@ export function ModerationReportsPanel({ viewerId }: { viewerId: string }) {
 
   return (
     <div className="space-y-5">
+      {assignedOnly ? (
+        <div>
+          <h2 className="text-lg font-semibold">My assigned reports</h2>
+          <p className="text-muted-foreground text-sm">Reports assigned to your account, including resolved and dismissed history.</p>
+        </div>
+      ) : null}
       <Card className="border-amber-500/20 bg-amber-500/5">
         <CardContent className="text-muted-foreground py-3 text-sm">
           Reports are allegations, not proof of misconduct. Review the context before
@@ -229,23 +243,25 @@ export function ModerationReportsPanel({ viewerId }: { viewerId: string }) {
             </Button>
           ) : null}
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="report-status-filter">Status</Label>
-          <select
-            id="report-status-filter"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-            className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-lg border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <option value="pending">Pending (open + assigned)</option>
-            <option value="all">All statuses</option>
-            {REPORT_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {statusLabel(status)}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!assignedOnly ? (
+          <div className="space-y-1.5">
+            <Label htmlFor="report-status-filter">Status</Label>
+            <select
+              id="report-status-filter"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+              className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-lg border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <option value="pending">Pending (open + assigned)</option>
+              <option value="all">All statuses</option>
+              {REPORT_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {statusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div className="space-y-1.5">
           <Label htmlFor="report-reason-filter">Reason</Label>
           <select
