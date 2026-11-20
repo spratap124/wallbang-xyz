@@ -141,7 +141,15 @@ export function VipPromotionsPanel() {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-semibold">{promotion.name || "Untitled offer"}</h2>
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize">{promotion.status}</span>
+                  <span className={`rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${
+                    promotion.status === "active"
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : promotion.status === "scheduled"
+                        ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                        : promotion.status === "expired"
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                          : "border-muted-foreground/20 bg-muted text-muted-foreground"
+                  }`}>{promotion.status}</span>
                 </div>
                 {promotion.description ? <p className="mt-1 text-sm text-muted-foreground">{promotion.description}</p> : null}
                 <p className="mt-2 text-xs text-muted-foreground">
