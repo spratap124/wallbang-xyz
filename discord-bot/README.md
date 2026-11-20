@@ -5,7 +5,7 @@ Handles **launch VIP offer** community onboarding:
 1. **Welcome DM** — when someone joins the server, they get a DM with the claim steps (Steam + Discord link).
 2. **Member-joined notify** — calls the Next.js API so VIP can unlock if Discord was already linked after Steam login.
 3. **#launch-giveaway announcements** — handled by the Next.js app via `DISCORD_GIVEAWAY_WEBHOOK_URL` when VIP is claimed.
-4. **Role and nickname sync** — periodically gives linked, active VIPs the configured VIP role and gives linked players in the WallBang leaderboard's top 10 a Top 10 role. Human members' server nicknames get a `| WallBang` suffix; linked VIPs and Top 10 players also get their status and exact rank, for example `[VIP] Player #1 | WallBang`.
+4. **Role and nickname sync** — periodically gives linked, active VIPs the configured VIP role and gives linked players in the WallBang leaderboard's top 10 a Top 10 role. Human members' server nicknames get a `| WallBang` suffix; linked VIPs and Top 10 players also get their status and exact rank, for example `[VIP][#1] Player | WallBang`.
 
 ## Setup
 
@@ -60,7 +60,7 @@ DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... PLUGIN_API_KEY=... \
 
 Run the Next.js app separately. By default VIP is granted on **Steam login alone** (`GIVEAWAY_REQUIRE_DISCORD` unset/false). Set `GIVEAWAY_REQUIRE_DISCORD=true` to also require Discord membership verification at `/offers`. Discord bot + OAuth paths stay available either way.
 
-Role sync runs when the bot starts and every five minutes after that. It needs the Server Members intent, Manage Roles and Manage Nicknames permissions, and role IDs for the roles to sync. The bot updates server nicknames for all human members it can manage, appending `| WallBang`; it adds `[VIP]` and `#rank` for linked players who qualify. Unconfigured role IDs are skipped.
+Role sync runs when the bot starts and every five minutes after that. It needs the Server Members intent, Manage Roles and Manage Nicknames permissions, and role IDs for the roles to sync. The bot updates server nicknames for all human members it can manage, appending `| WallBang`; it adds `[VIP]` and `[#rank]` prefixes for linked players who qualify. Unconfigured role IDs are skipped.
 
 ### 5. Production (Docker)
 
