@@ -85,6 +85,7 @@ export async function GET(request: Request): Promise<Response> {
   if ("response" in auth) return auth.response;
   const params = new URL(request.url).searchParams;
   const status = params.get("status");
+  const myAssigned = params.get("myAssigned") === "true";
   const targetSteamId = params.get("targetSteamId")?.trim();
   if (targetSteamId && !isValidSteamId64(targetSteamId))
     return jsonError("Invalid SteamID64.", 400);
@@ -95,6 +96,7 @@ export async function GET(request: Request): Promise<Response> {
     await listReports({
       status: status as "open" | "assigned" | "resolved" | "dismissed" | undefined,
       targetSteamId,
+      assignedTo: myAssigned ? auth.user.id : undefined,
       limit,
     }),
   );
