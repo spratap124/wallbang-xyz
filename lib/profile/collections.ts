@@ -128,33 +128,6 @@ export function playerSessionRetentionSeconds(): number {
   return Math.round(capped * 24 * 60 * 60);
 }
 
-async function ensureSessionRetentionIndex(
-  sessions: Collection<PlayerSessionDoc>,
-): Promise<void> {
-  const expireAfterSeconds = playerSessionRetentionSeconds();
-  const name = "joinedAt_ttl";
-  const existing = await sessions.indexes();
-  const current = existing.find(
-    (idx) =>
-      idx.name === name ||
-      (idx.key &&
-        Object.keys(idx.key).length === 1 &&
-        (idx.key as { joinedAt?: number }).joinedAt === 1),
-  );
-
-  if (
-    current?.name &&
-    (current.expireAfterSeconds !== expireAfterSeconds || current.name !== name)
-  ) {
-    await sessions.dropIndex(current.name);
-  }
-
-  await sessions.createIndex(
-    { joinedAt: 1 },
-    { expireAfterSeconds, name },
-  );
-}
-
 export async function ensureProfileIndexes(): Promise<void> {
   if (!indexesReady) {
     indexesReady = (async () => {
@@ -204,7 +177,6 @@ export async function ensureProfileIndexes(): Promise<void> {
         sessions.createIndex({ serverId: 1, joinedAt: -1 }),
         sessions.createIndex({ steamId: 1, serverId: 1, leftAt: 1 }),
         sessions.createIndex({ serverId: 1, leftAt: 1, lastSeenAt: -1 }),
-        ensureSessionRetentionIndex(sessions),
         matches.createIndex({ serverId: 1, startedAt: -1 }),
         matches.createIndex({ status: 1, startedAt: -1 }),
         rounds.createIndex({ matchId: 1, round: 1 }, { unique: true }),

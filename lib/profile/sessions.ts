@@ -15,6 +15,7 @@ import {
   recordLifetimePlayTime,
   recordLifetimeSessionStart,
   getLifetimeSessionStats,
+  ensureLifetimeSessionStats,
 } from "@/lib/profile/session-stats";
 import { istDayBounds, istDayKey, listRecentIstDayKeys } from "@/lib/time/ist";
 import { playerSessionRetentionSeconds } from "@/lib/profile/collections";
@@ -29,6 +30,10 @@ import {
   MAX_ANALYTICS_SESSION_MS,
   type AnalyticsSession,
 } from "@/lib/profile/overview-analytics";
+import {
+  finalizeSessionOnce,
+  insertOrRefreshOpenSession,
+} from "@/lib/profile/session-stats-logic";
 import type {
   AdminAnalyticsRange,
   FleetOverviewRecentSession,
@@ -146,20 +151,71 @@ async function closeOpenSessions(
   leftAt: Date,
   lastSeenAt = leftAt,
 ): Promise<void> {
+  // Seed before changing session state so the row being closed cannot be
+  // included in the baseline and then credited again below.
+  await ensureLifetimeSessionStats();
   const col = await playerSessionsCollection();
+  const pending = await col.find({
+      ...filter,
+      leftAt: { $type: "date" },
+      lifetimePlayTimeCreditPending: true,
+    }).toArray();
+  for (const session of pending) {
+    await recordLifetimePlayTime({
+      sessionId: session._id,
+      steamId: session.steamId,
+      joinedAt: session.joinedAt,
+      leftAt: session.leftAt!,
+    });
+    await col.updateOne(
+      { _id: session._id, lifetimePlayTimeCreditPending: true },
+      {
+        $set: { lifetimeAccountingState: "complete" },
+        $unset: { lifetimePlayTimeCreditPending: "" },
+      },
+    );
+  }
+
   const open = await col.find({ ...filter, leftAt: null }).toArray();
   if (open.length === 0) return;
 
-  let playTimeMs = 0;
   for (const session of open) {
-    playTimeMs += Math.max(0, leftAt.getTime() - session.joinedAt.getTime());
+    if (session.lifetimeLedgerVersion === 1 && !session.lifetimeSessionCountedAt) {
+      await recordLifetimeSessionStart(session._id, session.steamId, session.joinedAt);
+    }
+    const finalizedAt = new Date(leftAt.getTime());
+    await finalizeSessionOnce({
+      finalize: async () => {
+        const result = await col.updateOne(
+          { _id: session._id, leftAt: null },
+          {
+            $set: {
+              leftAt: finalizedAt,
+              lastSeenAt,
+              lifetimePlayTimeCreditPending: true,
+              lifetimeAccountingState: "pending",
+            },
+          },
+        );
+        return result.modifiedCount === 1;
+      },
+      credit: async () => {
+        await recordLifetimePlayTime({
+          sessionId: session._id,
+          steamId: session.steamId,
+          joinedAt: session.joinedAt,
+          leftAt: finalizedAt,
+        });
+        await col.updateOne(
+          { _id: session._id, lifetimePlayTimeCreditPending: true },
+          {
+            $set: { lifetimeAccountingState: "complete" },
+            $unset: { lifetimePlayTimeCreditPending: "" },
+          },
+        );
+      },
+    });
   }
-
-  await col.updateMany(
-    { _id: { $in: open.map((s) => s._id) }, leftAt: null },
-    { $set: { leftAt, lastSeenAt } },
-  );
-  await recordLifetimePlayTime(playTimeMs);
 }
 
 /** Close any open session whose last heartbeat is older than the presence TTL window. */
@@ -187,6 +243,9 @@ export async function touchPlayerSession(input: {
   map: string | null;
 }): Promise<void> {
   await ensureProfileIndexes();
+  // Initialize before any close, update, or insert in this heartbeat. A newly
+  // inserted row must not be included in the seed and then counted again.
+  await ensureLifetimeSessionStats();
   const now = new Date();
   const col = await playerSessionsCollection();
 
@@ -208,6 +267,9 @@ export async function touchPlayerSession(input: {
   });
 
   if (open) {
+    if (open.lifetimeLedgerVersion === 1 && !open.lifetimeSessionCountedAt) {
+      await recordLifetimeSessionStart(open._id, open.steamId, open.joinedAt);
+    }
     await col.updateOne(
       { _id: open._id },
       {
@@ -233,9 +295,60 @@ export async function touchPlayerSession(input: {
     lastSeenAt: now,
     leftAt: null,
     playersOnlineAtJoin: Math.max(1, playersOnlineAtJoin),
+    lifetimeLedgerVersion: 1,
   };
-  await col.insertOne(doc);
-  await recordLifetimeSessionStart(input.steamId);
+  const created = await insertOrRefreshOpenSession({
+    document: doc,
+    insert: async (document) => {
+      await col.insertOne(document);
+    },
+    findOpen: () =>
+      col.findOne({
+        steamId: input.steamId,
+        serverId: input.serverId,
+        leftAt: null,
+      }),
+    refresh: async (id) => {
+      await col.updateOne(
+        { _id: id, leftAt: null },
+        {
+          $set: {
+            lastSeenAt: now,
+            serverName: input.serverName,
+            map: input.map,
+          },
+        },
+      );
+    },
+  });
+  if (!created) return;
+  await recordLifetimeSessionStart(doc._id, input.steamId, doc.joinedAt);
+}
+
+/** Recover finalized sessions whose durable lifetime playtime write was interrupted. */
+async function recoverPendingLifetimeSessionCredits(): Promise<void> {
+  const col = await playerSessionsCollection();
+  const pending = await col
+    .find({
+      leftAt: { $type: "date" },
+      lifetimePlayTimeCreditPending: true,
+    })
+    .toArray();
+  for (const session of pending) {
+    await recordLifetimePlayTime({
+      sessionId: session._id,
+      steamId: session.steamId,
+      joinedAt: session.joinedAt,
+      leftAt: session.leftAt!,
+    });
+    await col.updateOne(
+      { _id: session._id, lifetimePlayTimeCreditPending: true },
+      {
+        $set: { lifetimeAccountingState: "complete" },
+        $unset: { lifetimePlayTimeCreditPending: "" },
+      },
+    );
+  }
 }
 
 export async function endPlayerSession(
@@ -862,6 +975,7 @@ export async function getFleetConnectionStats(input: {
   recentLimit?: number;
 }): Promise<FleetOverviewResponse> {
   await ensureProfileIndexes();
+  await recoverPendingLifetimeSessionCredits();
 
   const now = new Date();
   const todayStart = istDayBounds(istDayKey(now)).start;
@@ -884,6 +998,7 @@ export async function getFleetConnectionStats(input: {
     presenceCol,
     live,
     lifetime,
+    firstSeenRows,
     payments,
     freeVipRows,
     serverCreationRows,
@@ -896,6 +1011,10 @@ export async function getFleetConnectionStats(input: {
     playerPresenceCollection(),
     getLiveServers().catch(() => []),
     getLifetimeSessionStats(),
+    db
+      .collection<{ steamId: string; firstSeenAt: Date }>("session_unique_players")
+      .find({}, { projection: { _id: 0, steamId: 1, firstSeenAt: 1 } })
+      .toArray(),
     db
       .collection<AnalyticsPayment>("payments")
       .find(
@@ -940,37 +1059,6 @@ export async function getFleetConnectionStats(input: {
       .collection<{ id: string; createdAt: Date }>("game_servers")
       .find({}, { projection: { _id: 0, id: 1, createdAt: 1 } })
       .toArray(),
-  ]);
-
-  const uniqueSteamIds = [...new Set(allSessions.map((session) => session.steamId))];
-  const uniquePlayersCol = db.collection<{
-    _id: string;
-    steamId: string;
-    firstSeenAt: Date;
-  }>("session_unique_players");
-  const cohortStart = new Date(
-    Math.min(periods.current.start.getTime(), periods.previous.start.getTime()),
-  );
-  const cohortEnd = new Date(
-    Math.max(periods.current.end.getTime(), periods.previous.end.getTime()),
-  );
-  const firstSeenFilter = {
-    $or: [
-      { _id: { $in: uniqueSteamIds } },
-      { firstSeenAt: { $gte: cohortStart, $lt: cohortEnd } },
-    ],
-  };
-  const [firstSeenRows, earliestFirstSeen] = await Promise.all([
-    uniquePlayersCol
-      .find(firstSeenFilter, {
-        projection: { _id: 0, steamId: 1, firstSeenAt: 1 },
-      })
-      .toArray(),
-    uniquePlayersCol
-      .find({}, { projection: { _id: 0, firstSeenAt: 1 } })
-      .sort({ firstSeenAt: 1 })
-      .limit(1)
-      .next(),
   ]);
 
   const playerByUserId = new Map(
@@ -1161,9 +1249,13 @@ export async function getFleetConnectionStats(input: {
 
   // Tracking starts at the earliest first-ever session on record; days before
   // it have no observation history and must not be averaged in as zeros.
-  const observedFromDay = earliestFirstSeen
-    ? istDayKey(earliestFirstSeen.firstSeenAt)
-    : null;
+  let earliestFirstSeen: Date | null = null;
+  for (const firstSeen of firstSeenBySteam.values()) {
+    if (!earliestFirstSeen || firstSeen < earliestFirstSeen) {
+      earliestFirstSeen = firstSeen;
+    }
+  }
+  const observedFromDay = earliestFirstSeen ? istDayKey(earliestFirstSeen) : null;
   const currentDailyReturning = averageDailyReturningPlayers(
     dayBuckets.map(({ date, complete, returningPlayers }) => ({
       date,

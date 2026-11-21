@@ -130,6 +130,11 @@ export type PlayerSessionDoc = {
   joinedAt: Date;
   lastSeenAt: Date;
   leftAt: Date | null;
+  /** Present only on sessions created after lifetime-ledger accounting shipped. */
+  lifetimeLedgerVersion?: 1;
+  lifetimeSessionCountedAt?: Date;
+  lifetimePlayTimeCreditPending?: boolean;
+  lifetimeAccountingState?: "pending" | "complete";
   /**
    * Snapshot of players online on this server when the session started
    * (from live presence at insert time). Null on older docs — UI falls back
