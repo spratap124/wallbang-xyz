@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Collection } from "mongodb";
+import type { Collection, UpdateFilter } from "mongodb";
 
 import { getDb } from "@/lib/mongo";
 import {
@@ -8,12 +8,20 @@ import {
   playerSessionsCollection,
 } from "@/lib/profile/collections";
 import type { LifetimeSessionStats } from "@/types/profile";
+import {
+  FIRST_SEEN_SEED_PIPELINE,
+  LIFETIME_SESSION_COUNT_ACCUMULATOR,
+  addLifetimeLedgerTotals,
+  addPostBaselineUniquePlayers,
+  firstSeenUpsert,
+  idempotentUpsert,
+  seedLeaseClaim,
+} from "@/lib/profile/session-stats-logic";
 
 const STATS = "fleet_session_stats";
 const UNIQUES = "session_unique_players";
+const SESSION_LEDGER = "session_lifetime_ledger";
 const LIFETIME_ID = "lifetime";
-
-let uniquePlayerIndexesReady: Promise<void> | null = null;
 
 export type FleetSessionStatsDoc = {
   _id: typeof LIFETIME_ID;
@@ -23,12 +31,29 @@ export type FleetSessionStatsDoc = {
   updatedAt: Date;
   /** Set once after seeding from existing player_sessions. */
   seededAt?: Date;
+  /** Internal lease used to serialize the one-time seed across app instances. */
+  seedLockOwner?: string;
+  seedLockUntil?: Date;
+  /** Present only on a newly-created stats document whose baseline is pending. */
+  baselinePending?: boolean;
 };
 
 type SessionUniquePlayerDoc = {
   _id: string;
   steamId: string;
   firstSeenAt: Date;
+  /** Present only when first observed after the lifetime baseline was seeded. */
+  lifetimeUniqueContribution?: true;
+};
+
+type SessionLifetimeLedgerDoc = {
+  _id: string;
+  steamId: string;
+  startedAt: Date;
+  sessionStarted?: true;
+  playTimeMs?: number;
+  closedAt?: Date;
+  updatedAt: Date;
 };
 
 async function statsCollection(): Promise<Collection<FleetSessionStatsDoc>> {
@@ -43,20 +68,11 @@ async function uniquesCollection(): Promise<
   return db.collection<SessionUniquePlayerDoc>(UNIQUES);
 }
 
-async function ensureUniquePlayerIndexes(): Promise<void> {
-  if (!uniquePlayerIndexesReady) {
-    uniquePlayerIndexesReady = (async () => {
-      const uniques = await uniquesCollection();
-      await uniques.createIndex(
-        { firstSeenAt: 1 },
-        { name: "firstSeenAt_1" },
-      );
-    })().catch((err) => {
-      uniquePlayerIndexesReady = null;
-      throw err;
-    });
-  }
-  return uniquePlayerIndexesReady;
+async function sessionLedgerCollection(): Promise<
+  Collection<SessionLifetimeLedgerDoc>
+> {
+  const db = await getDb();
+  return db.collection<SessionLifetimeLedgerDoc>(SESSION_LEDGER);
 }
 
 function emptyStats(now = new Date()): FleetSessionStatsDoc {
@@ -69,148 +85,236 @@ function emptyStats(now = new Date()): FleetSessionStatsDoc {
   };
 }
 
-/** Seed lifetime counters from current sessions if missing (one-time). */
+const SEED_LOCK_MS = 30_000;
+const SEED_WAIT_MS = 50;
+const SEED_WAIT_ATTEMPTS = 1_200;
+
+/** Seed lifetime counters from currently retained sessions, once. */
 export async function ensureLifetimeSessionStats(): Promise<void> {
   await ensureProfileIndexes();
-  await ensureUniquePlayerIndexes();
   const stats = await statsCollection();
-  const existing = await stats.findOne({ _id: LIFETIME_ID });
-  if (existing?.seededAt) return;
-
-  const sessionsCol = await playerSessionsCollection();
-  const uniques = await uniquesCollection();
   const now = new Date();
 
-  const [totalSessions, playAgg, distinct] = await Promise.all([
-    sessionsCol.countDocuments({}),
-    sessionsCol
-      .aggregate<{ totalPlayTimeMs: number }>([
-        {
-          $project: {
-            durationMs: {
-              $max: [
-                0,
-                {
-                  $subtract: [
-                    { $ifNull: ["$leftAt", "$lastSeenAt"] },
-                    "$joinedAt",
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        { $group: { _id: null, totalPlayTimeMs: { $sum: "$durationMs" } } },
-      ])
-      .toArray(),
-    sessionsCol.distinct("steamId"),
-  ]);
-
-  const totalPlayTimeMs = Math.round(playAgg[0]?.totalPlayTimeMs ?? 0);
-  const uniquePlayers = distinct.length;
-
-  if (distinct.length > 0) {
-    await uniques.bulkWrite(
-      distinct.map((steamId) => ({
-        updateOne: {
-          filter: { _id: steamId },
-          update: {
-            $setOnInsert: {
-              _id: steamId,
-              steamId,
-              firstSeenAt: now,
-            },
-          },
-          upsert: true,
-        },
-      })),
-      { ordered: false },
-    );
-  }
-
+  // Create a recognizable empty seed target. The marker distinguishes this
+  // fresh document from any pre-existing, unseeded counters that must not be
+  // overwritten.
   await stats.updateOne(
     { _id: LIFETIME_ID },
     {
-      $set: {
-        totalSessions,
-        totalPlayTimeMs,
-        uniquePlayers,
-        updatedAt: now,
-        seededAt: now,
+      $setOnInsert: {
+        ...emptyStats(now),
+        baselinePending: true,
       },
-      $setOnInsert: { _id: LIFETIME_ID },
     },
     { upsert: true },
   );
+
+  for (let attempt = 0; attempt < SEED_WAIT_ATTEMPTS; attempt += 1) {
+    const current = await stats.findOne({ _id: LIFETIME_ID });
+    if (current?.seededAt) return;
+
+    const token = crypto.randomUUID();
+    const lockNow = new Date();
+    const claim = seedLeaseClaim(lockNow, token, SEED_LOCK_MS);
+    const claimed = await stats.findOneAndUpdate(claim.filter, claim.update, {
+      returnDocument: "after",
+    });
+    if (!claimed) {
+      await new Promise((resolve) => setTimeout(resolve, SEED_WAIT_MS));
+      continue;
+    }
+
+    try {
+      const sessionsCol = await playerSessionsCollection();
+      const uniques = await uniquesCollection();
+      const seededAt = new Date();
+      const [totalSessions, playAgg, firstSeenRows] = await Promise.all([
+        sessionsCol.countDocuments({}),
+        // Open rows are deliberately excluded: their full duration will be
+        // credited when they are finalized, so including them here would count
+        // their current elapsed time twice.
+        sessionsCol
+          .aggregate<{ totalPlayTimeMs: number }>([
+            { $match: { leftAt: { $type: "date" } } },
+            {
+              $project: {
+                durationMs: {
+                  $max: [0, { $subtract: ["$leftAt", "$joinedAt"] }],
+                },
+              },
+            },
+            { $group: { _id: null, totalPlayTimeMs: { $sum: "$durationMs" } } },
+          ])
+          .toArray(),
+        sessionsCol
+          .aggregate<{ _id: string; firstSeenAt: Date }>([
+            ...FIRST_SEEN_SEED_PIPELINE,
+          ])
+          .toArray(),
+      ]);
+
+      if (firstSeenRows.length > 0) {
+        await uniques.bulkWrite(
+          firstSeenRows.map(({ _id, firstSeenAt }) => ({
+            updateOne: {
+              ...firstSeenUpsert(_id, firstSeenAt),
+            },
+          })),
+          { ordered: false },
+        );
+      }
+      const uniquePlayers = await uniques.countDocuments({});
+
+      const update: UpdateFilter<FleetSessionStatsDoc> = current?.baselinePending
+        ? {
+            $set: {
+              totalSessions,
+              totalPlayTimeMs: Math.round(playAgg[0]?.totalPlayTimeMs ?? 0),
+              uniquePlayers,
+              updatedAt: seededAt,
+              seededAt,
+            },
+            $unset: { baselinePending: "", seedLockOwner: "", seedLockUntil: "" },
+          }
+        : {
+            // Preserve any pre-existing counter values when an older or
+            // partially initialized stats document has no fresh-baseline mark.
+            $set: { seededAt, updatedAt: seededAt },
+            $unset: { seedLockOwner: "", seedLockUntil: "" },
+          };
+
+      const finalized = await stats.updateOne(
+        { _id: LIFETIME_ID, seedLockOwner: token, seededAt: { $exists: false } },
+        update,
+      );
+      if (finalized.modifiedCount === 1) return;
+    } catch (error) {
+      await stats.updateOne(
+        { _id: LIFETIME_ID, seedLockOwner: token, seededAt: { $exists: false } },
+        { $unset: { seedLockOwner: "", seedLockUntil: "" } },
+      );
+      throw error;
+    }
+  }
+
+  throw new Error("Timed out waiting for lifetime session stats initialization.");
 }
 
 export async function getLifetimeSessionStats(): Promise<LifetimeSessionStats> {
   await ensureLifetimeSessionStats();
-  const stats = await statsCollection();
-  const doc = (await stats.findOne({ _id: LIFETIME_ID })) ?? emptyStats();
+  const [stats, ledger, uniques] = await Promise.all([
+    statsCollection(),
+    sessionLedgerCollection(),
+    uniquesCollection(),
+  ]);
+  const [doc, [ledgerTotals], postBaselineUniqueRows] = await Promise.all([
+    stats.findOne({ _id: LIFETIME_ID }),
+    ledger
+      .aggregate<{
+        totalSessions: number;
+        totalPlayTimeMs: number;
+        updatedAt: Date | null;
+      }>([
+        {
+          $group: {
+            _id: null,
+            totalSessions: LIFETIME_SESSION_COUNT_ACCUMULATOR,
+            totalPlayTimeMs: { $sum: { $ifNull: ["$playTimeMs", 0] } },
+            updatedAt: { $max: "$updatedAt" },
+          },
+        },
+      ])
+      .toArray(),
+    uniques.countDocuments({ lifetimeUniqueContribution: true }),
+  ]);
+  const base = doc ?? emptyStats();
+  const totals = addLifetimeLedgerTotals(base, ledgerTotals ?? {});
   return {
-    totalSessions: doc.totalSessions,
-    totalPlayTimeMs: doc.totalPlayTimeMs,
-    uniquePlayers: doc.uniquePlayers,
-    updatedAt: doc.updatedAt.toISOString(),
+    // Existing counters remain the immutable historical baseline. New session
+    // starts and finalized playtime are represented by one durable row per
+    // session, so retries do not mutate that baseline more than once.
+    totalSessions: totals.totalSessions,
+    totalPlayTimeMs: totals.totalPlayTimeMs,
+    uniquePlayers: addPostBaselineUniquePlayers(
+      base.uniquePlayers,
+      postBaselineUniqueRows,
+    ),
+    updatedAt: (ledgerTotals?.updatedAt ?? base.updatedAt).toISOString(),
   };
 }
 
-/** Call when a new player_sessions row is created. */
-export async function recordLifetimeSessionStart(steamId: string): Promise<void> {
+/** Persist the idempotent lifetime start record for a session. */
+export async function recordLifetimeSessionStart(
+  sessionId: string,
+  steamId: string,
+  joinedAt = new Date(),
+): Promise<void> {
   await ensureLifetimeSessionStats();
   const now = new Date();
-  const [stats, uniques] = await Promise.all([
-    statsCollection(),
-    uniquesCollection(),
+  const uniques = await uniquesCollection();
+  const [ledger, sessionsCol] = await Promise.all([
+    sessionLedgerCollection(),
+    playerSessionsCollection(),
   ]);
 
-  const inserted = await uniques.updateOne(
-    { _id: steamId },
-    {
-      $setOnInsert: {
-        _id: steamId,
-        steamId,
-        firstSeenAt: now,
+  await idempotentUpsert(async () => {
+    await ledger.updateOne(
+      { _id: sessionId },
+      {
+        $set: { sessionStarted: true },
+        $setOnInsert: {
+          _id: sessionId,
+          steamId,
+          startedAt: joinedAt,
+          updatedAt: now,
+        },
       },
-    },
-    { upsert: true },
-  );
+      { upsert: true },
+    );
+  });
 
-  const uniqueInc = inserted.upsertedCount > 0 ? 1 : 0;
-  await stats.updateOne(
-    { _id: LIFETIME_ID },
-    {
-      $inc: { totalSessions: 1, uniquePlayers: uniqueInc },
-      $set: { updatedAt: now },
-      $setOnInsert: {
-        _id: LIFETIME_ID,
-        totalPlayTimeMs: 0,
-        seededAt: now,
-      },
-    },
-    { upsert: true },
+  const firstSeen = firstSeenUpsert(steamId, joinedAt, true);
+  try {
+    await uniques.updateOne(firstSeen.filter, firstSeen.update, {
+      upsert: true,
+    });
+  } catch (error) {
+    // A concurrent first-seen upsert may lose on _id. The winning row carries
+    // the durable contribution marker counted by getLifetimeSessionStats.
+    if ((error as { code?: number }).code !== 11000) throw error;
+  }
+  await sessionsCol.updateOne(
+    { _id: sessionId },
+    { $set: { lifetimeSessionCountedAt: now } },
   );
 }
 
-/** Call when open session(s) are closed; credits completed play time. */
-export async function recordLifetimePlayTime(playTimeMs: number): Promise<void> {
-  const ms = Math.max(0, Math.round(playTimeMs));
-  if (ms <= 0) return;
+/** Record finalized duration once per session, even when closure retries. */
+export async function recordLifetimePlayTime(input: {
+  sessionId: string;
+  steamId: string;
+  joinedAt: Date;
+  leftAt: Date;
+}): Promise<void> {
   await ensureLifetimeSessionStats();
-  const stats = await statsCollection();
-  await stats.updateOne(
-    { _id: LIFETIME_ID },
-    {
-      $inc: { totalPlayTimeMs: ms },
-      $set: { updatedAt: new Date() },
-      $setOnInsert: {
-        _id: LIFETIME_ID,
-        totalSessions: 0,
-        uniquePlayers: 0,
-        seededAt: new Date(),
-      },
-    },
-    { upsert: true },
+  const ledger = await sessionLedgerCollection();
+  const updatedAt = new Date();
+  const playTimeMs = Math.max(
+    0,
+    Math.round(input.leftAt.getTime() - input.joinedAt.getTime()),
   );
+  await idempotentUpsert(async () => {
+    await ledger.updateOne(
+      { _id: input.sessionId, playTimeMs: { $exists: false } },
+      {
+        $setOnInsert: {
+          _id: input.sessionId,
+          steamId: input.steamId,
+          startedAt: input.joinedAt,
+        },
+        $set: { playTimeMs, closedAt: input.leftAt, updatedAt },
+      },
+      { upsert: true },
+    );
+  });
 }
